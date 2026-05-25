@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Attendance">
+<title>Attendance</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+/* ── Design tokens ── */
+:root{
+  --page:     #F2F2F7;
+  --card:     #FFFFFF;
+  --shadow:   0 1px 4px rgba(0,0,0,0.08),0 0 0 0.5px rgba(0,0,0,0.06);
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.06),0 0 0 0.5px rgba(0,0,0,0.05);
+  --text:     #1D1D1F;
+  --text2:    #6E6E73;
+  --text3:    #AEAEB2;
+  --fill:     #E5E5EA;
+  --fill2:    #F2F2F7;
+
+  --accent:      #5856D6;
+  --accent-soft: #EEEDFC;
+  --accent-dim:  #3634A3;
+  --accent-text: #3634A3;
+
+  --c-work:   #34C759; --c-work-bg:   #F0FFF5; --c-work-soft:   #C8EFD4; --c-work-text:   #1A6B30;
+  --c-absent: #FF3B30; --c-absent-bg: #FFF5F4; --c-absent-soft: #FFD2CF; --c-absent-text: #B8251C;
+  --c-early:  #FF9500; --c-early-bg:  #FFFBF0; --c-early-soft:  #FFE5B0; --c-early-text:  #A05D00;
+  --c-leave:  #007AFF; --c-leave-bg:  #F0F6FF; --c-leave-soft:  #C0D8FF; --c-leave-text:  #0A52B8;
+
+  --safe-t: env(safe-area-inset-top);
+  --safe-b: env(safe-area-inset-bottom);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --page:  #000000;
+    --card:  #1C1C1E;
+    --shadow:0 1px 6px rgba(0,0,0,0.5),0 0 0 0.5px rgba(255,255,255,0.07);
+    --shadow-sm:0 1px 3px rgba(0,0,0,0.4),0 0 0 0.5px rgba(255,255,255,0.06);
+    --text:  #FFFFFF;
+    --text2: #AEAEB2;
+    --text3: #636366;
+    --fill:  #2C2C2E;
+    --fill2: #1C1C1E;
+
+    --accent:      #6E6BFF;
+    --accent-soft: #1C1A3C;
+    --accent-dim:  #4A48C0;
+    --accent-text: #A8A6FF;
+
+    --c-work-bg:   #0C2416; --c-work-soft:   #163A24; --c-work-text:   #4CD97A;
+    --c-absent-bg: #280D0C; --c-absent-soft: #3C1614; --c-absent-text: #FF6961;
+    --c-early-bg:  #261700; --c-early-soft:  #3A2600; --c-early-text:  #FFAC33;
+    --c-leave-bg:  #0C1828; --c-leave-soft:  #142238; --c-leave-text:  #4DA8FF;
+  }
+}
+
+/* ── Base ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+html,body{min-height:100%;background:var(--page)}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);overscroll-behavior:none}
+
+.app{
+  padding:12px 12px calc(20px + var(--safe-b));
+  padding-top:calc(var(--safe-t) + 12px);
+  max-width:600px;margin:0 auto;
+}
+
+/* ── Top bar ── */
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+
+.wknav{display:flex;align-items:center;gap:4px}
+.navarrow{
+  width:32px;height:32px;border-radius:50%;border:none;
+  background:var(--card);box-shadow:var(--shadow-sm);
+  color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+  -webkit-touch-callout:none;user-select:none;
+}
+.navarrow:active{background:var(--fill);transform:scale(0.9)}
+.wklbl{
+  font-size:13px;font-weight:700;color:var(--text);
+  min-width:90px;text-align:center;
+  padding:6px 2px;cursor:pointer;border-radius:8px;
+  user-select:none;line-height:1;
+}
+.wklbl span{display:block;font-size:10px;font-weight:500;color:var(--text3);margin-top:2px}
+.wklbl:active{background:var(--fill)}
+
+.searchwrap{position:relative;flex:1}
+.searchbox{
+  width:100%;height:38px;border:none;border-radius:12px;
+  padding:0 12px 0 34px;font-size:16px;
+  background:var(--card);color:var(--text);
+  box-shadow:var(--shadow-sm);
+  -webkit-appearance:none;
+}
+.searchbox:focus{outline:none;box-shadow:0 0 0 2px var(--accent),var(--shadow-sm)}
+.searchicon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
+
+.actbtn{
+  width:38px;height:38px;border-radius:12px;border:none;
+  background:var(--card);box-shadow:var(--shadow-sm);
+  color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+  -webkit-touch-callout:none;user-select:none;
+}
+.actbtn:active{background:var(--fill);transform:scale(0.92)}
+
+/* ── Day strip ── */
+.dayscroll{display:flex;gap:6px;margin-bottom:12px}
+.daybtn{
+  flex:1;height:72px;border:none;border-radius:16px;
+  background:var(--card);box-shadow:var(--shadow-sm);
+  cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0;
+  padding:6px 4px;
+  transition:background 0.15s,transform 0.1s;
+  user-select:none;-webkit-touch-callout:none;position:relative;
+}
+.daybtn:active{transform:scale(0.93)}
+.daybtn.is-today .dnum{color:var(--accent)}
+.daybtn.is-today::after{content:'';position:absolute;bottom:8px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.daybtn.active{background:var(--accent);box-shadow:0 4px 14px rgba(88,86,214,0.4)}
+.daybtn.active .dday{color:rgba(255,255,255,0.75)}
+.daybtn.active .dnum{color:#fff}
+.daybtn.active::after{background:rgba(255,255,255,0.6)}
+.daybtn.active .dpip{background:rgba(255,255,255,0.7)}
+.dday{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+.dnum{font-size:24px;font-weight:700;color:var(--text);line-height:1}
+.dpip{width:4px;height:4px;border-radius:50%;background:var(--text3);margin-top:4px}
+
+/* ── Stats ── */
+.statrow{display:flex;gap:6px;margin-bottom:12px}
+.stat{
+  flex:1;border-radius:14px;padding:10px 6px 8px;
+  text-align:center;background:var(--card);box-shadow:var(--shadow-sm);
+}
+.stat-ico{font-size:16px;margin-bottom:4px}
+.statnum{font-size:22px;font-weight:700;line-height:1}
+.statlbl{font-size:9px;font-weight:600;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:0.4px}
+.stat.s-w{background:var(--c-work-bg)}
+.stat.s-a{background:var(--c-absent-bg)}
+.stat.s-e{background:var(--c-early-bg)}
+.stat.s-l{background:var(--c-leave-bg)}
+
+/* ── Staff rows ── */
+.rows{display:flex;flex-direction:column;gap:6px}
+.row{
+  display:flex;align-items:center;
+  padding:10px 10px 10px 0;
+  border-radius:16px;background:var(--card);
+  box-shadow:var(--shadow);gap:10px;min-height:62px;
+  overflow:hidden;position:relative;
+}
+/* Coloured left accent bar */
+.row::before{
+  content:'';flex-shrink:0;
+  width:4px;align-self:stretch;border-radius:2px 0 0 2px;
+  background:var(--fill);
+  margin-right:2px;
+}
+.row.s-work  {background:var(--c-work-bg)}
+.row.s-absent{background:var(--c-absent-bg)}
+.row.s-early {background:var(--c-early-bg)}
+.row.s-leave {background:var(--c-leave-bg)}
+.row.s-work  ::before{background:var(--c-work)}
+.row.s-absent::before{background:var(--c-absent)}
+.row.s-early ::before{background:var(--c-early)}
+.row.s-leave ::before{background:var(--c-leave)}
+
+.avatar{
+  width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;
+  background:var(--fill2);color:var(--text2);
+}
+.row.s-work  .avatar{background:var(--c-work-soft);color:var(--c-work-text)}
+.row.s-absent.avatar{background:var(--c-absent-soft);color:var(--c-absent-text)}
+.row.s-early .avatar{background:var(--c-early-soft);color:var(--c-early-text)}
+.row.s-leave .avatar{background:var(--c-leave-soft);color:var(--c-leave-text)}
+
+.nm{flex:1;font-size:14px;font-weight:500;color:var(--text);line-height:1.25;min-width:0;word-break:break-word}
+
+/* Status buttons — always tinted, active = full color */
+.sbs{display:flex;gap:4px;flex-shrink:0}
+.sb{
+  width:38px;height:44px;border:none;border-radius:12px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;-webkit-touch-callout:none;user-select:none;
+  transition:transform 0.1s;
+}
+.sb:active{transform:scale(0.8)}
+.sb[data-s=work]  {background:var(--c-work-soft);  color:var(--c-work-text)}
+.sb[data-s=absent]{background:var(--c-absent-soft);color:var(--c-absent-text)}
+.sb[data-s=early] {background:var(--c-early-soft); color:var(--c-early-text)}
+.sb[data-s=leave] {background:var(--c-leave-soft); color:var(--c-leave-text)}
+/* Active (row has that status) */
+.row.s-work  .sb[data-s=work]  {background:var(--c-work);  color:#fff}
+.row.s-absent.sb[data-s=absent]{background:var(--c-absent);color:#fff}
+.row.s-early .sb[data-s=early] {background:var(--c-early); color:#fff}
+.row.s-leave .sb[data-s=leave] {background:var(--c-leave); color:#fff}
+
+.empty{text-align:center;padding:56px 16px;color:var(--text3);font-size:14px;line-height:1.6}
+.empty i{font-size:36px;display:block;margin-bottom:10px;opacity:0.5}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:calc(28px + var(--safe-b));left:50%;
+  transform:translateX(-50%) translateY(90px);
+  background:#1C1C1E;color:#fff;
+  border-radius:16px;padding:13px 18px;
+  display:flex;align-items:center;gap:16px;
+  font-size:14px;font-weight:500;z-index:400;
+  transition:transform 0.3s cubic-bezier(0.34,1.4,0.64,1);
+  white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,0.45);
+  pointer-events:none;user-select:none;
+}
+@media(prefers-color-scheme:dark){.toast{background:#3A3A3C}}
+.toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto}
+.toast-undo{background:none;border:none;color:#64D2FF;font-size:14px;font-weight:700;cursor:pointer;padding:4px 0;-webkit-touch-callout:none}
+
+/* ── Overlay / Sheet ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  display:flex;align-items:flex-end;justify-content:center;
+  z-index:100;
+  padding-bottom:var(--safe-b);
+}
+.sheet{
+  background:var(--card);
+  border-radius:22px 22px 0 0;
+  width:100%;max-width:600px;
+  padding:20px 18px calc(20px + var(--safe-b));
+  max-height:90vh;display:flex;flex-direction:column;
+}
+.sheet-handle{
+  width:40px;height:4px;background:var(--fill);
+  border-radius:2px;margin:0 auto 18px;flex-shrink:0;
+}
+.sheetheader{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0}
+.sheettitle{font-size:18px;font-weight:700;color:var(--text)}
+.closebtn{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--fill);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:13px;font-weight:700;
+  -webkit-touch-callout:none;
+}
+.closebtn:active{background:var(--fill2)}
+
+/* Report */
+.rt{
+  font-size:13px;line-height:1.9;color:var(--text);white-space:pre-wrap;
+  background:var(--fill2);padding:14px 16px;border-radius:14px;
+  margin-bottom:12px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  flex:1;min-height:0;
+  font-variant-numeric:tabular-nums;
+}
+.bigbtn{
+  width:100%;padding:15px;border:none;border-radius:14px;
+  background:var(--fill2);cursor:pointer;font-size:15px;font-weight:600;
+  color:var(--text);display:flex;align-items:center;justify-content:center;
+  gap:8px;margin-bottom:8px;flex-shrink:0;
+  -webkit-touch-callout:none;
+}
+.bigbtn:last-child{margin-bottom:0}
+.bigbtn:active{opacity:0.7}
+.bigbtn.primary{background:var(--accent);color:#fff}
+.bigbtn.primary:active{background:var(--accent-dim)}
+.bigbtn.danger{background:var(--c-absent-bg);color:var(--c-absent-text)}
+
+/* Settings */
+.addinput{display:flex;gap:8px;margin-bottom:10px;flex-shrink:0}
+.addinput input{
+  flex:1;height:48px;border:none;border-radius:14px;
+  padding:0 14px;font-size:16px;
+  background:var(--fill2);color:var(--text);
+  -webkit-appearance:none;
+}
+.addinput input:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
+.addconfirm{
+  height:48px;padding:0 18px;border:none;border-radius:14px;
+  background:var(--accent);color:#fff;font-size:15px;font-weight:700;
+  cursor:pointer;white-space:nowrap;-webkit-touch-callout:none;
+}
+.addconfirm:active{background:var(--accent-dim)}
+.stoolbar{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-shrink:0}
+.stoolbar-count{font-size:13px;color:var(--text2);flex:1;font-weight:500}
+.sorttoggle{
+  height:32px;padding:0 12px;border:none;border-radius:10px;
+  background:var(--fill2);cursor:pointer;font-size:12px;font-weight:700;
+  color:var(--text2);display:flex;align-items:center;gap:5px;
+  -webkit-touch-callout:none;letter-spacing:0.2px;
+}
+.sorttoggle.on{background:var(--accent);color:#fff}
+.sorttoggle:active{opacity:0.7}
+.plist{display:flex;flex-direction:column;gap:4px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+.prow{
+  display:flex;align-items:center;padding:10px 12px;
+  border-radius:14px;background:var(--fill2);
+  gap:10px;min-height:52px;
+}
+.pav{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--fill);display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;
+  color:var(--text2);flex-shrink:0;
+}
+.pnm{flex:1;font-size:14px;font-weight:500;color:var(--text)}
+.delbtn{
+  width:38px;height:38px;border-radius:10px;border:none;
+  background:var(--c-absent-soft);color:var(--c-absent-text);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;cursor:pointer;-webkit-touch-callout:none;
+}
+.delbtn:active{opacity:0.6}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast">
+  Status updated
+  <button class="toast-undo" onclick="undoLast()">Undo</button>
+</div>
+<div id="root"></div>
+
+<script>
+const DEFAULT_STAFF = ["Agnes Aruba","Aporo Aruba","Avarua","Ben McNicholas","Charli Murphy","Dewi","Emerald","Emmanuel","Emma L","Faataga Fao","Hilary","Hussein Koech","Isabel Albinus","Jasmin Lulio","Jet Crozier","June","Kacu","Kaijanella Robertson","Karen Brown","Koni Latu","Kyla-Le Perry","Marta","Natalia Tuitama","Norhaffezan (Nora)","Paula Leti","Pauline W","Ryan Donald","Saxon","Erina Edmonds","Sinuch Soy","Toanui Moeara","Vikki Rakei"];
+const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
+const SI = [["work","ti-check","At work"],["absent","ti-x","Absent"],["early","ti-logout","Left early"],["leave","ti-calendar-off","Leave/sick"]];
+
+let staff = [...DEFAULT_STAFF];
+let dat = {}, q = "", view = "main", sortAZ = false;
+let wo = 0, ad = 0;
+let lastAction = null, undoTimer = null;
+
+/* ── Persistence ── */
+function save(){try{localStorage.setItem("att3_dat",JSON.stringify(dat));localStorage.setItem("att3_staff",JSON.stringify(staff));}catch(e){}}
+function load(){try{const d=localStorage.getItem("att3_dat"),s=localStorage.getItem("att3_staff");if(d)dat=JSON.parse(d);if(s)staff=JSON.parse(s);}catch(e){}}
+
+/* ── Date helpers ── */
+function mon(o){const d=new Date(),dy=d.getDay();d.setDate(d.getDate()-(dy===0?6:dy-1)+o*7);d.setHours(0,0,0,0);return d;}
+function wdates(o){const m=mon(o);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d;});}
+function fd(d){return d.toLocaleDateString("en-AU",{day:"numeric",month:"short"});}
+function ffl(d){return d.toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"});}
+function dk(w,d){return"w"+w+"d"+d;}
+function gs(p){return((dat[dk(wo,ad)]||{})[p])||"";}
+
+function todayIdx(){const dy=new Date().getDay();if(dy===0||dy===6)return 4;return dy-1;}
+function isToday(i){if(wo!==0)return false;const dy=new Date().getDay();if(dy===0||dy===6)return false;return(dy-1)===i;}
+function weekLabel(){
+  const d=wdates(wo);
+  const range=fd(d[0])+" – "+fd(d[4]);
+  if(wo===0)return{main:"This week",sub:range};
+  if(wo===-1)return{main:"Last week",sub:range};
+  if(wo===1)return{main:"Next week",sub:range};
+  return{main:range,sub:""};
+}
+
+/* ── Actions ── */
+function toggle(p,s){
+  const k=dk(wo,ad);
+  if(!dat[k])dat[k]={};
+  lastAction={k,p,prev:dat[k][p]||""};
+  dat[k][p]=dat[k][p]===s?"":s;
+  save();showToast();render();
+}
+function cw(dir){wo+=dir;render();}
+function goToday(){wo=0;ad=todayIdx();q="";render();}
+function selDay(i){ad=i;q="";render();}
+function initials(n){return n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();}
+
+function dayStats(i){
+  const dd=dat[dk(wo,i)]||{};
+  let absent=0,early=0,leave=0;
+  staff.forEach(p=>{const s=dd[p]||"";if(s==="absent")absent++;else if(s==="early")early++;else if(s==="leave")leave++;});
+  return{absent,early,leave};
+}
+
+/* ── Toast / Undo ── */
+function showToast(){document.getElementById("toast").classList.add("show");clearTimeout(undoTimer);undoTimer=setTimeout(hideToast,3000);}
+function hideToast(){const t=document.getElementById("toast");if(t)t.classList.remove("show");clearTimeout(undoTimer);}
+function undoLast(){if(!lastAction)return;const{k,p,prev}=lastAction;if(!dat[k])dat[k]={};dat[k][p]=prev;lastAction=null;save();hideToast();render();}
+
+/* ── Staff management ── */
+function delPerson(p){
+  if(!confirm("Remove "+p+"?"))return;
+  staff=staff.filter(x=>x!==p);save();render();
+}
+function addPerson(){
+  const inp=document.getElementById("newinput");
+  const n=inp.value.trim();
+  if(!n||staff.includes(n)){inp.value="";return;}
+  staff.push(n);inp.value="";save();render();
+  setTimeout(()=>{const el=document.getElementById("newinput");if(el)el.focus();},60);
+}
+
+/* ── Report ── */
+function buildReport(){
+  const dates=wdates(wo);
+  const lbl=weekLabel();
+  const sec={absent:[],early:[],leave:[]};
+  DAYS.forEach((_,i)=>{
+    const dd=dat[dk(wo,i)]||{};
+    staff.forEach(p=>{const st=dd[p]||"";if(sec[st])sec[st].push("  • "+p+" — "+ffl(dates[i]));});
+  });
+  const lines=["Attendance — "+lbl.main+" ("+lbl.sub+")\n"];
+  if(sec.absent.length){lines.push("Absent:");sec.absent.forEach(l=>lines.push(l));lines.push("");}
+  if(sec.early.length){lines.push("Left early:");sec.early.forEach(l=>lines.push(l));lines.push("");}
+  if(sec.leave.length){lines.push("Leave / sick:");sec.leave.forEach(l=>lines.push(l));lines.push("");}
+  if(!sec.absent.length&&!sec.early.length&&!sec.leave.length)lines.push("No absences recorded this week.");
+  return lines.join("\n");
+}
+function shareReport(){
+  const text=document.getElementById("rtxt").innerText;
+  if(navigator.share){navigator.share({text});return;}
+  navigator.clipboard.writeText(text).then(()=>{
+    const b=document.getElementById("cpbtn");
+    b.innerHTML='<i class="ti ti-check" style="font-size:16px"></i> Copied!';
+    setTimeout(()=>{b.innerHTML='<i class="ti ti-copy" style="font-size:16px"></i> Copy to clipboard';},2000);
+  });
+}
+
+/* ── Swipe ── */
+let tx=0,ty=0;
+document.addEventListener("touchstart",e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.addEventListener("touchend",e=>{
+  if(view!=="main")return;
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.6)cw(dx<0?1:-1);
+},{passive:true});
+
+/* ── Render ── */
+function render(){
+  const dates=wdates(wo);
+  const lbl=weekLabel();
+  const displayStaff=sortAZ?[...staff].sort((a,b)=>a.localeCompare(b)):staff;
+  const filtered=q?displayStaff.filter(p=>p.toLowerCase().includes(q.toLowerCase())):displayStaff;
+  const todaySt=dayStats(ad);
+  const canShare=typeof navigator.share!=="undefined";
+
+  /* — Report — */
+  if(view==="report"){
+    const rep=buildReport();
+    document.getElementById("root").innerHTML=`
+    <div class="overlay" onclick="view='main';render()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div class="sheetheader">
+          <span class="sheettitle">Weekly report</span>
+          <button class="closebtn" onclick="view='main';render()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="rt" id="rtxt">${rep}</div>
+        <button class="bigbtn primary" id="cpbtn" onclick="shareReport()">
+          <i class="ti ti-${canShare?'share-2':'copy'}" style="font-size:16px"></i>
+          ${canShare?"Share report":"Copy to clipboard"}
+        </button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  /* — Settings — */
+  if(view==="settings"){
+    const listHtml=staff.map(p=>`
+      <div class="prow">
+        <div class="pav">${initials(p)}</div>
+        <span class="pnm">${p}</span>
+        <button class="delbtn" onclick="delPerson('${p.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button>
+      </div>`).join("");
+    document.getElementById("root").innerHTML=`
+    <div class="overlay" onclick="view='main';render()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div class="sheetheader">
+          <span class="sheettitle">Manage staff</span>
+          <button class="closebtn" onclick="view='main';render()"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="addinput">
+          <input id="newinput" placeholder="Add name…" onkeydown="if(event.key==='Enter')addPerson()" autocomplete="off" autocorrect="off"/>
+          <button class="addconfirm" onclick="addPerson()">Add</button>
+        </div>
+        <div class="stoolbar">
+          <span class="stoolbar-count">${staff.length} people</span>
+          <button class="sorttoggle${sortAZ?" on":""}" onclick="sortAZ=!sortAZ;render()">
+            <i class="ti ti-sort-ascending" style="font-size:12px"></i> A–Z
+          </button>
+        </div>
+        <div class="plist">${listHtml}</div>
+      </div>
+    </div>`;
+    setTimeout(()=>{const el=document.getElementById("newinput");if(el)el.focus();},60);
+    return;
+  }
+
+  /* — Main — */
+  const absent=todaySt.absent,early=todaySt.early,leave=todaySt.leave;
+  const atWork=staff.length-absent-early-leave;
+
+  const dayStrip=DAYS.map((d,i)=>{
+    const today=isToday(i);
+    const has=Object.values(dat[dk(wo,i)]||{}).some(v=>v);
+    const cls=[(ad===i?"active":""),(today?"is-today":"")].filter(Boolean).join(" ");
+    return`<button class="daybtn ${cls}" onclick="selDay(${i})">
+      <span class="dday">${d}</span>
+      <span class="dnum">${dates[i].getDate()}</span>
+      ${has&&ad!==i?'<span class="dpip"></span>':'<span style="height:8px"></span>'}
+    </button>`;
+  }).join("");
+
+  const statsHtml=`
+    <div class="stat s-w">
+      <div class="stat-ico"><i class="ti ti-check" style="color:var(--c-work)"></i></div>
+      <div class="statnum" style="color:var(--c-work-text)">${atWork}</div>
+      <div class="statlbl">At work</div>
+    </div>
+    <div class="stat s-a">
+      <div class="stat-ico"><i class="ti ti-user-x" style="color:var(--c-absent)"></i></div>
+      <div class="statnum" style="color:var(--c-absent-text)">${absent}</div>
+      <div class="statlbl">Absent</div>
+    </div>
+    <div class="stat s-e">
+      <div class="stat-ico"><i class="ti ti-logout" style="color:var(--c-early)"></i></div>
+      <div class="statnum" style="color:var(--c-early-text)">${early}</div>
+      <div class="statlbl">Left early</div>
+    </div>
+    <div class="stat s-l">
+      <div class="stat-ico"><i class="ti ti-calendar-off" style="color:var(--c-leave)"></i></div>
+      <div class="statnum" style="color:var(--c-leave-text)">${leave}</div>
+      <div class="statlbl">Leave</div>
+    </div>`;
+
+  const rowsHtml=filtered.length
+    ?filtered.map(p=>{
+        const st=gs(p);
+        const ep=p.replace(/'/g,"\\'");
+        return`<div class="row${st?" s-"+st:""}">
+          <div class="avatar">${initials(p)}</div>
+          <span class="nm">${p}</span>
+          <div class="sbs">${SI.map(([k,ic,lb])=>`<button class="sb" data-s="${k}" aria-label="${lb}" onclick="toggle('${ep}','${k}')"><i class="ti ${ic}"></i></button>`).join("")}</div>
+        </div>`;
+      }).join("")
+    :`<div class="empty"><i class="ti ti-user-search"></i>No one named "${q}"</div>`;
+
+  document.getElementById("root").innerHTML=`<div class="app">
+    <div class="topbar">
+      <div class="wknav">
+        <button class="navarrow" onclick="cw(-1)" aria-label="Previous week"><i class="ti ti-chevron-left"></i></button>
+        <span class="wklbl" onclick="goToday()">${lbl.main}${lbl.sub?`<span>${lbl.sub}</span>`:""}</span>
+        <button class="navarrow" onclick="cw(1)" aria-label="Next week"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div class="searchwrap">
+        <i class="ti ti-search searchicon"></i>
+        <input class="searchbox" placeholder="Search…" value="${q.replace(/"/g,'&quot;')}" oninput="q=this.value;render()" autocomplete="off" autocorrect="off" autocapitalize="none"/>
+      </div>
+      <button class="actbtn" onclick="view='report';render()" aria-label="Report"><i class="ti ti-file-text"></i></button>
+      <button class="actbtn" onclick="view='settings';render()" aria-label="Settings"><i class="ti ti-settings"></i></button>
+    </div>
+
+    <div class="dayscroll">${dayStrip}</div>
+    <div class="statrow">${statsHtml}</div>
+    <div class="rows">${rowsHtml}</div>
+  </div>`;
+}
+
+load();
+ad=todayIdx();
+render();
+</script>
+</body>
+</html>
