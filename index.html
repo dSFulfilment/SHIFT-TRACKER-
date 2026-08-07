@@ -992,8 +992,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     </div>
     <div class="ro-actions">
       <button type="button" id="roJumpToday">Jump to today</button>
-      <button type="button" id="roCopyDaily" title="Copy today’s attendance for your manager">Copy daily</button>
-      <button type="button" id="roCopyWeekly" title="Copy weekly attendance for pays">Copy weekly</button>
+      <button type="button" id="roCopyDaily" title="Copy a clean daily update for your manager">Copy daily</button>
+      <button type="button" id="roCopyWeekly" title="Copy a pays-ready weekly attendance summary">Copy weekly</button>
       <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear this week</button>
     </div>
     <div class="ro-days" id="roDays"></div>
@@ -6942,63 +6942,129 @@ init();
     return staff.filter(function(p){ return statusFor(dateKey, p.id) === statusKey; })
       .map(function(p){ return p.name; });
   }
+  function peopleForStatus(dateKey, staff, statusKey){
+    return staff.filter(function(p){ return statusFor(dateKey, p.id) === statusKey; });
+  }
   function formatDayLong(d){
     return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  }
+  function formatDayPays(d){
+    return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
+  }
+  function bulletNames(names){
+    if (!names.length) return ['  none'];
+    return names.map(function(n){ return '  - ' + n; });
+  }
+  function statusShort(s){
+    if (s === 'here') return 'Here';
+    if (s === 'late') return 'Late';
+    if (s === 'absent') return 'Absent';
+    if (s === 'holiday') return 'Holiday';
+    return '-';
   }
   function buildDailyCopy(){
     var ws = state.weekStart || startOfWeek(new Date());
     var d = addDays(ws, state.dayIdx);
     var dateKey = ymd(d);
-    var staff = rosterStaff();
+    var staff = rosterStaff().slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    var shift = shiftLabel(state.rosterShift);
     var lines = [];
-    lines.push('Daily attendance — ' + shiftLabel(state.rosterShift) + ' — ' + formatDayLong(d));
+    lines.push(shift.toUpperCase() + ' SHIFT — DAILY UPDATE');
+    lines.push(formatDayLong(d));
     lines.push('');
-    STATUSES.forEach(function(st){
-      var names = namesForStatus(dateKey, staff, st.key);
-      lines.push(st.label + ' (' + names.length + ')' + (names.length ? ': ' + names.join(', ') : ''));
-    });
-    var unset = staff.filter(function(p){ return !statusFor(dateKey, p.id); }).map(function(p){ return p.name; });
-    lines.push('Unset (' + unset.length + ')' + (unset.length ? ': ' + unset.join(', ') : ''));
-    lines.push('');
-    lines.push('Total staff on ' + shiftLabel(state.rosterShift).toLowerCase() + ' roster: ' + staff.length);
+
+    var here = peopleForStatus(dateKey, staff, 'here');
+    var late = peopleForStatus(dateKey, staff, 'late');
+    var absent = peopleForStatus(dateKey, staff, 'absent');
+    var holiday = peopleForStatus(dateKey, staff, 'holiday');
+    var unset = staff.filter(function(p){ return !statusFor(dateKey, p.id); });
+
+    function section(title, people){
+      lines.push(title + ' (' + people.length + ')');
+      if (!people.length){
+        lines.push('  none');
+      } else {
+        people.forEach(function(p){
+          lines.push('  - ' + p.name + ' (' + roleLabel(p.role) + ')');
+        });
+      }
+      lines.push('');
+    }
+    section('HERE', here);
+    section('LATE', late);
+    section('ABSENT', absent);
+    section('HOLIDAY', holiday);
+    if (unset.length){
+      section('NOT MARKED YET', unset);
+    }
+
+    var onFloor = here.length + late.length;
+    lines.push('SUMMARY');
+    lines.push('  On floor (Here + Late): ' + onFloor);
+    lines.push('  Here ' + here.length + ' · Late ' + late.length + ' · Absent ' + absent.length + ' · Holiday ' + holiday.length);
+    lines.push('  On ' + shift.toLowerCase() + ' roster: ' + staff.length);
+    if (!staff.length) lines.push('  (No people on this roster yet)');
     return lines.join('\n');
   }
   function buildWeeklyCopy(){
     var ws = state.weekStart || startOfWeek(new Date());
-    var staff = rosterStaff();
+    var staff = rosterStaff().slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    var shift = shiftLabel(state.rosterShift);
     var lines = [];
-    lines.push('Weekly attendance — ' + shiftLabel(state.rosterShift) + ' — ' + weekLabel(ws) + ' (for pays)');
+    lines.push(shift.toUpperCase() + ' SHIFT — WEEKLY ATTENDANCE FOR PAYS');
+    lines.push('Week: ' + weekLabel(ws) + ' (Mon–Fri)');
     lines.push('');
+
+    lines.push('DAY TOTALS');
     var weekTotals = emptyCounts();
     for (var i = 0; i < 5; i++){
       var d = addDays(ws, i);
       var key = ymd(d);
       var c = countDay(key, staff);
       STATUSES.forEach(function(st){ weekTotals[st.key] += c[st.key]; });
-      lines.push(DAY_NAMES[i] + ' ' + d.getDate() + ': Here ' + c.here
-        + ', Late ' + c.late
-        + ', Absent ' + c.absent
-        + ', Holiday ' + c.holiday
-        + (c.unset ? ', Unset ' + c.unset : ''));
+      lines.push('  ' + formatDayPays(d)
+        + '  Here ' + c.here
+        + ' · Late ' + c.late
+        + ' · Absent ' + c.absent
+        + ' · Holiday ' + c.holiday
+        + (c.unset ? ' · Not marked ' + c.unset : ''));
     }
     lines.push('');
-    lines.push('Week totals (person-days): Here ' + weekTotals.here
-      + ', Late ' + weekTotals.late
-      + ', Absent ' + weekTotals.absent
-      + ', Holiday ' + weekTotals.holiday);
+    lines.push('WEEK TOTALS (person-days)');
+    lines.push('  Here ' + weekTotals.here
+      + ' · Late ' + weekTotals.late
+      + ' · Absent ' + weekTotals.absent
+      + ' · Holiday ' + weekTotals.holiday);
+    lines.push('  Days present for pays (Here + Late): ' + (weekTotals.here + weekTotals.late));
     lines.push('');
-    lines.push('Staff detail:');
-    staff.forEach(function(p){
-      var parts = [];
-      for (var i = 0; i < 5; i++){
-        var s = statusFor(ymd(addDays(ws, i)), p.id);
-        var label = s ? (STATUSES.filter(function(x){ return x.key===s; })[0] || {label:s}).label : '—';
-        parts.push(DAY_NAMES[i] + ' ' + label);
-      }
-      lines.push(p.name + ' (' + roleLabel(p.role) + '): ' + parts.join(', '));
-    });
-    if (!staff.length) lines.push('(No staff on ' + shiftLabel(state.rosterShift).toLowerCase() + ' roster yet)');
-    return lines.join('\n');
+
+    lines.push('STAFF DETAIL');
+    if (!staff.length){
+      lines.push('  (No people on ' + shift.toLowerCase() + ' roster yet)');
+    } else {
+      staff.forEach(function(p){
+        var dayParts = [];
+        var present = 0, lateN = 0, absentN = 0, holidayN = 0, unsetN = 0;
+        for (var di = 0; di < 5; di++){
+          var s = statusFor(ymd(addDays(ws, di)), p.id);
+          dayParts.push(DAY_NAMES[di] + ' ' + statusShort(s));
+          if (s === 'here') present++;
+          else if (s === 'late'){ present++; lateN++; }
+          else if (s === 'absent') absentN++;
+          else if (s === 'holiday') holidayN++;
+          else unsetN++;
+        }
+        lines.push(p.name + ' — ' + roleLabel(p.role));
+        lines.push('  ' + dayParts.join(' · '));
+        lines.push('  Pays days (Here+Late): ' + present
+          + '  |  Late ' + lateN
+          + '  |  Absent ' + absentN
+          + '  |  Holiday ' + holidayN
+          + (unsetN ? '  |  Not marked ' + unsetN : ''));
+        lines.push('');
+      });
+    }
+    return lines.join('\n').replace(/\n+$/, '');
   }
   function rosterToast(msg){
     var el = document.getElementById('bpToast');
