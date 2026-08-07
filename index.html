@@ -161,20 +161,32 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.floor-plate .ctrl.rotate,
 #app .card.station.floor-plate .ctrl.resize{ display:none !important; }
 /* Role / SKU drop plates — same idea as packing stations, colour-matched */
-#app .card.floorslot{ width:70px; min-height:34px; padding:3px 4px; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:0; border-width:2.5px; border-style:dashed;
-    border-radius:6px; box-shadow:none; }
-#app .card.floorslot .field.slot-label{ font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-    text-align:center; line-height:1.15; max-height:2.4em; overflow:hidden; }
+#app .card.floorslot{ width:70px; min-height:34px; padding:4px 5px; display:flex; flex-direction:column;
+    align-items:stretch; justify-content:center; gap:2px; border-width:2px; border-style:dashed;
+    border-radius:7px; box-shadow:none; }
+#app .card.floorslot .field.slot-label{ font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+    text-align:center; line-height:1.15; max-height:1.3em; overflow:hidden; opacity:.9; }
 #app .card.floorslot .field.slot-name{ font-size:11px; font-weight:700; text-align:center; line-height:1.2;
-    max-height:2.5em; overflow:hidden; word-break:break-word; }
+    max-height:2.5em; overflow:hidden; word-break:break-word; cursor:pointer; }
 #app .card.floorslot.vacant .field.slot-name{ letter-spacing:.04em; text-transform:uppercase; font-size:10px; }
-#app .card.floorslot.slot-sku .slot-skus{ display:flex; flex-direction:column; gap:2px; width:100%; margin-top:2px; }
-#app .card.floorslot.slot-sku .slot-sku-line{ font-size:11px; font-weight:700; text-align:center; line-height:1.2;
+#app .card.floorslot.slot-sku .slot-skus{ display:flex; flex-direction:column; gap:3px; width:100%; margin-top:1px; }
+#app .card.floorslot.slot-sku .slot-sku-row{ display:flex; align-items:center; gap:4px; width:100%;
+  min-height:16px; padding:1px 3px; border-radius:4px; background:rgba(255,255,255,.45); cursor:pointer; }
+#app .card.floorslot.slot-sku .slot-sku-row:hover{ background:rgba(255,255,255,.75); }
+#app .card.floorslot.slot-sku .slot-sku-row.empty{ background:rgba(255,255,255,.22); }
+#app .card.floorslot.slot-sku .slot-sku-tag{ flex:0 0 auto; font-size:7px; font-weight:800; letter-spacing:.04em;
+  text-transform:uppercase; color:#15803d; opacity:.75; line-height:1; }
+#app .card.floorslot.slot-sku .slot-sku-line{ flex:1; min-width:0; font-size:11px; font-weight:700; text-align:left; line-height:1.15;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace; overflow:hidden; text-overflow:ellipsis;
-  white-space:nowrap; max-width:100%; cursor:pointer; color:#14532d; }
-#app .card.floorslot.slot-sku .slot-sku-line.next{ color:#15803d; font-size:10px; }
-#app .card.floorslot.slot-sku .slot-sku-line.empty{ color:#4ade80; font-weight:600; }
+  white-space:nowrap; color:#14532d; }
+#app .card.floorslot.slot-sku .slot-sku-row.next .slot-sku-tag{ color:#166534; }
+#app .card.floorslot.slot-sku .slot-sku-row.next .slot-sku-line{ color:#15803d; font-size:10px; }
+#app .card.floorslot.slot-sku .slot-sku-row.empty .slot-sku-line{ color:#86efac; font-weight:600; }
+#app .card.floorslot.slot-sku .slot-sku-promote{ display:none; width:100%; margin-top:1px; border:none; border-radius:4px;
+  padding:3px 4px; font-size:9px; font-weight:800; letter-spacing:.02em; font-family:inherit; cursor:pointer;
+  background:#16a34a; color:#fff; line-height:1.2; }
+#app .card.floorslot.slot-sku .slot-sku-promote:hover{ background:#15803d; }
+#app .card.floorslot.slot-sku.has-next .slot-sku-promote{ display:block; }
 #app .card.floorslot.slot-sku .field.slot-name{ display:none; }
 #app .card.floorslot .ctrl.rotate,
 #app .card.floorslot .rotate-line{ display:none !important; }
@@ -189,6 +201,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot.slot-sku.occupied .field.slot-name{ color:#14532d; }
 #app .card.floorslot.slot-sku.drop-target{ border-style:solid; border-color:var(--sku);
     background:rgba(22,163,74,.28); box-shadow:0 0 0 3px rgba(22,163,74,.35); }
+#app .role-popover .role-section{ font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--muted); padding:8px 8px 2px; pointer-events:none; }
+#app .role-popover .role-opt.promote-opt{ background:#E9F7EF; color:#14532d; font-weight:700; }
+#app .role-popover .role-opt.promote-opt:hover{ background:#dcfce7; }
+#app .role-popover.sku-assign{ min-width:168px; max-height:320px; }
 #app .card.floorslot.slot-boxmaker{ border-color:rgba(220,38,38,.65); background:rgba(220,38,38,.10); }
 #app .card.floorslot.slot-boxmaker .field.slot-label{ color:#b91c1c; }
 #app .card.floorslot.slot-boxmaker .field.slot-name{ color:#ef4444; }
@@ -1245,17 +1262,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   // SKU plates sit beside packer stations (no overlap) and hold current + planned-next.
   var FLOOR_SLOTS = {
     sku: [
-      // Green SKU bays sit in clear gaps — never over packer stations.
-      // Current SKU on top, planned next underneath on the same green plate.
-      { key:'SKU-AD', label:'SKU A–D', x:345, y:40, w:100, h:90 },
-      { key:'SKU-EH', label:'SKU E–H', x:555, y:34, w:100, h:90 },
-      // SKU T sits under station T (not beside / behind J)
-      { key:'SKU-T', label:'SKU T', x:714, y:90, w:52, h:78 },
-      // Right wing: under the I–J and M–N rows, with padding so they never sit on packers
-      { key:'SKU-IK', label:'SKU I–K', x:804, y:126, w:100, h:108 },
-      { key:'SKU-MP', label:'SKU M–P', x:804, y:340, w:100, h:108 },
-      { key:'SKU-QR', label:'SKU Q–R', x:590, y:432, w:54, h:64 },
-      { key:'SKU-S', label:'SKU S', x:616, y:578, w:56, h:56 }
+      // Green SKU bays in clear gaps — current on top, planned next under, Done button below.
+      { key:'SKU-AD', label:'SKU A–D', x:345, y:38, w:104, h:98 },
+      { key:'SKU-EH', label:'SKU E–H', x:555, y:32, w:104, h:98 },
+      { key:'SKU-T', label:'SKU T', x:714, y:90, w:58, h:92 },
+      { key:'SKU-IK', label:'SKU I–K', x:804, y:126, w:104, h:118 },
+      { key:'SKU-MP', label:'SKU M–P', x:804, y:340, w:104, h:118 },
+      { key:'SKU-QR', label:'SKU Q–R', x:590, y:430, w:58, h:66 },
+      { key:'SKU-S', label:'SKU S', x:616, y:575, w:60, h:74 }
     ],
     boxmaker: [
       { key:'BM-CARTON', label:'Carton closer', x:200, y:68, w:88, h:48 },
@@ -1273,7 +1287,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       { key:'RN-2', label:'Runner 2', x:590, y:168, w:72, h:34 },
       { key:'RN-3', label:'Runner 3', x:730, y:198, w:72, h:34 },
       { key:'RN-4', label:'Runner 4', x:700, y:360, w:72, h:34 },
-      { key:'RN-5', label:'Runner 5', x:620, y:500, w:72, h:34 },
+      { key:'RN-5', label:'Runner 5', x:620, y:508, w:72, h:34 },
       { key:'RN-6', label:'Runner 6', x:200, y:470, w:72, h:34 }
     ]
   };
@@ -1513,25 +1527,43 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(card.slotKind==='sku'){
       var skuNow = skuRosterEntry(card.rosterId);
       var skuNext = skuRosterEntry(card.nextSkuId);
+      var nowRow = ref.el.querySelector('.slot-sku-row.now');
+      var nextRow = ref.el.querySelector('.slot-sku-row.next');
       var nowEl = ref.el.querySelector('.slot-sku-line.now');
       var nextEl = ref.el.querySelector('.slot-sku-line.next');
+      var promoEl = ref.el.querySelector('.slot-sku-promote');
       if(nowEl){
-        nowEl.textContent = skuNow ? skuNow.code : 'Drop';
-        nowEl.classList.toggle('empty', !skuNow);
+        nowEl.textContent = skuNow ? skuNow.code : 'tap to set';
+        if(nowRow) nowRow.classList.toggle('empty', !skuNow);
         nowEl.title = skuNow
-          ? (skuNow.code+' (current) — double-click to clear')
-          : 'Drop a SKU here for current product';
+          ? (skuNow.code+' · current — tap to change, double-click to clear')
+          : 'Tap to set current SKU, or drag one here';
       }
       if(nextEl){
-        nextEl.textContent = skuNext ? ('→ '+skuNext.code) : '→ next';
-        nextEl.classList.toggle('empty', !skuNext);
+        nextEl.textContent = skuNext ? skuNext.code : 'tap to set';
+        if(nextRow) nextRow.classList.toggle('empty', !skuNext);
         nextEl.title = skuNext
-          ? (skuNext.code+' (planned next) — double-click to clear')
-          : 'Drop a second SKU here for planned next';
+          ? (skuNext.code+' · planned next — tap to change, double-click to clear')
+          : 'Tap to set planned next SKU';
       }
+      if(promoEl){
+        if(skuNext){
+          promoEl.textContent = skuNow
+            ? ('Done → '+skuNext.code)
+            : ('Start → '+skuNext.code);
+          promoEl.title = skuNow
+            ? ('Mark '+skuNow.code+' done and make '+skuNext.code+' current')
+            : ('Make '+skuNext.code+' the current SKU');
+        } else {
+          promoEl.textContent = 'Done → next';
+          promoEl.title = 'Set a planned next SKU first';
+        }
+      }
+      ref.el.classList.toggle('has-next', !!skuNext);
       var tip = [];
-      if(skuNow) tip.push(skuNow.code);
-      if(skuNext) tip.push('next '+skuNext.code);
+      if(skuNow) tip.push('Now '+skuNow.code);
+      if(skuNext) tip.push('Next '+skuNext.code);
+      if(skuNext) tip.push('tap Done when current finishes');
       ref.el.title = tip.join(' · ');
       ref.el.classList.toggle('occupied', !!(skuNow || skuNext));
       ref.el.classList.toggle('vacant', !(skuNow || skuNext));
@@ -1681,6 +1713,27 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     saveDebounced();
     flashStatus('Cleared '+(cleared||'SKU')+' ('+(which==='next'?'planned next':'current')+') from '+(card.label||card.key||'SKU plate'));
   }
+  // When the current SKU is finished: promote planned next → current, free the next slot.
+  function promoteSkuNext(cardId){
+    var card = cards.find(function(c){ return c.id===cardId; });
+    if(!card || card.type!=='floorslot' || card.slotKind!=='sku') return false;
+    normalizeSkuSlotFields(card);
+    if(!card.nextSkuId){
+      flashStatus('Set a planned next SKU first, then tap Done when the current one finishes');
+      return false;
+    }
+    var was = skuRosterCode(card.rosterId);
+    var nowCode = skuRosterCode(card.nextSkuId);
+    card.rosterId = card.nextSkuId;
+    card.nextSkuId = null;
+    updateFloorSlotVisual(card);
+    selectCard(card.id);
+    updateCounts();
+    renderRoster();
+    saveDebounced();
+    flashStatus((was ? was+' done · ' : '')+nowCode+' is now current on '+(card.label||'SKU plate')+' — drop the next SKU when ready');
+    return true;
+  }
   function clearSkuFromOtherPlates(skuRosterId, exceptId){
     cards.forEach(function(c){
       if(c.type!=='floorslot' || c.slotKind!=='sku' || c.id===exceptId) return;
@@ -1753,6 +1806,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       // Auto-set role when dropping onto the matching coloured plate
       entry.role = need;
       renderRoster();
+      if(window.SharedSync) scheduleRosterRoleChange(rosterId, need);
     }
     var already = cards.find(function(c){
       return c.type==='floorslot' && c.slotKind===need && c.id!==card.id && c.rosterId===rosterId;
@@ -2142,8 +2196,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fName = document.createElement('div');
       fName.className = 'field station-name';
       fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Drop' : 'VACANT');
+      fName.title = 'Tap to assign packer · double-click to clear';
+      fName.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+      fName.addEventListener('click', function(e){
+        e.stopPropagation();
+        openAssignPicker(card.id, fName);
+      });
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
+        closeAssignPopover();
         clearStationAssignment(card.id);
       });
       el.appendChild(fName);
@@ -2159,33 +2220,58 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
       fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Drop';
+      fSlotName.title = 'Tap to assign · double-click to clear';
+      fSlotName.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+      fSlotName.addEventListener('click', function(e){
+        e.stopPropagation();
+        openAssignPicker(card.id, fSlotName);
+      });
       fSlotName.addEventListener('dblclick', function(e){
         e.stopPropagation();
+        closeAssignPopover();
         clearFloorSlotAssignment(card.id);
       });
       el.appendChild(fSlotName);
       if(card.slotKind==='sku'){
         var skuLines = document.createElement('div');
         skuLines.className = 'slot-skus';
-        var fSkuNow = document.createElement('div');
-        fSkuNow.className = 'slot-sku-line now'+(card.rosterId ? '' : ' empty');
-        fSkuNow.textContent = skuRosterCode(card.rosterId) || 'Drop';
-        fSkuNow.addEventListener('dblclick', function(e){
-          e.stopPropagation();
-          clearFloorSlotSku(card.id, 'now');
-        });
-        fSkuNow.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        var fSkuNext = document.createElement('div');
-        fSkuNext.className = 'slot-sku-line next'+(card.nextSkuId ? '' : ' empty');
-        fSkuNext.textContent = card.nextSkuId ? ('→ '+skuRosterCode(card.nextSkuId)) : '→ next';
-        fSkuNext.addEventListener('dblclick', function(e){
-          e.stopPropagation();
-          clearFloorSlotSku(card.id, 'next');
-        });
-        fSkuNext.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        skuLines.appendChild(fSkuNow);
-        skuLines.appendChild(fSkuNext);
+        function makeSkuRow(which, code){
+          var row = document.createElement('div');
+          row.className = 'slot-sku-row '+which+(code ? '' : ' empty');
+          var tag = document.createElement('span');
+          tag.className = 'slot-sku-tag';
+          tag.textContent = which === 'next' ? 'Next' : 'Now';
+          var line = document.createElement('div');
+          line.className = 'slot-sku-line '+which;
+          line.textContent = code || 'tap to set';
+          row.appendChild(tag);
+          row.appendChild(line);
+          row.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+          row.addEventListener('click', function(e){
+            e.stopPropagation();
+            openAssignPicker(card.id, row, { skuSlot: which === 'next' ? 'next' : 'now' });
+          });
+          row.addEventListener('dblclick', function(e){
+            e.stopPropagation();
+            closeAssignPopover();
+            clearFloorSlotSku(card.id, which === 'next' ? 'next' : 'now');
+          });
+          return row;
+        }
+        skuLines.appendChild(makeSkuRow('now', skuRosterCode(card.rosterId)));
+        skuLines.appendChild(makeSkuRow('next', skuRosterCode(card.nextSkuId)));
         el.appendChild(skuLines);
+        var promoBtn = document.createElement('button');
+        promoBtn.type = 'button';
+        promoBtn.className = 'slot-sku-promote';
+        promoBtn.textContent = 'Done → next';
+        promoBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+        promoBtn.addEventListener('click', function(e){
+          e.stopPropagation();
+          promoteSkuNext(card.id);
+        });
+        el.appendChild(promoBtn);
+        if(card.nextSkuId) el.classList.add('has-next');
       }
     } else if(card.type==='text'){
       var f1 = document.createElement('div');
@@ -2449,58 +2535,105 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   var assignPopover = document.getElementById('assignPopover');
   var activeAssignCardId = null;
   assignPopover.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-  function openAssignPicker(id, anchorEl){
+  function openAssignPicker(id, anchorEl, opts){
+    opts = opts || {};
     var card = cards.find(function(c){ return c.id===id; });
     if(!card) return;
     activeAssignCardId = id;
     assignPopover.innerHTML = '';
-    var vacantBtn = document.createElement('button');
-    vacantBtn.type = 'button'; vacantBtn.className = 'role-opt vacant-opt';
-    vacantBtn.textContent = card.rosterId ? '\u2014 Clear assignment \u2014' : '\u2014 Vacant \u2014';
-    vacantBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-    vacantBtn.addEventListener('click', function(e){
-      e.stopPropagation();
-      if(card.type==='floorslot' && card.slotKind==='sku'){
-        clearFloorSlotSku(id, 'now');
-        clearFloorSlotSku(id, 'next');
-      } else if(card.type==='floorslot'){
-        clearFloorSlotAssignment(id);
-      } else {
-        clearStationAssignment(id);
-      }
-      closeAssignPopover();
-    });
-    assignPopover.appendChild(vacantBtn);
+    assignPopover.classList.toggle('sku-assign', card.type==='floorslot' && card.slotKind==='sku');
+
+    function addSection(label){
+      var h = document.createElement('div');
+      h.className = 'role-section';
+      h.textContent = label;
+      assignPopover.appendChild(h);
+    }
+    function addBtn(label, className, onClick, active){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'role-opt'+(className ? ' '+className : '');
+      if(active) btn.classList.add('active');
+      btn.innerHTML = label;
+      btn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+      btn.addEventListener('click', function(e){ e.stopPropagation(); onClick(); closeAssignPopover(); });
+      assignPopover.appendChild(btn);
+      return btn;
+    }
 
     if(card.type==='floorslot' && card.slotKind==='sku'){
       normalizeSkuSlotFields(card);
-      vacantBtn.textContent = (card.rosterId || card.nextSkuId) ? '\u2014 Clear all SKUs \u2014' : '\u2014 Vacant \u2014';
       if(card.nextSkuId){
-        var clearNextBtn = document.createElement('button');
-        clearNextBtn.type = 'button'; clearNextBtn.className = 'role-opt vacant-opt';
-        clearNextBtn.textContent = 'Clear next SKU ('+skuRosterCode(card.nextSkuId)+')';
-        clearNextBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        clearNextBtn.addEventListener('click', function(e){ e.stopPropagation(); clearFloorSlotSku(id, 'next'); closeAssignPopover(); });
-        assignPopover.appendChild(clearNextBtn);
+        addBtn(
+          '<span class="role-dot" style="background:var(--sku)"></span>Done — make '
+            +skuRosterCode(card.nextSkuId)+' current',
+          'promote-opt',
+          function(){ promoteSkuNext(id); }
+        );
       }
+      var focusSlot = opts.skuSlot === 'next' ? 'next' : 'now';
       var skus = skuRoster.slice().sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); });
+      addSection(focusSlot === 'next' ? 'Set planned next' : 'Set current SKU');
+      if(!skus.length){
+        addBtn('No SKUs in roster yet', 'vacant-opt', function(){}, false);
+      }
       skus.forEach(function(s){
-        var nowBtn = document.createElement('button');
-        nowBtn.type = 'button'; nowBtn.className = 'role-opt';
-        nowBtn.classList.toggle('active', s.id===card.rosterId);
-        nowBtn.innerHTML = '<span class="role-dot" style="background:var(--sku)"></span>'+s.code+' → current';
-        nowBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        nowBtn.addEventListener('click', function(e){ e.stopPropagation(); assignToFloorSlot(id, s.id, 'sku', 'now'); closeAssignPopover(); });
-        assignPopover.appendChild(nowBtn);
-        var nextBtn = document.createElement('button');
-        nextBtn.type = 'button'; nextBtn.className = 'role-opt';
-        nextBtn.classList.toggle('active', s.id===card.nextSkuId);
-        nextBtn.innerHTML = '<span class="role-dot" style="background:#86efac"></span>'+s.code+' → next';
-        nextBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        nextBtn.addEventListener('click', function(e){ e.stopPropagation(); assignToFloorSlot(id, s.id, 'sku', 'next'); closeAssignPopover(); });
-        assignPopover.appendChild(nextBtn);
+        var isActive = focusSlot === 'next' ? s.id===card.nextSkuId : s.id===card.rosterId;
+        addBtn(
+          '<span class="role-dot" style="background:var(--sku)"></span>'+s.code,
+          '',
+          function(){ assignToFloorSlot(id, s.id, 'sku', focusSlot); },
+          isActive
+        );
       });
+      if(focusSlot === 'now'){
+        addSection('Or set planned next');
+        skus.forEach(function(s){
+          addBtn(
+            '<span class="role-dot" style="background:#86efac"></span>'+s.code+' → next',
+            '',
+            function(){ assignToFloorSlot(id, s.id, 'sku', 'next'); },
+            s.id===card.nextSkuId
+          );
+        });
+      } else {
+        addSection('Or set current');
+        skus.forEach(function(s){
+          addBtn(
+            '<span class="role-dot" style="background:var(--sku)"></span>'+s.code+' → now',
+            '',
+            function(){ assignToFloorSlot(id, s.id, 'sku', 'now'); },
+            s.id===card.rosterId
+          );
+        });
+      }
+      if(card.rosterId || card.nextSkuId){
+        addSection('Clear');
+        if(card.rosterId){
+          addBtn('Clear current ('+skuRosterCode(card.rosterId)+')', 'vacant-opt', function(){ clearFloorSlotSku(id, 'now'); });
+        }
+        if(card.nextSkuId){
+          addBtn('Clear next ('+skuRosterCode(card.nextSkuId)+')', 'vacant-opt', function(){ clearFloorSlotSku(id, 'next'); });
+        }
+        addBtn('Clear all SKUs', 'vacant-opt', function(){
+          clearFloorSlotSku(id, 'now');
+          clearFloorSlotSku(id, 'next');
+        });
+      }
     } else {
+      var vacantLabel = card.rosterId ? '\u2014 Clear assignment \u2014' : '\u2014 Vacant \u2014';
+      if(card.type==='floorslot'){
+        vacantLabel = card.rosterId
+          ? '\u2014 Clear '+(card.slotKind==='boxmaker'?'box maker':'runner')+' \u2014'
+          : '\u2014 Vacant \u2014';
+      } else {
+        vacantLabel = card.rosterId ? '\u2014 Clear packer \u2014' : '\u2014 Drop packer \u2014';
+      }
+      addBtn(vacantLabel, 'vacant-opt', function(){
+        if(card.type==='floorslot') clearFloorSlotAssignment(id);
+        else clearStationAssignment(id);
+      });
+      addSection(card.type==='station' ? 'Assign packer' : ('Assign '+(card.slotKind==='boxmaker'?'box maker':'runner')));
       var wantRole = card.type==='floorslot' ? card.slotKind : 'packer';
       var sorted = staffRoster.slice()
         .filter(function(p){
@@ -2510,10 +2643,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           return r===wantRole || r==='unassigned';
         })
         .sort(function(a,b){ return a.name.localeCompare(b.name); });
+      if(!sorted.length){
+        addBtn('No matching staff in roster', 'vacant-opt', function(){}, false);
+      }
       sorted.forEach(function(p){
-        var btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'role-opt';
-        btn.classList.toggle('active', p.id===card.rosterId);
         var already = cards.find(function(c){
           if(card.type==='floorslot') return c.type==='floorslot' && c.slotKind===wantRole && c.id!==id && c.rosterId===p.id;
           return c.type==='station' && c.id!==id && c.rosterId===p.id;
@@ -2521,16 +2654,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         var alreadyLabel = already
           ? (already.type==='station' ? (already.letter||'?') : (already.label||already.key||'?'))
           : '';
-        btn.innerHTML = '<span class="role-dot" style="background:'+ROLE_COLORS[p.role||'unassigned']+'"></span>'+p.name
-          + (already ? ' (on '+alreadyLabel+')' : '');
-        btn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        btn.addEventListener('click', function(e){
-          e.stopPropagation();
-          if(card.type==='floorslot') assignToFloorSlot(id, p.id, wantRole);
-          else assignPackerToStation(id, p.id);
-          closeAssignPopover();
-        });
-        assignPopover.appendChild(btn);
+        addBtn(
+          '<span class="role-dot" style="background:'+ROLE_COLORS[p.role||'unassigned']+'"></span>'+p.name
+            + (already ? ' (on '+alreadyLabel+')' : ''),
+          '',
+          function(){
+            if(card.type==='floorslot') assignToFloorSlot(id, p.id, wantRole);
+            else assignPackerToStation(id, p.id);
+          },
+          p.id===card.rosterId
+        );
       });
     }
     assignPopover.classList.add('open');
