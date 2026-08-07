@@ -160,6 +160,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.floor-plate .rotate-line{ display:none !important; }
 #app .card.station.floor-plate .ctrl.rotate,
 #app .card.station.floor-plate .ctrl.resize{ display:none !important; }
+#app .card.station .station-skus{ display:flex; flex-direction:column; gap:0; width:100%; margin-top:1px; }
+#app .card.station .station-sku{ font-size:7.5px; font-weight:700; text-align:center; line-height:1.15;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; border-radius:2px; padding:0 1px; cursor:pointer; max-width:100%; }
+#app .card.station .station-sku.now{ color:var(--sku); }
+#app .card.station .station-sku.next{ color:#15803d; }
+#app .card.station .station-sku.empty{ color:#86efac; font-weight:600; opacity:.75; }
+#app .card.station.floor-plate .station-sku{ font-size:6.5px; line-height:1.1; }
+#app .card.station.floor-plate.has-skus .field.station-letter{ font-size:9px; }
+#app .card.station.floor-plate.has-skus .field.station-name{ font-size:7px; max-height:1.15em; -webkit-line-clamp:1; }
+#app .card.station.floor-plate.drop-target-sku,
+#app .card.station.drop-target-sku{ background:rgba(22,163,74,.22) !important; border-color:var(--sku) !important;
+  border-style:solid !important; box-shadow:0 0 0 3px rgba(22,163,74,.35) !important; }
 /* Role / SKU drop plates — same idea as packing stations, colour-matched */
 #app .card.floorslot{ width:70px; min-height:34px; padding:3px 4px; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:0; border-width:2.5px; border-style:dashed;
@@ -685,7 +698,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <span class="counts" id="importStatus"></span>
     <button class="btn" id="retryLoadBtn" style="display:none">Retry loading</button>
     <span class="counts" id="counts">0 staff · 0 SKU</span>
-    <span class="legend"><span><span class="dot staff-dot"></span>Packer / Station</span><span><span class="dot sku-dot"></span>SKU</span><span><span class="dot boxmaker-dot"></span>Box maker</span><span><span class="dot runner-dot"></span>Runner</span></span>
+    <span class="legend"><span><span class="dot staff-dot"></span>Packer / Station</span><span><span class="dot sku-dot"></span>SKU (current + next)</span><span><span class="dot boxmaker-dot"></span>Box maker</span><span><span class="dot runner-dot"></span>Runner</span></span>
     <button class="btn active" id="toggleSnap" title="Snap items to a grid while dragging">Snap: On</button>
     <div class="zoomgroup">
       <button class="btn" id="zoomOut" title="Zoom out">–</button>
@@ -1211,26 +1224,26 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   // Pixel boxes for packing plates A–T printed on the warehouse floor-plan image.
   // Interactive station cards are seeded on these so packers assign onto the real plates.
   var FLOOR_PLATES = {
-    A: {x:293, y:110, w:40, h:46, rotation:0},
-    B: {x:293, y:40, w:40, h:46, rotation:0},
-    C: {x:460, y:109, w:40, h:46, rotation:0},
-    D: {x:460, y:40, w:40, h:46, rotation:0},
-    E: {x:503, y:109, w:40, h:46, rotation:0},
-    F: {x:503, y:39, w:40, h:46, rotation:0},
-    G: {x:669, y:107, w:40, h:46, rotation:0},
-    H: {x:670, y:40, w:40, h:46, rotation:0},
-    I: {x:795, y:74, w:46, h:40, rotation:0},
-    J: {x:867, y:74, w:46, h:40, rotation:0},
-    K: {x:799, y:244, w:46, h:40, rotation:0},
-    L: {x:868, y:244, w:46, h:40, rotation:0},
-    M: {x:800, y:288, w:46, h:40, rotation:0},
-    N: {x:868, y:289, w:43, h:40, rotation:0},
-    O: {x:798, y:458, w:46, h:40, rotation:0},
-    P: {x:868, y:458, w:46, h:40, rotation:0},
-    Q: {x:533, y:387, w:46, h:40, rotation:0},
-    R: {x:533, y:516, w:46, h:40, rotation:0},
-    S: {x:564, y:573, w:40, h:40, rotation:40},
-    T: {x:714, y:39, w:40, h:46, rotation:0}
+    A: {x:293, y:106, w:40, h:54, rotation:0},
+    B: {x:293, y:36, w:40, h:54, rotation:0},
+    C: {x:460, y:105, w:40, h:54, rotation:0},
+    D: {x:460, y:36, w:40, h:54, rotation:0},
+    E: {x:503, y:105, w:40, h:54, rotation:0},
+    F: {x:503, y:35, w:40, h:54, rotation:0},
+    G: {x:669, y:103, w:40, h:54, rotation:0},
+    H: {x:670, y:36, w:40, h:54, rotation:0},
+    I: {x:795, y:70, w:46, h:48, rotation:0},
+    J: {x:867, y:70, w:46, h:48, rotation:0},
+    K: {x:799, y:240, w:46, h:48, rotation:0},
+    L: {x:868, y:240, w:46, h:48, rotation:0},
+    M: {x:800, y:284, w:46, h:48, rotation:0},
+    N: {x:868, y:285, w:43, h:48, rotation:0},
+    O: {x:798, y:454, w:46, h:48, rotation:0},
+    P: {x:868, y:454, w:46, h:48, rotation:0},
+    Q: {x:533, y:383, w:46, h:48, rotation:0},
+    R: {x:533, y:512, w:46, h:48, rotation:0},
+    S: {x:564, y:569, w:40, h:48, rotation:40},
+    T: {x:714, y:35, w:40, h:54, rotation:0}
   };
   var FLOOR_PLATE_LETTERS = Object.keys(FLOOR_PLATES);
   // Fixed drop plates for SKUs (green), box makers (red), and runners (black),
@@ -1325,6 +1338,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var entry = stationAssignedEntry(rosterId);
     return entry ? entry.name : 'VACANT';
   }
+  function stationSkuEntry(skuRosterId){
+    if(!skuRosterId) return null;
+    return skuRoster.find(function(s){ return s.id===skuRosterId; }) || null;
+  }
+  function stationSkuCode(skuRosterId){
+    var entry = stationSkuEntry(skuRosterId);
+    return entry ? entry.code : '';
+  }
+  function normalizeStationSkuFields(card){
+    if(!card || card.type!=='station') return;
+    if(card.skuId === undefined) card.skuId = null;
+    if(card.nextSkuId === undefined) card.nextSkuId = null;
+  }
   function nextStationLetter(){
     var used = {};
     cards.forEach(function(c){ if(c.type==='station' && c.letter) used[String(c.letter).toUpperCase()] = true; });
@@ -1337,9 +1363,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function updateStationCardVisual(card){
     var ref = els.get(card.id);
     if(!ref || !ref.el) return;
+    normalizeStationSkuFields(card);
     var nameField = ref.el.querySelector('.field.station-name');
     var entry = stationAssignedEntry(card.rosterId);
     var breakHint = breakHintForStation(card.letter);
+    var skuNow = stationSkuEntry(card.skuId);
+    var skuNext = stationSkuEntry(card.nextSkuId);
     if(nameField){
       if(entry) nameField.textContent = entry.name;
       else nameField.textContent = card.floorPlate ? 'Drop' : 'VACANT';
@@ -1353,7 +1382,29 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           : 'Drag a packer from the roster onto this plate to assign them';
       }
     }
-    ref.el.title = entry && breakHint ? (entry.name+' · '+breakHint) : (breakHint || '');
+    var nowEl = ref.el.querySelector('.station-sku.now');
+    var nextEl = ref.el.querySelector('.station-sku.next');
+    if(nowEl){
+      nowEl.textContent = skuNow ? skuNow.code : 'SKU';
+      nowEl.classList.toggle('empty', !skuNow);
+      nowEl.title = skuNow
+        ? (skuNow.code+' (current) — double-click to clear')
+        : 'Drop a SKU here for current product';
+    }
+    if(nextEl){
+      nextEl.textContent = skuNext ? ('→ '+skuNext.code) : '→ next';
+      nextEl.classList.toggle('empty', !skuNext);
+      nextEl.title = skuNext
+        ? (skuNext.code+' (planned next) — double-click to clear')
+        : 'Drop a SKU here for planned next';
+    }
+    ref.el.classList.toggle('has-skus', !!(skuNow || skuNext));
+    var tipParts = [];
+    if(entry) tipParts.push(entry.name);
+    if(skuNow) tipParts.push('SKU '+skuNow.code);
+    if(skuNext) tipParts.push('next '+skuNext.code);
+    if(breakHint) tipParts.push(breakHint);
+    ref.el.title = tipParts.join(' · ');
     ref.el.classList.toggle('occupied', !!entry);
     ref.el.classList.toggle('vacant', !entry);
     STATUS_OPTIONS.forEach(function(o){ ref.el.classList.remove('status-'+o.key); });
@@ -1409,6 +1460,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     FLOOR_PLATE_LETTERS.forEach(function(letter){
       var existing = byLetter[letter];
       if(existing){
+        normalizeStationSkuFields(existing);
         if(snapExisting || existing.floorPlate){
           if(applyFloorPlateGeom(existing)) snapped++;
         } else if(existing.floorPlate === undefined){
@@ -1420,7 +1472,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var geom = FLOOR_PLATES[letter];
       var card = {
         id: uid(), type: 'station', x: geom.x, y: geom.y, w: geom.w, h: geom.h,
-        rotation: geom.rotation || 0, letter: letter, rosterId: null, floorPlate: true, status: 'active'
+        rotation: geom.rotation || 0, letter: letter, rosterId: null,
+        skuId: null, nextSkuId: null, floorPlate: true, status: 'active'
       };
       cards.push(card);
       buildCardEl(card);
@@ -1455,8 +1508,24 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     cards.forEach(function(c){
       if(c.type!=='station' && c.type!=='floorslot') return;
       var ref = els.get(c.id);
-      if(ref && ref.el) ref.el.classList.remove('drop-target');
+      if(ref && ref.el) ref.el.classList.remove('drop-target', 'drop-target-sku');
     });
+  }
+  // Prefer packing stations for SKU drops (current / planned next), then bay SKU plates.
+  function findSkuDropTarget(canvasX, canvasY){
+    var station = findStationAt(canvasX, canvasY, 28);
+    if(station) return { kind:'station', card:station };
+    var slot = findFloorSlotAt(canvasX, canvasY, 'sku', 40);
+    if(slot) return { kind:'floorslot', card:slot };
+    station = findStationAt(canvasX, canvasY, 40);
+    if(station) return { kind:'station', card:station };
+    return null;
+  }
+  function skuStationSlotFromPoint(station, canvasY){
+    if(!station) return 'now';
+    var h = station.h || STATION_CARD_H;
+    var mid = station.y + h * 0.62;
+    return canvasY >= mid ? 'next' : 'now';
   }
   function slotRosterEntry(card){
     if(!card || !card.rosterId) return null;
@@ -1649,11 +1718,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(role==='boxmaker') return 'boxmaker';
     return 'packer';
   }
-  function highlightStationDrop(station){
+  function highlightStationDrop(station, mode){
     clearStationDropHighlights();
     if(!station) return;
     var ref = els.get(station.id);
-    if(ref && ref.el) ref.el.classList.add('drop-target');
+    if(ref && ref.el){
+      ref.el.classList.add('drop-target');
+      if(mode==='sku') ref.el.classList.add('drop-target-sku');
+    }
   }
 
   // Clears a station's assignment. Shared by the double-click-to-clear gesture and
@@ -1669,6 +1741,72 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     saveDebounced();
     syncBreakPlannerPackersFromFloor({ delay: 0 });
     flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+' · removed from break group.');
+  }
+  function clearStationSku(cardId, which){
+    var card = cards.find(function(c){ return c.id===cardId; });
+    if(!card || card.type!=='station') return;
+    normalizeStationSkuFields(card);
+    which = which === 'next' ? 'next' : 'now';
+    var cleared = which === 'next' ? stationSkuCode(card.nextSkuId) : stationSkuCode(card.skuId);
+    if(which === 'next'){
+      if(!card.nextSkuId) return;
+      card.nextSkuId = null;
+    } else {
+      if(!card.skuId) return;
+      card.skuId = null;
+    }
+    updateStationCardVisual(card);
+    updateCounts();
+    renderRoster();
+    saveDebounced();
+    flashStatus('Cleared '+(cleared||'SKU')+' ('+(which==='next'?'planned next':'current')+') from Station '+(card.letter||'?'));
+  }
+  // Drop a SKU onto a packing station: fill current first, then planned next.
+  // forceSlot: 'now' | 'next' | null (auto / half-plate).
+  function assignSkuToStation(stationCardId, skuRosterId, forceSlot){
+    var card = cards.find(function(c){ return c.id===stationCardId; });
+    if(!card || card.type!=='station') return false;
+    normalizeStationSkuFields(card);
+    var sku = stationSkuEntry(skuRosterId);
+    if(!sku) return false;
+    var slot = forceSlot === 'now' || forceSlot === 'next' ? forceSlot : null;
+    if(!slot){
+      if(!card.skuId || card.skuId === skuRosterId) slot = 'now';
+      else slot = 'next';
+    }
+    if(slot === 'now'){
+      if(card.skuId === skuRosterId){
+        flashStatus(sku.code+' is already current on Station '+(card.letter||'?'));
+        return false;
+      }
+      if(card.nextSkuId === skuRosterId) card.nextSkuId = null;
+      card.skuId = skuRosterId;
+      updateStationCardVisual(card);
+      selectCard(card.id);
+      updateCounts();
+      renderRoster();
+      saveDebounced();
+      flashStatus(sku.code+' → Station '+(card.letter||'?')+' (current)'
+        +(card.nextSkuId ? ' · next '+stationSkuCode(card.nextSkuId) : ''));
+      return true;
+    }
+    if(card.skuId === skuRosterId){
+      flashStatus(sku.code+' is already current on Station '+(card.letter||'?')+' — drop another SKU for planned next');
+      return false;
+    }
+    if(card.nextSkuId === skuRosterId){
+      flashStatus(sku.code+' is already planned next on Station '+(card.letter||'?'));
+      return false;
+    }
+    card.nextSkuId = skuRosterId;
+    updateStationCardVisual(card);
+    selectCard(card.id);
+    updateCounts();
+    renderRoster();
+    saveDebounced();
+    flashStatus(sku.code+' → Station '+(card.letter||'?')+' (planned next)'
+      +(card.skuId ? ' · current '+stationSkuCode(card.skuId) : ''));
+    return true;
   }
   // Safety net for duplicate station assignments that can arrive from an imported
   // backup file or a multi-tab sync race, even though normal in-app assignment
@@ -1965,6 +2103,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       f2.textContent = card.note||'';
       el.appendChild(f2); fields.push(f2);
     } else if(card.type==='station'){
+      normalizeStationSkuFields(card);
       var fLetter = document.createElement('div');
       fLetter.className = 'field station-letter'; fLetter.dataset.f = 'letter'; fLetter.dataset.placeholder = '?';
       fLetter.textContent = card.letter||'';
@@ -1977,6 +2116,27 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         clearStationAssignment(card.id);
       });
       el.appendChild(fName);
+      var skuWrap = document.createElement('div');
+      skuWrap.className = 'station-skus';
+      var fSkuNow = document.createElement('div');
+      fSkuNow.className = 'station-sku now'+(card.skuId ? '' : ' empty');
+      fSkuNow.textContent = stationSkuCode(card.skuId) || 'SKU';
+      fSkuNow.addEventListener('dblclick', function(e){
+        e.stopPropagation();
+        clearStationSku(card.id, 'now');
+      });
+      fSkuNow.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+      var fSkuNext = document.createElement('div');
+      fSkuNext.className = 'station-sku next'+(card.nextSkuId ? '' : ' empty');
+      fSkuNext.textContent = card.nextSkuId ? ('→ '+stationSkuCode(card.nextSkuId)) : '→ next';
+      fSkuNext.addEventListener('dblclick', function(e){
+        e.stopPropagation();
+        clearStationSku(card.id, 'next');
+      });
+      fSkuNext.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+      skuWrap.appendChild(fSkuNow);
+      skuWrap.appendChild(fSkuNext);
+      el.appendChild(skuWrap);
     } else if(card.type==='floorslot'){
       var fSlotLabel = document.createElement('div');
       fSlotLabel.className = 'field slot-label';
@@ -2317,6 +2477,47 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         });
         assignPopover.appendChild(btn);
       });
+      if(card.type==='station'){
+        normalizeStationSkuFields(card);
+        var skuHead = document.createElement('div');
+        skuHead.className = 'role-opt vacant-opt';
+        skuHead.style.pointerEvents = 'none';
+        skuHead.textContent = '— Station SKUs —';
+        assignPopover.appendChild(skuHead);
+        if(card.skuId){
+          var clearNow = document.createElement('button');
+          clearNow.type = 'button'; clearNow.className = 'role-opt vacant-opt';
+          clearNow.textContent = 'Clear current SKU ('+stationSkuCode(card.skuId)+')';
+          clearNow.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+          clearNow.addEventListener('click', function(e){ e.stopPropagation(); clearStationSku(id, 'now'); closeAssignPopover(); });
+          assignPopover.appendChild(clearNow);
+        }
+        if(card.nextSkuId){
+          var clearNext = document.createElement('button');
+          clearNext.type = 'button'; clearNext.className = 'role-opt vacant-opt';
+          clearNext.textContent = 'Clear next SKU ('+stationSkuCode(card.nextSkuId)+')';
+          clearNext.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+          clearNext.addEventListener('click', function(e){ e.stopPropagation(); clearStationSku(id, 'next'); closeAssignPopover(); });
+          assignPopover.appendChild(clearNext);
+        }
+        var stationSkus = skuRoster.slice().sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); });
+        stationSkus.forEach(function(s){
+          var nowBtn = document.createElement('button');
+          nowBtn.type = 'button'; nowBtn.className = 'role-opt';
+          nowBtn.classList.toggle('active', s.id===card.skuId);
+          nowBtn.innerHTML = '<span class="role-dot" style="background:var(--sku)"></span>'+s.code+' → current';
+          nowBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+          nowBtn.addEventListener('click', function(e){ e.stopPropagation(); assignSkuToStation(id, s.id, 'now'); closeAssignPopover(); });
+          assignPopover.appendChild(nowBtn);
+          var nextBtn = document.createElement('button');
+          nextBtn.type = 'button'; nextBtn.className = 'role-opt';
+          nextBtn.classList.toggle('active', s.id===card.nextSkuId);
+          nextBtn.innerHTML = '<span class="role-dot" style="background:#86efac"></span>'+s.code+' → next';
+          nextBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+          nextBtn.addEventListener('click', function(e){ e.stopPropagation(); assignSkuToStation(id, s.id, 'next'); closeAssignPopover(); });
+          assignPopover.appendChild(nextBtn);
+        });
+      }
     }
     assignPopover.classList.add('open');
     positionPopoverNear(assignPopover, anchorEl);
@@ -2432,7 +2633,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         if(dKind==='packer') highlightStationDrop(findStationAt(px, py, 40));
         else highlightFloorSlotDrop(findFloorSlotAt(px, py, dKind, 40));
       } else if(card.type==='sku'){
-        highlightFloorSlotDrop(findFloorSlotAt(px, py, 'sku', 40));
+        var skuTarget = findSkuDropTarget(px, py);
+        if(skuTarget && skuTarget.kind==='station') highlightStationDrop(skuTarget.card, 'sku');
+        else if(skuTarget) highlightFloorSlotDrop(skuTarget.card);
+        else clearStationDropHighlights();
       }
     }
   }
@@ -2474,11 +2678,24 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
             }
           } else if(card.type==='sku'){
             clearStationDropHighlights();
-            var skuSlot = findFloorSlotAt(cx, cy, 'sku', 40);
-            if(skuSlot && card.rosterId && assignToFloorSlot(skuSlot.id, card.rosterId, 'sku')){
-              deleteCard(card.id);
-              dragState = null;
-              return;
+            var skuDrop = findSkuDropTarget(cx, cy);
+            if(skuDrop && card.rosterId){
+              if(skuDrop.kind==='station'){
+                var force = skuStationSlotFromPoint(skuDrop.card, cy);
+                // Auto-fill unless the pointer is clearly on the lower "next" band
+                // and current is already set — then prefer next.
+                if(!skuDrop.card.skuId) force = 'now';
+                else if(force !== 'next') force = null;
+                if(assignSkuToStation(skuDrop.card.id, card.rosterId, force)){
+                  deleteCard(card.id);
+                  dragState = null;
+                  return;
+                }
+              } else if(assignToFloorSlot(skuDrop.card.id, card.rosterId, 'sku')){
+                deleteCard(card.id);
+                dragState = null;
+                return;
+              }
             }
           }
           card.x = clamp(card.x, 0, CANVAS_W - w);
@@ -2775,7 +2992,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var px = snapVal((e.clientX-rect.left)/zoom - STATION_CARD_W/2);
     var py = snapVal((e.clientY-rect.top)/zoom - STATION_CARD_H/2);
     var card = { id:uid(), type:'station', x:clamp(px,0,CANVAS_W-STATION_CARD_W), y:clamp(py,0,CANVAS_H-STATION_CARD_H),
-      w:STATION_CARD_W, h:STATION_CARD_H, rotation:0, letter:nextStationLetter(), rosterId:null };
+      w:STATION_CARD_W, h:STATION_CARD_H, rotation:0, letter:nextStationLetter(), rosterId:null,
+      skuId:null, nextSkuId:null };
     cards.push(card);
     buildCardEl(card);
     disarmTool();
@@ -2838,6 +3056,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       // same letter and the same packer assignment.
       overrides.letter = nextStationLetter();
       overrides.rosterId = null;
+      overrides.skuId = null;
+      overrides.nextSkuId = null;
     }
     if(orig.type==='floorslot'){
       overrides.key = nextCustomSlotKey(orig.slotKind||'sku');
@@ -3243,6 +3463,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(c.type==='floorslot' && c.slotKind==='sku' && c.rosterId===id){
         c.rosterId = null; updateFloorSlotVisual(c);
       }
+      if(c.type==='station'){
+        normalizeStationSkuFields(c);
+        var changed = false;
+        if(c.skuId===id){ c.skuId = null; changed = true; }
+        if(c.nextSkuId===id){ c.nextSkuId = null; changed = true; }
+        if(changed) updateStationCardVisual(c);
+      }
     });
     renderRoster();
     updateCounts();
@@ -3250,7 +3477,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   function placedCountFor(rosterId){
-    return cards.filter(function(c){ return c.rosterId===rosterId; }).length;
+    return cards.filter(function(c){
+      if(c.rosterId===rosterId) return true;
+      if(c.type==='station' && (c.skuId===rosterId || c.nextSkuId===rosterId)) return true;
+      return false;
+    }).length;
   }
 
   function makeRosterRow(kind, entry, labelText){
@@ -3571,7 +3802,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(dKind==='packer') highlightStationDrop(findStationAt(hx, hy, 40));
       else highlightFloorSlotDrop(findFloorSlotAt(hx, hy, dKind, 40));
     } else if(rosterDragState.kind==='sku'){
-      highlightFloorSlotDrop(findFloorSlotAt(hx, hy, 'sku', 40));
+      var skuHover = findSkuDropTarget(hx, hy);
+      if(skuHover && skuHover.kind==='station') highlightStationDrop(skuHover.card, 'sku');
+      else if(skuHover) highlightFloorSlotDrop(skuHover.card);
+      else clearStationDropHighlights();
     }
   }
   function onRosterDragUp(e){
@@ -3606,13 +3840,24 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         }
         dropStaffCard(rosterDragState.entry, px-STAFF_CARD_W/2, py-CARD_H/2);
       } else {
-        var skuSlot = findFloorSlotAt(px, py, 'sku', 40);
-        if(skuSlot){
-          assignToFloorSlot(skuSlot.id, rosterDragState.entry.id, 'sku');
-          clearStationDropHighlights();
-          rosterDragState.ghost.remove();
-          rosterDragState = null;
-          return;
+        var skuDrop = findSkuDropTarget(px, py);
+        if(skuDrop){
+          if(skuDrop.kind==='station'){
+            var forceSlot = null;
+            if(!skuDrop.card.skuId) forceSlot = 'now';
+            else if(skuStationSlotFromPoint(skuDrop.card, py) === 'next') forceSlot = 'next';
+            if(assignSkuToStation(skuDrop.card.id, rosterDragState.entry.id, forceSlot)){
+              clearStationDropHighlights();
+              rosterDragState.ghost.remove();
+              rosterDragState = null;
+              return;
+            }
+          } else if(assignToFloorSlot(skuDrop.card.id, rosterDragState.entry.id, 'sku')){
+            clearStationDropHighlights();
+            rosterDragState.ghost.remove();
+            rosterDragState = null;
+            return;
+          }
         }
         dropSkuCard(rosterDragState.entry, px-SKU_CARD_W/2, py-CARD_H/2);
       }
