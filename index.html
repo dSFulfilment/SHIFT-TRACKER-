@@ -1667,8 +1667,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     updateCounts();
     renderBreakTable();
     saveDebounced();
-    syncBreakPlannerPackersFromFloor();
-    flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+'.');
+    syncBreakPlannerPackersFromFloor({ delay: 0 });
+    flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+' · removed from break group.');
   }
   // Safety net for duplicate station assignments that can arrive from an imported
   // backup file or a multi-tab sync race, even though normal in-app assignment
@@ -1801,8 +1801,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     });
     return names;
   }
-  // Live-push floor station packers into Break Planner groups for this shift.
-  // Rebuilds packer lanes from station letters; leaves runner/boxmaker lanes alone.
+  // When a packer lands on a station, push them into that station's break group
+  // (A–D → Group 1, etc.) with the 15-min / 30-min times from the floor Break Schedule.
   function syncBreakPlannerPackersFromFloor(opts){
     opts = opts || {};
     if(!window.SharedSync) return;
@@ -1836,16 +1836,37 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(!L||!R) return null;
       return {start:L,end:R};
     }
-    function groupsFromRows(rows){
-      return rows.map(function(row){
-        var tea=parseRange(row.b15), meal=parseRange(row.b30);
-        return {
-          id:'bp'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-          label:'Group '+(row.group||''), stations:row.stations||'',
-          teaStart:tea?tea.start:'', teaEnd:tea?tea.end:'',
-          mealStart:meal?meal.start:'', mealEnd:meal?meal.end:'',
-          sourceNote:row.staff||'', packer:[], runner:[], boxmaker:[]
+    function groupNum(g){
+      var fromLabel = String(g.label||'').match(/(\d+)/);
+      if(fromLabel) return fromLabel[1];
+      return null;
+    }
+    // Keep Break Planner groups in lockstep with the floor Break Schedule rows
+    // (stations + tea/meal times), then fill packer lanes from station assignments.
+    function syncGroupsFromFloor(existingGroups, rows){
+      var byNum = {};
+      (existingGroups||[]).forEach(function(g){
+        var n = groupNum(g);
+        if(n && !byNum[n]) byNum[n] = g;
+      });
+      return rows.map(function(row, idx){
+        var n = String(row.group != null && row.group !== '' ? row.group : (idx+1));
+        var tea = parseRange(row.b15), meal = parseRange(row.b30);
+        var g = byNum[n] || {
+          id: 'bp'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+n,
+          packer: [], runner: [], boxmaker: []
         };
+        g.label = 'Group '+n;
+        g.stations = row.stations || '';
+        g.teaStart = tea ? tea.start : '';
+        g.teaEnd = tea ? tea.end : '';
+        g.mealStart = meal ? meal.start : '';
+        g.mealEnd = meal ? meal.end : '';
+        g.sourceNote = row.staff || '';
+        if(!g.packer) g.packer = [];
+        if(!g.runner) g.runner = [];
+        if(!g.boxmaker) g.boxmaker = [];
+        return g;
       });
     }
     function applyPackers(groups){
@@ -1861,18 +1882,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       });
       return assigned;
     }
+    if(!rowsSnap.length) return;
     window.SharedSync.scheduleSharedSave('breakPlanner', function(latest){
       if(!latest[shift]) latest[shift] = { groups: [] };
-      var groups = latest[shift].groups;
-      var needsSeed = !groups || !groups.length || groups.every(function(g){ return !String(g.stations||'').trim(); });
-      if(needsSeed && rowsSnap.length){
-        groups = groupsFromRows(rowsSnap);
-        latest[shift].groups = groups;
-      }
-      if(!groups || !groups.length) return false;
+      var groups = syncGroupsFromFloor(latest[shift].groups, rowsSnap);
       applyPackers(groups);
+      latest[shift].groups = groups;
       return latest;
-    }, opts.delay == null ? 250 : opts.delay);
+    }, opts.delay == null ? 0 : opts.delay);
     if(opts.announce){
       var n = Object.keys(stationMap).length;
       flashStatus(n ? ('Synced '+n+' station packer'+(n===1?'':'s')+' into break groups') : 'No station packers to sync yet');
@@ -2905,9 +2922,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     updateCounts();
     renderBreakTable();
     saveDebounced();
-    syncBreakPlannerPackersFromFloor();
+    // Immediately put them on this station's break group + times
+    syncBreakPlannerPackersFromFloor({ delay: 0 });
+    var row = breakRowForStation(card.letter);
     var hint = breakHintForStation(card.letter);
-    flashStatus(entry.name+' → Station '+(card.letter||'?')+(hint ? ' · '+hint : ''));
+    if(row && (row.b15 || row.b30)){
+      flashStatus(entry.name+' → Station '+(card.letter||'?')+' · auto-assigned '+hint);
+    } else if(row){
+      flashStatus(entry.name+' → Station '+(card.letter||'?')+' · Break Group '+(row.group||'?')+' (add times in Break Schedule)');
+    } else {
+      flashStatus(entry.name+' → Station '+(card.letter||'?')+' · no break group covers this station yet');
+    }
     return true;
   }
 
@@ -2921,8 +2946,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     saveDebounced();
     var added = (res.created||0) + (slotRes.created||0);
     var aligned = (res.snapped||0) + (slotRes.snapped||0);
-    if(added || aligned){
-      flashStatus('Plates aligned'+(added ? ' · '+added+' added' : '')+(aligned ? ' · '+aligned+' snapped' : '')+' (stations + SKU / box maker / runner)');
+    var removed = slotRes.removed||0;
+    if(added || aligned || removed){
+      flashStatus('Plates aligned'
+        +(added ? ' · '+added+' added' : '')
+        +(aligned ? ' · '+aligned+' snapped' : '')
+        +(removed ? ' · '+removed+' old SKU plates removed' : ''));
     } else {
       flashStatus('All floor plates already in place');
     }
