@@ -151,6 +151,47 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.floor-plate .rotate-line{ display:none !important; }
 #app .card.station.floor-plate .ctrl.rotate,
 #app .card.station.floor-plate .ctrl.resize{ display:none !important; }
+/* Role / SKU drop plates — same idea as packing stations, colour-matched */
+#app .card.floorslot{ width:70px; min-height:34px; padding:3px 4px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:0; border-width:2.5px; border-style:dashed;
+    border-radius:6px; box-shadow:none; }
+#app .card.floorslot .field.slot-label{ font-size:8px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+    text-align:center; line-height:1.1; max-height:2.2em; overflow:hidden; }
+#app .card.floorslot .field.slot-name{ font-size:9px; font-weight:700; text-align:center; line-height:1.15;
+    max-height:2.4em; overflow:hidden; word-break:break-word; }
+#app .card.floorslot.vacant .field.slot-name{ letter-spacing:.04em; text-transform:uppercase; font-size:8px; }
+#app .card.floorslot .ctrl.rotate,
+#app .card.floorslot .ctrl.resize,
+#app .card.floorslot .rotate-line{ display:none !important; }
+#app .card.floorslot .ctrl{ width:18px; height:18px; }
+#app .card.floorslot .ctrl svg{ width:10px; height:10px; }
+#app .card.floorslot.slot-sku{ border-color:rgba(22,163,74,.65); background:rgba(22,163,74,.12); color:#14532d; }
+#app .card.floorslot.slot-sku .field.slot-label{ color:#15803d; }
+#app .card.floorslot.slot-sku .field.slot-name{ color:#16a34a; }
+#app .card.floorslot.slot-sku.occupied{ border-style:solid; border-color:var(--sku);
+    background:linear-gradient(180deg,#dcfce7,var(--sku-bg));
+    box-shadow:0 1px 2px rgba(22,163,74,.16),0 3px 8px rgba(22,163,74,.18); }
+#app .card.floorslot.slot-sku.occupied .field.slot-name{ color:#14532d; }
+#app .card.floorslot.slot-sku.drop-target{ border-style:solid; border-color:var(--sku);
+    background:rgba(22,163,74,.28); box-shadow:0 0 0 3px rgba(22,163,74,.35); }
+#app .card.floorslot.slot-boxmaker{ border-color:rgba(220,38,38,.65); background:rgba(220,38,38,.10); }
+#app .card.floorslot.slot-boxmaker .field.slot-label{ color:#b91c1c; }
+#app .card.floorslot.slot-boxmaker .field.slot-name{ color:#ef4444; }
+#app .card.floorslot.slot-boxmaker.occupied{ border-style:solid; border-color:var(--boxmaker);
+    background:linear-gradient(180deg,#fecaca,var(--boxmaker-bg));
+    box-shadow:0 1px 2px rgba(220,38,38,.16),0 3px 8px rgba(220,38,38,.18); }
+#app .card.floorslot.slot-boxmaker.occupied .field.slot-name{ color:#7f1d1d; }
+#app .card.floorslot.slot-boxmaker.drop-target{ border-style:solid; border-color:var(--boxmaker);
+    background:rgba(220,38,38,.26); box-shadow:0 0 0 3px rgba(220,38,38,.35); }
+#app .card.floorslot.slot-runner{ border-color:rgba(28,36,48,.55); background:rgba(28,36,48,.08); border-radius:10px; }
+#app .card.floorslot.slot-runner .field.slot-label{ color:#374151; }
+#app .card.floorslot.slot-runner .field.slot-name{ color:#6b7280; }
+#app .card.floorslot.slot-runner.occupied{ border-style:solid; border-color:var(--runner);
+    background:linear-gradient(180deg,#e5e7eb,var(--runner-bg));
+    box-shadow:0 1px 2px rgba(28,36,48,.14),0 3px 8px rgba(28,36,48,.16); }
+#app .card.floorslot.slot-runner.occupied .field.slot-name{ color:var(--runner); }
+#app .card.floorslot.slot-runner.drop-target{ border-style:solid; border-color:var(--runner);
+    background:rgba(28,36,48,.2); box-shadow:0 0 0 3px rgba(28,36,48,.3); }
 #app .card.staff .field, #app .card.sku .field{ text-align:center; }
 #app .card.selected{ border-color:rgba(0,0,0,.18); box-shadow:0 2px 4px rgba(0,0,0,.10),0 8px 20px rgba(0,0,0,.20); }
 #app .field{ font-size:10.5px; font-weight:700; line-height:1.25; color:var(--ink); word-break:break-word;
@@ -610,7 +651,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     </div>
     <div class="toolgroup">
       <button class="btn station" id="addStation" title="Click, then tap the map to place an extra station">+ Station</button>
-      <button class="btn station" id="alignStations" title="Place or snap stations A–T onto the packing plates on the floor plan">Align to plates</button>
+      <button class="btn station" id="alignStations" title="Place or snap stations A–T plus SKU / box-maker / runner drop plates">Align to plates</button>
       <button class="btn station" id="syncBreaks" title="Push station packers into break groups (A–D → Group 1, etc.)">Sync breaks</button>
     </div>
     <div class="toolgroup">
@@ -1181,6 +1222,39 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     T: {x:714, y:39, w:40, h:46, rotation:0}
   };
   var FLOOR_PLATE_LETTERS = Object.keys(FLOOR_PLATES);
+  // Fixed drop plates for SKUs (green), box makers (red), and runners (black),
+  // seeded onto the printed equipment / aisle spots the same way packers use A–T.
+  var FLOOR_SLOTS = {
+    sku: [
+      { key:'SKU-AD', label:'SKU A–D', x:348, y:48, w:96, h:68 },
+      { key:'SKU-EH', label:'SKU E–H', x:558, y:42, w:96, h:68 },
+      { key:'SKU-IJ', label:'SKU I–J', x:838, y:118, w:52, h:72 },
+      { key:'SKU-KL', label:'SKU K–L', x:838, y:198, w:52, h:42 },
+      { key:'SKU-MN', label:'SKU M–N', x:838, y:340, w:52, h:88 },
+      { key:'SKU-OP', label:'SKU O–P', x:838, y:508, w:52, h:42 },
+      { key:'SKU-QR', label:'SKU Q–R', x:542, y:438, w:50, h:58 }
+    ],
+    boxmaker: [
+      { key:'BM-CARTON', label:'Carton closer', x:200, y:68, w:88, h:48 },
+      { key:'BM-LINERS', label:'Liners', x:148, y:148, w:64, h:48 },
+      { key:'BM-FB4', label:'FB4 cardboard', x:36, y:300, w:118, h:40 },
+      { key:'BM-BOXES', label:'Boxes', x:182, y:300, w:68, h:40 },
+      { key:'BM-PAL1', label:'Palletising 1', x:255, y:300, w:68, h:40 },
+      { key:'BM-PAL2', label:'Palletising 2', x:328, y:300, w:68, h:40 },
+      { key:'BM-PAL3', label:'Palletising 3', x:401, y:300, w:68, h:40 },
+      { key:'BM-PAL4', label:'Palletising 4', x:474, y:300, w:68, h:40 },
+      { key:'BM-OVER', label:'Overflow', x:548, y:300, w:72, h:40 }
+    ],
+    runner: [
+      { key:'RN-1', label:'Runner 1', x:390, y:168, w:72, h:34 },
+      { key:'RN-2', label:'Runner 2', x:590, y:168, w:72, h:34 },
+      { key:'RN-3', label:'Runner 3', x:730, y:198, w:72, h:34 },
+      { key:'RN-4', label:'Runner 4', x:700, y:360, w:72, h:34 },
+      { key:'RN-5', label:'Runner 5', x:620, y:500, w:72, h:34 },
+      { key:'RN-6', label:'Runner 6', x:200, y:470, w:72, h:34 }
+    ]
+  };
+  var FLOOR_SLOT_KINDS = ['sku','boxmaker','runner'];
   var CARD_H = 26;
   var GRID_SIZE = 10;
   var zoom = 1;
@@ -1213,7 +1287,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function isShapeType(t){ return t==='arrow' || t==='arrow2' || t==='circle' || t==='line' || t==='rect' || t==='draw' || t==='highlight'; }
   function isColorable(t){ return isShapeType(t) || t==='text'; }
   function isRoleable(t){ return t==='staff'; }
-  function isAssignable(t){ return t==='station'; }
+  function isAssignable(t){ return t==='station' || t==='floorslot'; }
   function isStatusable(t){ return t==='station'; }
   var STATUS_OPTIONS = [
     {key:'active', label:'Active'},
@@ -1367,10 +1441,185 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
   function clearStationDropHighlights(){
     cards.forEach(function(c){
-      if(c.type!=='station') return;
+      if(c.type!=='station' && c.type!=='floorslot') return;
       var ref = els.get(c.id);
       if(ref && ref.el) ref.el.classList.remove('drop-target');
     });
+  }
+  function slotRosterEntry(card){
+    if(!card || !card.rosterId) return null;
+    if(card.slotKind==='sku') return skuRoster.find(function(s){ return s.id===card.rosterId; }) || null;
+    return staffRoster.find(function(p){ return p.id===card.rosterId; }) || null;
+  }
+  function slotDisplayName(card){
+    var entry = slotRosterEntry(card);
+    if(!entry) return 'Drop';
+    return card.slotKind==='sku' ? entry.code : entry.name;
+  }
+  function updateFloorSlotVisual(card){
+    var ref = els.get(card.id);
+    if(!ref || !ref.el) return;
+    var entry = slotRosterEntry(card);
+    var nameField = ref.el.querySelector('.field.slot-name');
+    var labelField = ref.el.querySelector('.field.slot-label');
+    if(labelField) labelField.textContent = card.label || card.key || '';
+    if(nameField){
+      nameField.textContent = entry ? slotDisplayName(card) : 'Drop';
+      nameField.title = entry
+        ? (slotDisplayName(card)+' — double-click to clear')
+        : ('Drop a '+(card.slotKind==='sku'?'SKU':card.slotKind==='boxmaker'?'box maker':'runner')+' here');
+    }
+    ref.el.classList.toggle('occupied', !!entry);
+    ref.el.classList.toggle('vacant', !entry);
+    var assignCtrl = ref.el.querySelector('.ctrl.assign');
+    if(assignCtrl){
+      var color = card.slotKind==='sku' ? 'var(--sku)' : card.slotKind==='boxmaker' ? 'var(--boxmaker)' : 'var(--runner)';
+      assignCtrl.style.color = entry ? color : '#9CA3AF';
+    }
+  }
+  function applyFloorSlotGeom(card, geom){
+    if(!geom) return false;
+    card.x = geom.x; card.y = geom.y; card.w = geom.w; card.h = geom.h;
+    card.rotation = geom.rotation || 0;
+    card.label = geom.label || card.label;
+    card.floorPlate = true;
+    var ref = els.get(card.id);
+    if(ref && ref.el){
+      ref.el.style.left = card.x+'px';
+      ref.el.style.top = card.y+'px';
+      ref.el.style.width = card.w+'px';
+      ref.el.style.height = card.h+'px';
+      ref.el.style.minHeight = card.h+'px';
+      ref.el.style.transform = 'rotate('+(card.rotation||0)+'deg)';
+    }
+    return true;
+  }
+  function ensureFloorSlots(opts){
+    opts = opts || {};
+    var snapExisting = !!opts.snapExisting;
+    var created = 0, snapped = 0;
+    var byKey = {};
+    cards.forEach(function(c){
+      if(c.type==='floorslot' && c.key) byKey[c.key] = c;
+    });
+    FLOOR_SLOT_KINDS.forEach(function(kind){
+      (FLOOR_SLOTS[kind]||[]).forEach(function(geom){
+        var existing = byKey[geom.key];
+        if(existing){
+          if(snapExisting || existing.floorPlate || existing.floorPlate===undefined){
+            existing.slotKind = kind;
+            if(applyFloorSlotGeom(existing, geom)) snapped++;
+            updateFloorSlotVisual(existing);
+          }
+          return;
+        }
+        var card = {
+          id: uid(), type:'floorslot', slotKind:kind, key:geom.key, label:geom.label,
+          x:geom.x, y:geom.y, w:geom.w, h:geom.h, rotation:0, rosterId:null, floorPlate:true
+        };
+        cards.push(card);
+        buildCardEl(card);
+        created++;
+      });
+    });
+    if(created || snapped) updateCounts();
+    return { created:created, snapped:snapped };
+  }
+  function floorSlotCenter(card){
+    return { x: card.x + (card.w||70)/2, y: card.y + (card.h||34)/2 };
+  }
+  function findFloorSlotAt(canvasX, canvasY, kind, maxDist){
+    maxDist = (maxDist == null) ? 36 : maxDist;
+    var best = null, bestDist = Infinity;
+    cards.forEach(function(c){
+      if(c.type!=='floorslot') return;
+      if(kind && c.slotKind!==kind) return;
+      var w = c.w || 70, h = c.h || 34;
+      var inside = canvasX >= c.x && canvasX <= c.x + w && canvasY >= c.y && canvasY <= c.y + h;
+      var ctr = floorSlotCenter(c);
+      var d = Math.hypot(canvasX - ctr.x, canvasY - ctr.y);
+      if(inside) d = Math.min(d, 0);
+      if(d <= maxDist && d < bestDist){ bestDist = d; best = c; }
+    });
+    return best;
+  }
+  function highlightFloorSlotDrop(slot){
+    clearStationDropHighlights();
+    if(!slot) return;
+    var ref = els.get(slot.id);
+    if(ref && ref.el) ref.el.classList.add('drop-target');
+  }
+  function clearFloorSlotAssignment(cardId){
+    var card = cards.find(function(c){ return c.id===cardId; });
+    if(!card || card.type!=='floorslot' || !card.rosterId) return;
+    var cleared = slotDisplayName(card);
+    card.rosterId = null;
+    updateFloorSlotVisual(card);
+    updateCounts();
+    renderRoster();
+    saveDebounced();
+    flashStatus('Cleared '+cleared+' from '+(card.label||card.key||'slot')+'.');
+  }
+  function assignToFloorSlot(slotId, rosterId, kind){
+    var card = cards.find(function(c){ return c.id===slotId; });
+    if(!card || card.type!=='floorslot') return false;
+    if(kind && card.slotKind!==kind) return false;
+    if(card.slotKind==='sku'){
+      var sku = skuRoster.find(function(s){ return s.id===rosterId; });
+      if(!sku) return false;
+      // One SKU plate per code assignment at a time
+      cards.forEach(function(c){
+        if(c.type==='floorslot' && c.slotKind==='sku' && c.id!==card.id && c.rosterId===rosterId){
+          c.rosterId = null; updateFloorSlotVisual(c);
+        }
+      });
+      card.rosterId = rosterId;
+      updateFloorSlotVisual(card);
+      selectCard(card.id);
+      updateCounts();
+      renderRoster();
+      saveDebounced();
+      flashStatus(sku.code+' → '+(card.label||'SKU plate'));
+      return true;
+    }
+    var entry = staffRoster.find(function(p){ return p.id===rosterId; });
+    if(!entry) return false;
+    var role = entry.role || 'unassigned';
+    var need = card.slotKind; // runner | boxmaker
+    if(role!==need){
+      if(role==='packer'){
+        flashStatus('Packers go on blue stations A–T — this plate is for '+(need==='boxmaker'?'box makers':'runners'));
+        return false;
+      }
+      // Auto-set role when dropping onto the matching coloured plate
+      entry.role = need;
+      renderRoster();
+    }
+    var already = cards.find(function(c){
+      return c.type==='floorslot' && c.slotKind===need && c.id!==card.id && c.rosterId===rosterId;
+    });
+    if(already){
+      flashStatus(entry.name+' is already on '+(already.label||already.key)+' — clear that one first to move them.');
+      return false;
+    }
+    // Also clear station assignment if they somehow had one
+    cards.forEach(function(c){
+      if(c.type==='station' && c.rosterId===rosterId){ c.rosterId=null; updateStationCardVisual(c); }
+    });
+    card.rosterId = rosterId;
+    updateFloorSlotVisual(card);
+    selectCard(card.id);
+    updateCounts();
+    renderRoster();
+    saveDebounced();
+    flashStatus(entry.name+' → '+(card.label||need));
+    return true;
+  }
+  function dragKindForStaff(entry){
+    var role = (entry && entry.role) || 'unassigned';
+    if(role==='runner') return 'runner';
+    if(role==='boxmaker') return 'boxmaker';
+    return 'packer';
   }
   function highlightStationDrop(station){
     clearStationDropHighlights();
@@ -1603,14 +1852,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   function updateCounts(){
-    var s=0,k=0,st=0,stVacant=0;
+    var s=0,k=0,st=0,stVacant=0, slotsFilled=0, slotsTotal=0;
     cards.forEach(function(c){
       if(c.type==='staff') s++;
       else if(c.type==='sku') k++;
       else if(c.type==='station'){ st++; if(!stationAssignedEntry(c.rosterId)) stVacant++; }
+      else if(c.type==='floorslot'){ slotsTotal++; if(slotRosterEntry(c)) slotsFilled++; }
     });
     var txt = s+' staff · '+k+' SKU';
     if(st>0) txt += ' · '+st+' station'+(st===1?'':'s')+(stVacant>0 ? ' ('+stVacant+' vacant)' : '');
+    if(slotsTotal>0) txt += ' · '+slotsFilled+'/'+slotsTotal+' plates';
     document.getElementById('counts').textContent = txt;
   }
 
@@ -1634,7 +1885,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var roleClass = card.type==='staff' ? ' role-'+roleOf(card.rosterId) : '';
     var stationClass = card.type==='station' ? (stationAssignedEntry(card.rosterId) ? ' occupied' : ' vacant') : '';
     var floorPlateClass = (card.type==='station' && (card.floorPlate || plateGeom(card.letter))) ? ' floor-plate' : '';
-    el.className = 'card '+card.type+(isColorable(card.type) ? ' colorable' : '')+roleClass+stationClass+floorPlateClass;
+    var slotClass = '';
+    if(card.type==='floorslot'){
+      slotClass = ' slot-'+(card.slotKind||'sku')+(slotRosterEntry(card) ? ' occupied' : ' vacant');
+    }
+    el.className = 'card '+card.type+(isColorable(card.type) ? ' colorable' : '')+roleClass+stationClass+floorPlateClass+slotClass;
     el.dataset.id = card.id;
     el.style.left = card.x+'px';
     el.style.top = card.y+'px';
@@ -1642,7 +1897,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(card.w) el.style.width = card.w+'px';
     if(isShapeType(card.type)){
       if(card.h) el.style.height = card.h+'px';
-    } else if(card.type==='station' && card.h){
+    } else if((card.type==='station' || card.type==='floorslot') && card.h){
       el.style.height = card.h+'px';
       el.style.minHeight = card.h+'px';
     } else if(card.h){
@@ -1677,6 +1932,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         clearStationAssignment(card.id);
       });
       el.appendChild(fName);
+    } else if(card.type==='floorslot'){
+      var fSlotLabel = document.createElement('div');
+      fSlotLabel.className = 'field slot-label';
+      fSlotLabel.textContent = card.label || card.key || '';
+      el.appendChild(fSlotLabel);
+      var fSlotName = document.createElement('div');
+      fSlotName.className = 'field slot-name';
+      fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Drop';
+      fSlotName.addEventListener('dblclick', function(e){
+        e.stopPropagation();
+        clearFloorSlotAssignment(card.id);
+      });
+      el.appendChild(fSlotName);
     } else if(card.type==='text'){
       var f1 = document.createElement('div');
       f1.className = 'field label'; f1.dataset.f = 'text'; f1.dataset.placeholder = 'Text';
@@ -1729,9 +1997,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     var assignCtrl = null, statusCtrl = null;
     if(isAssignable(card.type)){
-      assignCtrl = document.createElement('div'); assignCtrl.className='ctrl assign'; assignCtrl.title='Assign packer';
+      assignCtrl = document.createElement('div'); assignCtrl.className='ctrl assign';
+      assignCtrl.title = card.type==='floorslot'
+        ? ('Assign '+(card.slotKind==='sku'?'SKU':card.slotKind==='boxmaker'?'box maker':'runner'))
+        : 'Assign packer';
       assignCtrl.innerHTML = iconSvg('color');
-      assignCtrl.style.color = stationAssignedEntry(card.rosterId) ? 'var(--staff)' : '#9CA3AF';
+      if(card.type==='station'){
+        assignCtrl.style.color = stationAssignedEntry(card.rosterId) ? 'var(--staff)' : '#9CA3AF';
+      } else {
+        var sc = card.slotKind==='sku' ? 'var(--sku)' : card.slotKind==='boxmaker' ? 'var(--boxmaker)' : 'var(--runner)';
+        assignCtrl.style.color = slotRosterEntry(card) ? sc : '#9CA3AF';
+      }
       el.appendChild(assignCtrl);
     }
     if(isStatusable(card.type)){
@@ -1773,6 +2049,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     canvas.appendChild(el);
     els.set(card.id, {el:el, f1:f1, f2:f2});
     if(card.type==='station') updateStationCardVisual(card);
+    if(card.type==='floorslot') updateFloorSlotVisual(card);
     updateCounts();
     return el;
   }
@@ -1939,26 +2216,60 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     vacantBtn.type = 'button'; vacantBtn.className = 'role-opt vacant-opt';
     vacantBtn.textContent = card.rosterId ? '\u2014 Clear assignment \u2014' : '\u2014 Vacant \u2014';
     vacantBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-    vacantBtn.addEventListener('click', function(e){ e.stopPropagation(); clearStationAssignment(id); closeAssignPopover(); });
-    assignPopover.appendChild(vacantBtn);
-    // Stations are for packers (blue). Runners/box makers stay on the floor.
-    var sorted = staffRoster.slice()
-      .filter(function(p){
-        var r = p.role || 'unassigned';
-        return r==='packer' || r==='unassigned' || p.id===card.rosterId;
-      })
-      .sort(function(a,b){ return a.name.localeCompare(b.name); });
-    sorted.forEach(function(p){
-      var btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'role-opt';
-      btn.classList.toggle('active', p.id===card.rosterId);
-      var already = cards.find(function(c){ return c.type==='station' && c.id!==id && c.rosterId===p.id; });
-      btn.innerHTML = '<span class="role-dot" style="background:'+ROLE_COLORS[p.role||'unassigned']+'"></span>'+p.name
-        + (already ? ' (on '+(already.letter||'?')+')' : '');
-      btn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-      btn.addEventListener('click', function(e){ e.stopPropagation(); assignPackerToStation(id, p.id); closeAssignPopover(); });
-      assignPopover.appendChild(btn);
+    vacantBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      if(card.type==='floorslot') clearFloorSlotAssignment(id);
+      else clearStationAssignment(id);
+      closeAssignPopover();
     });
+    assignPopover.appendChild(vacantBtn);
+
+    if(card.type==='floorslot' && card.slotKind==='sku'){
+      var skus = skuRoster.slice().sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); });
+      skus.forEach(function(s){
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'role-opt';
+        btn.classList.toggle('active', s.id===card.rosterId);
+        var already = cards.find(function(c){ return c.type==='floorslot' && c.slotKind==='sku' && c.id!==id && c.rosterId===s.id; });
+        btn.innerHTML = '<span class="role-dot" style="background:var(--sku)"></span>'+s.code
+          + (already ? ' (on '+(already.label||already.key)+')' : '');
+        btn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+        btn.addEventListener('click', function(e){ e.stopPropagation(); assignToFloorSlot(id, s.id, 'sku'); closeAssignPopover(); });
+        assignPopover.appendChild(btn);
+      });
+    } else {
+      var wantRole = card.type==='floorslot' ? card.slotKind : 'packer';
+      var sorted = staffRoster.slice()
+        .filter(function(p){
+          var r = p.role || 'unassigned';
+          if(p.id===card.rosterId) return true;
+          if(wantRole==='packer') return r==='packer' || r==='unassigned';
+          return r===wantRole || r==='unassigned';
+        })
+        .sort(function(a,b){ return a.name.localeCompare(b.name); });
+      sorted.forEach(function(p){
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'role-opt';
+        btn.classList.toggle('active', p.id===card.rosterId);
+        var already = cards.find(function(c){
+          if(card.type==='floorslot') return c.type==='floorslot' && c.slotKind===wantRole && c.id!==id && c.rosterId===p.id;
+          return c.type==='station' && c.id!==id && c.rosterId===p.id;
+        });
+        var alreadyLabel = already
+          ? (already.type==='station' ? (already.letter||'?') : (already.label||already.key||'?'))
+          : '';
+        btn.innerHTML = '<span class="role-dot" style="background:'+ROLE_COLORS[p.role||'unassigned']+'"></span>'+p.name
+          + (already ? ' (on '+alreadyLabel+')' : '');
+        btn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+        btn.addEventListener('click', function(e){
+          e.stopPropagation();
+          if(card.type==='floorslot') assignToFloorSlot(id, p.id, wantRole);
+          else assignPackerToStation(id, p.id);
+          closeAssignPopover();
+        });
+        assignPopover.appendChild(btn);
+      });
+    }
     assignPopover.classList.add('open');
     positionPopoverNear(assignPopover, anchorEl);
   }
@@ -2061,8 +2372,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       ref.el.style.left = card.x+'px';
       ref.el.style.top = card.y+'px';
       if(card.type==='staff'){
-        var dropStation = findStationAt(px, py, 40);
-        highlightStationDrop(dropStation);
+        var entry = staffRoster.find(function(p){ return p.id===card.rosterId; });
+        var dKind = dragKindForStaff(entry);
+        if(dKind==='packer') highlightStationDrop(findStationAt(px, py, 40));
+        else highlightFloorSlotDrop(findFloorSlotAt(px, py, dKind, 40));
+      } else if(card.type==='sku'){
+        highlightFloorSlotDrop(findFloorSlotAt(px, py, 'sku', 40));
       }
     }
   }
@@ -2082,17 +2397,33 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         } else {
           var ref = els.get(card.id);
           var w = ref.el.offsetWidth, h = ref.el.offsetHeight;
+          var cx = card.x + w/2, cy = card.y + h/2;
           if(card.type==='staff'){
-            var dropStation = findStationAt(card.x + w/2, card.y + h/2, 40);
             clearStationDropHighlights();
-            if(dropStation){
-              var rosterId = card.rosterId;
-              // Assign packers onto the plate; runners/box makers stay floating.
-              if(rosterId && assignPackerToStation(dropStation.id, rosterId)){
+            var entry = staffRoster.find(function(p){ return p.id===card.rosterId; });
+            var dKind = dragKindForStaff(entry);
+            if(dKind==='packer'){
+              var dropStation = findStationAt(cx, cy, 40);
+              if(dropStation && card.rosterId && assignPackerToStation(dropStation.id, card.rosterId)){
                 deleteCard(card.id);
                 dragState = null;
                 return;
               }
+            } else {
+              var dropSlot = findFloorSlotAt(cx, cy, dKind, 40);
+              if(dropSlot && card.rosterId && assignToFloorSlot(dropSlot.id, card.rosterId, dKind)){
+                deleteCard(card.id);
+                dragState = null;
+                return;
+              }
+            }
+          } else if(card.type==='sku'){
+            clearStationDropHighlights();
+            var skuSlot = findFloorSlotAt(cx, cy, 'sku', 40);
+            if(skuSlot && card.rosterId && assignToFloorSlot(skuSlot.id, card.rosterId, 'sku')){
+              deleteCard(card.id);
+              dragState = null;
+              return;
             }
           }
           card.x = clamp(card.x, 0, CANVAS_W - w);
@@ -2459,7 +2790,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!entry) return false;
     var role = entry.role || 'unassigned';
     if(role==='runner' || role==='boxmaker'){
-      flashStatus((role==='runner' ? 'Runners' : 'Box makers')+' stay on the floor — stations are for packers (blue)');
+      flashStatus((role==='runner' ? 'Runners' : 'Box makers')+' go on their '+(role==='runner'?'black':'red')+' plates — stations are for packers');
       return false;
     }
     // Dropping onto a station marks them as a packer (blue → blue).
@@ -2472,6 +2803,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       flashStatus(entry.name+' is already on Station '+(already.letter||'?')+' \u2014 clear that one first if you want to move them.');
       return false;
     }
+    // Leave any runner/box-maker plate they were on
+    cards.forEach(function(c){
+      if(c.type==='floorslot' && c.slotKind!=='sku' && c.rosterId===rosterId){
+        c.rosterId = null; updateFloorSlotVisual(c);
+      }
+    });
     card.rosterId = rosterId;
     updateStationCardVisual(card);
     selectCard(card.id);
@@ -2487,11 +2824,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   document.getElementById('addStation').addEventListener('click', function(){ armTool('station'); });
   document.getElementById('alignStations').addEventListener('click', function(){
     var res = ensureFloorStations({ snapExisting: true });
+    var slotRes = ensureFloorSlots({ snapExisting: true });
     saveDebounced();
-    if(res.created || res.snapped){
-      flashStatus('Stations A–T on floor plates'+(res.created ? ' · '+res.created+' added' : '')+(res.snapped ? ' · '+res.snapped+' aligned' : ''));
+    var added = (res.created||0) + (slotRes.created||0);
+    var aligned = (res.snapped||0) + (slotRes.snapped||0);
+    if(added || aligned){
+      flashStatus('Plates aligned'+(added ? ' · '+added+' added' : '')+(aligned ? ' · '+aligned+' snapped' : '')+' (stations + SKU / box maker / runner)');
     } else {
-      flashStatus('Stations A–T already on the floor plates');
+      flashStatus('All floor plates already in place');
     }
   });
   document.getElementById('syncBreaks').addEventListener('click', function(){
@@ -2521,8 +2861,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     } else {
       clearTimeout(clearTimer);
       cards.slice().forEach(function(c){ deleteCard(c.id); });
+      ensureFloorStations();
+      ensureFloorSlots();
       clearArmed = false;
       clearBtn.textContent = clearLabel();
+      saveDebounced();
     }
   });
 
@@ -2621,6 +2964,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     notes = sd.notes || '';
     cards.forEach(function(c){ buildCardEl(c); });
     ensureFloorStations();
+    ensureFloorSlots();
     updateCounts();
     checkStationDuplicates();
     renderRoster();
@@ -2710,6 +3054,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       notes = sd.notes || '';
       cards.forEach(function(c){ buildCardEl(c); });
       ensureFloorStations();
+      ensureFloorSlots();
       updateCounts();
       checkStationDuplicates();
       if(data.zoom) setZoom(data.zoom); else fitZoom();
@@ -2752,6 +3097,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var idx = staffRoster.findIndex(function(s){ return s.id===id; });
     if(idx>=0) staffRoster.splice(idx,1);
     refreshStationVisuals(); // any station assigned to this person becomes VACANT, not broken
+    cards.forEach(function(c){
+      if(c.type==='floorslot' && c.slotKind!=='sku' && c.rosterId===id){
+        c.rosterId = null; updateFloorSlotVisual(c);
+      }
+    });
     renderRoster();
     updateCounts();
     if(window.SharedSync) scheduleRosterRemove(id); else saveDebounced();
@@ -2767,7 +3117,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function deleteSkuFromRoster(id){
     var idx = skuRoster.findIndex(function(s){ return s.id===id; });
     if(idx>=0) skuRoster.splice(idx,1);
+    cards.forEach(function(c){
+      if(c.type==='floorslot' && c.slotKind==='sku' && c.rosterId===id){
+        c.rosterId = null; updateFloorSlotVisual(c);
+      }
+    });
     renderRoster();
+    updateCounts();
     saveDebounced();
   }
 
@@ -3085,11 +3441,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     e.preventDefault();
     rosterDragState.ghost.style.left = e.clientX+'px';
     rosterDragState.ghost.style.top = e.clientY+'px';
+    var rectH = canvas.getBoundingClientRect();
+    var hx = (e.clientX-rectH.left)/zoom;
+    var hy = (e.clientY-rectH.top)/zoom;
     if(rosterDragState.kind==='staff'){
-      var rectH = canvas.getBoundingClientRect();
-      var hx = (e.clientX-rectH.left)/zoom;
-      var hy = (e.clientY-rectH.top)/zoom;
-      highlightStationDrop(findStationAt(hx, hy, 40));
+      var dKind = dragKindForStaff(rosterDragState.entry);
+      if(dKind==='packer') highlightStationDrop(findStationAt(hx, hy, 40));
+      else highlightFloorSlotDrop(findFloorSlotAt(hx, hy, dKind, 40));
+    } else if(rosterDragState.kind==='sku'){
+      highlightFloorSlotDrop(findFloorSlotAt(hx, hy, 'sku', 40));
     }
   }
   function onRosterDragUp(e){
@@ -3102,16 +3462,36 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var px = (e.clientX-rect.left)/zoom;
       var py = (e.clientY-rect.top)/zoom;
       if(rosterDragState.kind==='staff'){
-        var station = findStationAt(px, py, 40);
-        if(station){
-          assignPackerToStation(station.id, rosterDragState.entry.id);
+        var dKind = dragKindForStaff(rosterDragState.entry);
+        if(dKind==='packer'){
+          var station = findStationAt(px, py, 40);
+          if(station){
+            assignPackerToStation(station.id, rosterDragState.entry.id);
+            clearStationDropHighlights();
+            rosterDragState.ghost.remove();
+            rosterDragState = null;
+            return;
+          }
+        } else {
+          var roleSlot = findFloorSlotAt(px, py, dKind, 40);
+          if(roleSlot){
+            assignToFloorSlot(roleSlot.id, rosterDragState.entry.id, dKind);
+            clearStationDropHighlights();
+            rosterDragState.ghost.remove();
+            rosterDragState = null;
+            return;
+          }
+        }
+        dropStaffCard(rosterDragState.entry, px-STAFF_CARD_W/2, py-CARD_H/2);
+      } else {
+        var skuSlot = findFloorSlotAt(px, py, 'sku', 40);
+        if(skuSlot){
+          assignToFloorSlot(skuSlot.id, rosterDragState.entry.id, 'sku');
           clearStationDropHighlights();
           rosterDragState.ghost.remove();
           rosterDragState = null;
           return;
         }
-        dropStaffCard(rosterDragState.entry, px-STAFF_CARD_W/2, py-CARD_H/2);
-      } else {
         dropSkuCard(rosterDragState.entry, px-SKU_CARD_W/2, py-CARD_H/2);
       }
     }
@@ -3477,7 +3857,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     notes = shiftData[currentShift].notes || '';
 
     cards.forEach(function(c){ buildCardEl(c); });
-    if(!hadReadError) ensureFloorStations();
+    if(!hadReadError){ ensureFloorStations(); ensureFloorSlots(); }
     updateCounts();
     checkStationDuplicates();
     if(rosterCollapsed){
