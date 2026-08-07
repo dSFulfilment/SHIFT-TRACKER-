@@ -205,7 +205,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app #viewport.move-armed .card.station.selected .ctrl.del,
 #app #viewport.move-armed .card.floorslot.selected .ctrl.del,
 #app #viewport.move-armed .card.station.selected .ctrl.dup,
-#app #viewport.move-armed .card.floorslot.selected .ctrl.dup{ display:flex !important; }
+#app #viewport.move-armed .card.floorslot.selected .ctrl.dup,
+#app #viewport.move-armed .card.station .drag-grip,
+#app #viewport.move-armed .card.floorslot .drag-grip{ display:flex !important; }
 /* Mark-up color chip stays easy to hit when selected */
 #app .card.text.selected .ctrl.color,
 #app .card.arrow.selected .ctrl.color,
@@ -1825,11 +1827,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(existing){
         if(existing.skuId != null) existing.skuId = null;
         if(existing.nextSkuId != null) existing.nextSkuId = null;
-        if(snapExisting || existing.floorPlate){
+        // Only Reset (snapExisting) may force plates back onto the printed spots.
+        // Otherwise moved plates (e.g. Boxes 1) keep their saved position.
+        if(snapExisting){
           if(applyFloorPlateGeom(existing)) snapped++;
-        } else if(existing.floorPlate === undefined){
-          // First time after this feature: treat lettered A–T stations as floor plates.
-          if(FLOOR_PLATES[letter] && applyFloorPlateGeom(existing)) snapped++;
+        } else if(existing.floorPlate === undefined && FLOOR_PLATES[letter]){
+          existing.floorPlate = true;
+          var refMark = els.get(existing.id);
+          if(refMark && refMark.el) refMark.el.classList.add('floor-plate');
         }
         return;
       }
@@ -2001,12 +2006,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       (FLOOR_SLOTS[kind]||[]).forEach(function(geom){
         var existing = byKey[geom.key];
         if(existing){
-          if(snapExisting || existing.floorPlate || existing.floorPlate===undefined){
-            existing.slotKind = kind;
-            if(kind==='sku') normalizeSkuSlotFields(existing);
+          existing.slotKind = kind;
+          if(kind==='sku') normalizeSkuSlotFields(existing);
+          // Only Tools → Reset snaps built-in plates. Load/sync must keep user moves.
+          if(snapExisting){
             if(applyFloorSlotGeom(existing, geom)) snapped++;
-            updateFloorSlotVisual(existing);
+          } else if(existing.floorPlate === undefined){
+            existing.floorPlate = true;
           }
+          updateFloorSlotVisual(existing);
           return;
         }
         var card = {
