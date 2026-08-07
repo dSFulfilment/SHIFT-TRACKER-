@@ -395,18 +395,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .roster-row .role-chip.boxmaker{ background:var(--boxmaker-bg); color:#B91C1C; }
 #app .roster-row .role-chip.unassigned{ background:#F3F4F6; color:#9CA3AF; }
 #app .roster-add select{ font-size:11px; border:1px solid var(--line); border-radius:6px; padding:5px 6px; background:#fff; max-width:96px; }
+/* Dock must not steal map clicks — closed panel used to cover Boxes 1 / left strip */
 #floorToolsDock{ position:fixed; left:16px; bottom:16px; z-index:9998; display:none;
-  flex-direction:column; align-items:flex-start; gap:10px; max-width:min(360px, calc(100vw - 32px)); }
+  flex-direction:column; align-items:flex-start; gap:10px; max-width:min(360px, calc(100vw - 32px));
+  pointer-events:none; }
 #floorToolsDock.floor-visible{ display:flex; }
 #floorToolsDock .ft-fab{ border:1px solid var(--line); background:#fff; color:var(--ink);
   border-radius:999px; width:52px; height:52px; padding:0; display:inline-flex; align-items:center; justify-content:center;
-  cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.18);
+  cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.18); pointer-events:auto;
   transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .15s, color .15s, border-color .15s; }
 #floorToolsDock .ft-fab svg{ width:24px; height:24px; display:block; }
 #floorToolsDock .ft-fab:hover{ background:#F7F7F4; }
 #floorToolsDock .ft-fab.armed, #floorToolsDock.open .ft-fab{ background:var(--ink); color:#fff; border-color:var(--ink); }
 #floorToolsDock .ft-fab:active{ transform:scale(.96); }
-#floorToolsDock .ft-panel{ width:min(280px, calc(100vw - 32px)); max-height:min(78vh, 640px); overflow:auto;
+#floorToolsDock .ft-panel{ position:absolute; left:0; bottom:62px; width:min(280px, calc(100vw - 32px));
+  max-height:min(78vh, 640px); overflow:auto;
   background:#fff; border:1px solid var(--line); border-radius:18px;
   box-shadow:0 18px 48px rgba(0,0,0,.22); padding:10px 10px 12px;
   transform-origin:left bottom; opacity:0; visibility:hidden; pointer-events:none;
@@ -2645,7 +2648,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fName = document.createElement('div');
       fName.className = 'field station-name';
       fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Tap' : 'Vacant');
-      fName.title = 'Tap to assign · drag to move · double-click assigned name to clear';
+      fName.title = 'Tap to assign · Tools → Move to drag/resize · double-click assigned name to clear';
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
@@ -2665,7 +2668,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
       fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Tap';
-      fSlotName.title = 'Tap to assign · drag to move · double-click assigned name to clear';
+      fSlotName.title = 'Tap to assign · Tools → Move to drag/resize · double-click assigned name to clear';
       fSlotName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
@@ -3298,7 +3301,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     return null;
   }
 
-  // ---- drag existing cards (drag always moves; short tap still assigns) ----
+  // ---- drag existing cards (only while Tools → Move is armed) ----
   var dragState = null;
   var lastPlateEditTap = { id:null, t:0 };
   var DRAG_THRESHOLD = 8; // px in canvas space — avoids tap jitter starting a move
