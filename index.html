@@ -117,6 +117,25 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station .field.station-name{ font-size:9.5px; font-weight:600; text-align:center; color:var(--muted); word-break:break-word; }
 #app .card.station.occupied .field.station-name{ color:var(--staff); }
 #app .card.station.vacant .field.station-name{ letter-spacing:.05em; text-transform:uppercase; }
+/* Compact overlays that sit on the lettered packing plates drawn on the floor plan */
+#app .card.station.floor-plate{ width:44px; min-height:44px; height:44px; padding:2px 3px; border-radius:5px;
+    box-shadow:none; border-width:2px; gap:0; }
+#app .card.station.floor-plate.vacant{ background:rgba(37,84,199,.10); border-color:rgba(37,84,199,.55);
+    border-style:dashed; }
+#app .card.station.floor-plate.vacant:hover,
+#app .card.station.floor-plate.drop-target{ background:rgba(37,84,199,.22); border-color:var(--staff); border-style:solid; }
+#app .card.station.floor-plate.occupied{ background:rgba(255,255,255,.96);
+    box-shadow:0 1px 2px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.14); }
+#app .card.station.floor-plate .field.station-letter{ font-size:11px; font-weight:800; line-height:1; color:var(--ink); }
+#app .card.station.floor-plate.vacant .field.station-letter{ color:rgba(28,36,48,.35); }
+#app .card.station.floor-plate .field.station-name{ font-size:8px; font-weight:700; line-height:1.1; max-height:2.3em;
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+#app .card.station.floor-plate.vacant .field.station-name{ font-size:7px; letter-spacing:.04em; }
+#app .card.station.floor-plate .ctrl{ width:18px; height:18px; }
+#app .card.station.floor-plate .ctrl svg{ width:10px; height:10px; }
+#app .card.station.floor-plate .rotate-line{ display:none !important; }
+#app .card.station.floor-plate .ctrl.rotate,
+#app .card.station.floor-plate .ctrl.resize{ display:none !important; }
 #app .card.staff .field, #app .card.sku .field{ text-align:center; }
 #app .card.selected{ border-color:rgba(0,0,0,.18); box-shadow:0 2px 4px rgba(0,0,0,.10),0 8px 20px rgba(0,0,0,.20); }
 #app .field{ font-size:10.5px; font-weight:700; line-height:1.25; color:var(--ink); word-break:break-word;
@@ -565,7 +584,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       <button class="btn" id="toggleRoster">Hide roster</button>
     </div>
     <div class="toolgroup">
-      <button class="btn station" id="addStation" title="Click, then tap a station square on the map to place it">+ Station</button>
+      <button class="btn station" id="addStation" title="Click, then tap the map to place an extra station">+ Station</button>
+      <button class="btn station" id="alignStations" title="Place or snap stations A–T onto the packing plates on the floor plan">Align to plates</button>
     </div>
     <div class="toolgroup">
       <button class="btn annot" id="addText" title="Click, then tap the map to place a text label">+ Text</button>
@@ -1108,6 +1128,31 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   var SKU_CARD_W = 48;
   var STATION_CARD_W = 90;
   var STATION_CARD_H = 58;
+  // Pixel boxes for packing plates A–T printed on the warehouse floor-plan image.
+  // Interactive station cards are seeded on these so packers assign onto the real plates.
+  var FLOOR_PLATES = {
+    A: {x:293, y:110, w:40, h:46, rotation:0},
+    B: {x:293, y:40, w:40, h:46, rotation:0},
+    C: {x:460, y:109, w:40, h:46, rotation:0},
+    D: {x:460, y:40, w:40, h:46, rotation:0},
+    E: {x:503, y:109, w:40, h:46, rotation:0},
+    F: {x:503, y:39, w:40, h:46, rotation:0},
+    G: {x:669, y:107, w:40, h:46, rotation:0},
+    H: {x:670, y:40, w:40, h:46, rotation:0},
+    I: {x:795, y:74, w:46, h:40, rotation:0},
+    J: {x:867, y:74, w:46, h:40, rotation:0},
+    K: {x:799, y:244, w:46, h:40, rotation:0},
+    L: {x:868, y:244, w:46, h:40, rotation:0},
+    M: {x:800, y:288, w:46, h:40, rotation:0},
+    N: {x:868, y:289, w:43, h:40, rotation:0},
+    O: {x:798, y:458, w:46, h:40, rotation:0},
+    P: {x:868, y:458, w:46, h:40, rotation:0},
+    Q: {x:533, y:387, w:46, h:40, rotation:0},
+    R: {x:533, y:516, w:46, h:40, rotation:0},
+    S: {x:564, y:573, w:40, h:40, rotation:40},
+    T: {x:714, y:39, w:40, h:46, rotation:0}
+  };
+  var FLOOR_PLATE_LETTERS = Object.keys(FLOOR_PLATES);
   var CARD_H = 26;
   var GRID_SIZE = 10;
   var zoom = 1;
@@ -1180,7 +1225,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!ref || !ref.el) return;
     var nameField = ref.el.querySelector('.field.station-name');
     var entry = stationAssignedEntry(card.rosterId);
-    if(nameField) nameField.textContent = entry ? entry.name : 'VACANT';
+    if(nameField){
+      if(entry) nameField.textContent = entry.name;
+      else nameField.textContent = card.floorPlate ? 'Drop' : 'VACANT';
+    }
     ref.el.classList.toggle('occupied', !!entry);
     ref.el.classList.toggle('vacant', !entry);
     STATUS_OPTIONS.forEach(function(o){ ref.el.classList.remove('status-'+o.key); });
@@ -1198,6 +1246,100 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function refreshStationVisuals(){
     cards.forEach(function(c){ if(c.type==='station') updateStationCardVisual(c); });
   }
+  function plateGeom(letter){
+    var p = FLOOR_PLATES[String(letter||'').toUpperCase()];
+    return p || null;
+  }
+  function applyFloorPlateGeom(card){
+    var geom = plateGeom(card.letter);
+    if(!geom) return false;
+    card.x = geom.x; card.y = geom.y; card.w = geom.w; card.h = geom.h;
+    card.rotation = geom.rotation || 0;
+    card.floorPlate = true;
+    var ref = els.get(card.id);
+    if(ref && ref.el){
+      ref.el.classList.add('floor-plate');
+      ref.el.style.left = card.x+'px';
+      ref.el.style.top = card.y+'px';
+      ref.el.style.width = card.w+'px';
+      ref.el.style.height = card.h+'px';
+      ref.el.style.minHeight = card.h+'px';
+      ref.el.style.transform = 'rotate('+(card.rotation||0)+'deg)';
+    }
+    return true;
+  }
+  // Creates stations A–T on the printed packing plates when missing, and optionally
+  // snaps existing lettered stations back onto those plate positions.
+  function ensureFloorStations(opts){
+    opts = opts || {};
+    var snapExisting = !!opts.snapExisting;
+    var created = 0, snapped = 0;
+    var byLetter = {};
+    cards.forEach(function(c){
+      if(c.type==='station' && c.letter){
+        var L = String(c.letter).toUpperCase();
+        if(!byLetter[L]) byLetter[L] = c;
+      }
+    });
+    FLOOR_PLATE_LETTERS.forEach(function(letter){
+      var existing = byLetter[letter];
+      if(existing){
+        if(snapExisting || existing.floorPlate){
+          if(applyFloorPlateGeom(existing)) snapped++;
+        } else if(existing.floorPlate === undefined){
+          // First time after this feature: treat lettered A–T stations as floor plates.
+          if(FLOOR_PLATES[letter] && applyFloorPlateGeom(existing)) snapped++;
+        }
+        return;
+      }
+      var geom = FLOOR_PLATES[letter];
+      var card = {
+        id: uid(), type: 'station', x: geom.x, y: geom.y, w: geom.w, h: geom.h,
+        rotation: geom.rotation || 0, letter: letter, rosterId: null, floorPlate: true, status: 'active'
+      };
+      cards.push(card);
+      buildCardEl(card);
+      created++;
+    });
+    if(created || snapped){
+      updateCounts();
+      refreshStationVisuals();
+    }
+    return { created: created, snapped: snapped };
+  }
+  function stationCenter(card){
+    return { x: card.x + (card.w || STATION_CARD_W)/2, y: card.y + (card.h || STATION_CARD_H)/2 };
+  }
+  // Hit-test a canvas point against station cards, with a proximity fallback so drops
+  // near a plate still assign even if not pixel-perfect on the card.
+  function findStationAt(canvasX, canvasY, maxDist){
+    maxDist = (maxDist == null) ? 36 : maxDist;
+    var best = null, bestDist = Infinity;
+    cards.forEach(function(c){
+      if(c.type!=='station') return;
+      var w = c.w || STATION_CARD_W, h = c.h || STATION_CARD_H;
+      var inside = canvasX >= c.x && canvasX <= c.x + w && canvasY >= c.y && canvasY <= c.y + h;
+      var ctr = stationCenter(c);
+      var d = Math.hypot(canvasX - ctr.x, canvasY - ctr.y);
+      if(inside) d = Math.min(d, 0);
+      if(d <= maxDist && d < bestDist){ bestDist = d; best = c; }
+    });
+    return best;
+  }
+  function clearStationDropHighlights(){
+    cards.forEach(function(c){
+      if(c.type!=='station') return;
+      var ref = els.get(c.id);
+      if(ref && ref.el) ref.el.classList.remove('drop-target');
+    });
+  }
+  function highlightStationDrop(station){
+    clearStationDropHighlights();
+    if(!station) return;
+    var ref = els.get(station.id);
+    if(ref && ref.el) ref.el.classList.add('drop-target');
+  }
+
   // Clears a station's assignment. Shared by the double-click-to-clear gesture and
   // the "— Vacant —" option in the assignment popover, so there's one code path.
   function clearStationAssignment(cardId){
@@ -1332,7 +1474,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var el = document.createElement('div');
     var roleClass = card.type==='staff' ? ' role-'+roleOf(card.rosterId) : '';
     var stationClass = card.type==='station' ? (stationAssignedEntry(card.rosterId) ? ' occupied' : ' vacant') : '';
-    el.className = 'card '+card.type+(isColorable(card.type) ? ' colorable' : '')+roleClass+stationClass;
+    var floorPlateClass = (card.type==='station' && (card.floorPlate || plateGeom(card.letter))) ? ' floor-plate' : '';
+    el.className = 'card '+card.type+(isColorable(card.type) ? ' colorable' : '')+roleClass+stationClass+floorPlateClass;
     el.dataset.id = card.id;
     el.style.left = card.x+'px';
     el.style.top = card.y+'px';
@@ -1340,6 +1483,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(card.w) el.style.width = card.w+'px';
     if(isShapeType(card.type)){
       if(card.h) el.style.height = card.h+'px';
+    } else if(card.type==='station' && card.h){
+      el.style.height = card.h+'px';
+      el.style.minHeight = card.h+'px';
     } else if(card.h){
       el.style.minHeight = card.h+'px';
     }
@@ -1366,8 +1512,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       el.appendChild(fLetter); fields.push(fLetter);
       var fName = document.createElement('div');
       fName.className = 'field station-name';
-      fName.textContent = stationDisplayName(card.rosterId);
-      fName.title = card.rosterId ? 'Double-click to clear this assignment' : 'Drag a packer from the roster onto this station to assign them';
+      fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Drop' : 'VACANT');
+      fName.title = card.rosterId ? 'Double-click to clear this assignment' : 'Drag a packer from the roster onto this plate to assign them';
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         clearStationAssignment(card.id);
@@ -1749,6 +1895,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var ref = els.get(card.id);
       ref.el.style.left = card.x+'px';
       ref.el.style.top = card.y+'px';
+      if(card.type==='staff'){
+        var dropStation = findStationAt(px, py, 40);
+        highlightStationDrop(dropStation);
+      }
     }
   }
   function onCardPointerUp(e){
@@ -1767,6 +1917,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         } else {
           var ref = els.get(card.id);
           var w = ref.el.offsetWidth, h = ref.el.offsetHeight;
+          if(card.type==='staff'){
+            var dropStation = findStationAt(card.x + w/2, card.y + h/2, 40);
+            clearStationDropHighlights();
+            if(dropStation){
+              var rosterId = card.rosterId;
+              // Assign onto the plate, then remove the floating name card so the
+              // station plate is the single source of truth for who works there.
+              if(rosterId){
+                assignPackerToStation(dropStation.id, rosterId);
+                deleteCard(card.id);
+                dragState = null;
+                return;
+              }
+            }
+          }
           card.x = clamp(card.x, 0, CANVAS_W - w);
           card.y = clamp(card.y, 0, CANVAS_H - h);
           ref.el.style.left = card.x+'px';
@@ -1775,6 +1940,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         }
       }
     }
+    clearStationDropHighlights();
     dragState = null;
   }
 
@@ -2138,9 +2304,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     selectCard(card.id);
     updateCounts();
     saveDebounced();
+    flashStatus(entry.name+' → Station '+(card.letter||'?'));
   }
 
   document.getElementById('addStation').addEventListener('click', function(){ armTool('station'); });
+  document.getElementById('alignStations').addEventListener('click', function(){
+    var res = ensureFloorStations({ snapExisting: true });
+    saveDebounced();
+    if(res.created || res.snapped){
+      flashStatus('Stations A–T on floor plates'+(res.created ? ' · '+res.created+' added' : '')+(res.snapped ? ' · '+res.snapped+' aligned' : ''));
+    } else {
+      flashStatus('Stations A–T already on the floor plates');
+    }
+  });
   document.getElementById('addText').addEventListener('click', function(){ armTool('text'); });
   document.getElementById('addArrow').addEventListener('click', function(){ armTool('arrow'); });
   document.getElementById('addArrow2').addEventListener('click', function(){ armTool('arrow2'); });
@@ -2263,6 +2439,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     staffRoster = sd.staffRoster;
     notes = sd.notes || '';
     cards.forEach(function(c){ buildCardEl(c); });
+    ensureFloorStations();
     updateCounts();
     checkStationDuplicates();
     renderRoster();
@@ -2350,6 +2527,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       staffRoster = sd.staffRoster || [];
       notes = sd.notes || '';
       cards.forEach(function(c){ buildCardEl(c); });
+      ensureFloorStations();
       updateCounts();
       checkStationDuplicates();
       if(data.zoom) setZoom(data.zoom); else fitZoom();
@@ -2696,6 +2874,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     e.preventDefault();
     rosterDragState.ghost.style.left = e.clientX+'px';
     rosterDragState.ghost.style.top = e.clientY+'px';
+    if(rosterDragState.kind==='staff'){
+      var rectH = canvas.getBoundingClientRect();
+      var hx = (e.clientX-rectH.left)/zoom;
+      var hy = (e.clientY-rectH.top)/zoom;
+      highlightStationDrop(findStationAt(hx, hy, 40));
+    }
   }
   function onRosterDragUp(e){
     window.removeEventListener('pointermove', onRosterDragMove);
@@ -2704,21 +2888,23 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var rect = canvas.getBoundingClientRect();
     var inside = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
     if(inside){
+      var px = (e.clientX-rect.left)/zoom;
+      var py = (e.clientY-rect.top)/zoom;
       if(rosterDragState.kind==='staff'){
-        var dropTarget = document.elementFromPoint(e.clientX, e.clientY);
-        var stationEl = dropTarget ? dropTarget.closest('.card.station') : null;
-        if(stationEl){
-          assignPackerToStation(stationEl.dataset.id, rosterDragState.entry.id);
+        var station = findStationAt(px, py, 40);
+        if(station){
+          assignPackerToStation(station.id, rosterDragState.entry.id);
+          clearStationDropHighlights();
           rosterDragState.ghost.remove();
           rosterDragState = null;
           return;
         }
+        dropStaffCard(rosterDragState.entry, px-STAFF_CARD_W/2, py-CARD_H/2);
+      } else {
+        dropSkuCard(rosterDragState.entry, px-SKU_CARD_W/2, py-CARD_H/2);
       }
-      var px = (e.clientX-rect.left)/zoom;
-      var py = (e.clientY-rect.top)/zoom;
-      if(rosterDragState.kind==='staff') dropStaffCard(rosterDragState.entry, px-STAFF_CARD_W/2, py-CARD_H/2);
-      else dropSkuCard(rosterDragState.entry, px-SKU_CARD_W/2, py-CARD_H/2);
     }
+    clearStationDropHighlights();
     rosterDragState.ghost.remove();
     rosterDragState = null;
   }
@@ -3080,6 +3266,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     notes = shiftData[currentShift].notes || '';
 
     cards.forEach(function(c){ buildCardEl(c); });
+    if(!hadReadError) ensureFloorStations();
     updateCounts();
     checkStationDuplicates();
     if(rosterCollapsed){
