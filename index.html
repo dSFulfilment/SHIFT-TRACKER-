@@ -2447,7 +2447,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(rolePopover.classList.contains('open') && !e.target.closest('#rolePopover') && !e.target.closest('.ctrl.role')){
       closeRolePopover();
     }
-    if(assignPopover.classList.contains('open') && !e.target.closest('#assignPopover') && !e.target.closest('.ctrl.assign')){
+    if(assignPopover.classList.contains('open')
+      && !e.target.closest('#assignPopover')
+      && !e.target.closest('.ctrl.assign')
+      && !e.target.closest('.station-name')
+      && !e.target.closest('.slot-name')
+      && !e.target.closest('.slot-sku-row')
+      && !e.target.closest('.slot-sku-promote')){
       closeAssignPopover();
     }
     if(statusPopover.classList.contains('open') && !e.target.closest('#statusPopover') && !e.target.closest('.ctrl.status')){
