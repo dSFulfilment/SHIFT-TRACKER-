@@ -957,116 +957,207 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
 <div id="tabRoster" style="display:none">
   <style>
-    #tabRoster{ height:100vh; overflow-y:auto; background:#F2F2F7; color:#1D1D1F;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:12px 12px 88px; }
-    #tabRoster .ro-wrap{ max-width:680px; margin:0 auto; }
-    #tabRoster .ro-top{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-    #tabRoster .ro-title{ font-size:20px; font-weight:800; letter-spacing:-.02em; margin:0 0 4px; }
-    #tabRoster .ro-nav{ display:flex; align-items:center; gap:4px; }
-    #tabRoster .ro-nav button{ width:34px; height:34px; border:none; border-radius:50%; background:#fff;
-      box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; font-size:16px; color:#6E6E73; }
-    #tabRoster .ro-lbl{ min-width:120px; text-align:center; font-size:13px; font-weight:800; cursor:pointer; line-height:1.15; }
-    #tabRoster .ro-lbl span{ display:block; font-size:10px; font-weight:500; color:#AEAEB2; margin-top:2px; }
-    #tabRoster .ro-search{ flex:1; min-width:140px; }
-    #tabRoster .ro-search input{ width:100%; height:36px; border:none; border-radius:12px; padding:0 12px;
-      background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); font-size:14px; }
-    #tabRoster .ro-hint{ font-size:11px; color:#8E8E93; margin:0 0 12px; line-height:1.45; }
-    #tabRoster .ro-shift{ display:flex; gap:6px; margin:0 0 12px; }
-    #tabRoster .ro-shift button{ flex:1; border:none; border-radius:12px; padding:10px 12px; font-size:13px;
-      font-weight:800; cursor:pointer; background:#fff; color:#6E6E73; box-shadow:0 1px 3px rgba(0,0,0,.08);
-      font-family:inherit; }
+    #tabRoster{
+      position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
+      overflow:hidden; background:#EEF0F3; color:#1D1D1F;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex; flex-direction:column;
+    }
+    #tabRoster .ro-shell{
+      flex:1; min-height:0; display:flex; flex-direction:column;
+      max-width:1100px; width:100%; margin:0 auto;
+    }
+    #tabRoster .ro-chrome{
+      flex:0 0 auto; background:rgba(238,240,243,.97); backdrop-filter:blur(10px);
+      border-bottom:1px solid #E1E4EA; padding:6px 10px 6px; z-index:5;
+    }
+    #tabRoster .ro-bar{
+      display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:5px;
+    }
+    #tabRoster .ro-title{
+      margin:0; font-size:14px; font-weight:800; letter-spacing:-.02em; flex:0 0 auto;
+    }
+    #tabRoster .ro-shift{ display:inline-flex; border:1px solid #D8DCE3; border-radius:8px; overflow:hidden; background:#fff; }
+    #tabRoster .ro-shift button{
+      border:none; background:#fff; padding:5px 10px; font-size:11px; font-weight:800;
+      color:#6E6E73; cursor:pointer; font-family:inherit;
+    }
     #tabRoster .ro-shift button.active{ background:#1C2430; color:#fff; }
-    #tabRoster .ro-manage{ background:#fff; border-radius:14px; padding:12px; margin:0 0 12px;
-      box-shadow:0 1px 3px rgba(0,0,0,.06); }
-    #tabRoster .ro-manage h2{ margin:0 0 4px; font-size:13px; font-weight:800; }
-    #tabRoster .ro-manage .ro-manage-hint{ margin:0 0 10px; font-size:11px; color:#8E8E93; line-height:1.4; }
-    #tabRoster .ro-add{ display:flex; gap:6px; flex-wrap:wrap; }
-    #tabRoster .ro-add input, #tabRoster .ro-add select{ height:36px; border:1px solid #E5E5EA; border-radius:10px;
-      padding:0 10px; font-size:13px; font-family:inherit; background:#F9F9FB; }
-    #tabRoster .ro-add input{ flex:1; min-width:140px; }
-    #tabRoster .ro-add select{ min-width:120px; }
-    #tabRoster .ro-add button{ border:none; border-radius:10px; padding:0 14px; height:36px; font-size:12px;
-      font-weight:800; cursor:pointer; background:#1C2430; color:#fff; font-family:inherit; }
-    #tabRoster .ro-role-sel{ border:none; border-radius:8px; padding:4px 6px; font-size:10px; font-weight:700;
-      background:#F2F2F7; color:#1D1D1F; font-family:inherit; max-width:110px; }
-    #tabRoster .ro-del{ border:none; border-radius:8px; width:28px; height:28px; padding:0; cursor:pointer;
-      background:#FFF5F4; color:#FF3B30; font-size:14px; font-weight:800; font-family:inherit; line-height:1; }
-    #tabRoster .ro-del:hover{ background:#FF3B30; color:#fff; }
-    #tabRoster .ro-att-lbl{ font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
-      color:#8E8E93; margin:0 0 8px; }
-    #tabRoster .ro-days{ display:flex; gap:6px; margin-bottom:12px; }
-    #tabRoster .ro-day{ flex:1; border:none; border-radius:14px; background:#fff; padding:8px 4px;
-      box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; text-align:center; }
-    #tabRoster .ro-day .d{ display:block; font-size:11px; font-weight:700; color:#AEAEB2; }
-    #tabRoster .ro-day .n{ display:block; font-size:18px; font-weight:800; margin-top:2px; }
-    #tabRoster .ro-day.active{ background:#1C2430; color:#fff; }
-    #tabRoster .ro-day.active .d{ color:#AEAEB2; }
-    #tabRoster .ro-day.today:not(.active){ outline:2px solid #2554C7; }
-    #tabRoster .ro-sum{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
-    #tabRoster .ro-card{ background:#fff; border-radius:14px; padding:10px 12px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-    #tabRoster .ro-card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
-    #tabRoster .ro-card h3{ margin:0; font-size:11px; font-weight:800; letter-spacing:.05em;
-      text-transform:uppercase; color:#8E8E93; }
-    #tabRoster .ro-copy-mini{ border:none; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:700;
-      cursor:pointer; background:#F2F2F7; color:#1D1D1F; font-family:inherit; }
-    #tabRoster .ro-copy-mini:hover{ background:#E5E5EA; }
+    #tabRoster .ro-nav{ display:flex; align-items:center; gap:2px; }
+    #tabRoster .ro-nav button{
+      width:26px; height:26px; border-radius:7px; background:#fff;
+      border:1px solid #D8DCE3; cursor:pointer; font-size:14px; color:#6E6E73; line-height:1;
+    }
+    #tabRoster .ro-lbl{
+      min-width:96px; text-align:center; font-size:11px; font-weight:800; cursor:pointer; line-height:1.1;
+    }
+    #tabRoster .ro-lbl span{ display:block; font-size:9px; font-weight:500; color:#8E8E93; margin-top:1px; }
+    #tabRoster .ro-search{ flex:1; min-width:100px; max-width:200px; }
+    #tabRoster .ro-search input{
+      width:100%; height:28px; border:1px solid #D8DCE3; border-radius:7px; padding:0 8px;
+      background:#fff; font-size:12px; font-family:inherit;
+    }
+    #tabRoster .ro-actions{ display:flex; gap:4px; flex-wrap:wrap; margin-left:auto; }
+    #tabRoster .ro-actions button{
+      border:1px solid #D8DCE3; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:700;
+      cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
+    }
     #tabRoster .ro-actions #roCopyDaily,
-    #tabRoster .ro-actions #roCopyWeekly{ background:#1C2430; color:#fff; }
-    #tabRoster .ro-stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
-    #tabRoster .ro-stat{ text-align:center; padding:6px 4px; border-radius:10px; background:#F2F2F7; }
-    #tabRoster .ro-stat .num{ font-size:18px; font-weight:800; line-height:1; }
-    #tabRoster .ro-stat .lbl{ font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#8E8E93; margin-top:4px; }
+    #tabRoster .ro-actions #roCopyWeekly{ background:#1C2430; color:#fff; border-color:#1C2430; }
+    #tabRoster .ro-days{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; margin-bottom:5px; }
+    #tabRoster .ro-day{
+      border:1px solid #D8DCE3; border-radius:8px; background:#fff; padding:3px 2px 4px;
+      cursor:pointer; text-align:center; font-family:inherit;
+    }
+    #tabRoster .ro-day .d{ display:block; font-size:9px; font-weight:700; color:#8E8E93; }
+    #tabRoster .ro-day .n{ display:block; font-size:13px; font-weight:800; margin-top:0; line-height:1.05; }
+    #tabRoster .ro-day.active{ background:#1C2430; color:#fff; border-color:#1C2430; }
+    #tabRoster .ro-day.active .d{ color:rgba(255,255,255,.65); }
+    #tabRoster .ro-day.today:not(.active){ border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7; }
+    #tabRoster .ro-sumline{
+      display:flex; align-items:center; gap:6px; flex-wrap:nowrap; margin-bottom:5px; min-width:0;
+    }
+    #tabRoster .ro-sumline .ro-daily-lbl{
+      font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93; flex:0 0 auto;
+      white-space:nowrap;
+    }
+    #tabRoster .ro-stats{
+      display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; flex:1; min-width:0;
+    }
+    #tabRoster .ro-stat{
+      text-align:center; padding:3px 1px; border-radius:7px; background:#fff; border:1px solid #E5E8EF;
+    }
+    #tabRoster .ro-stat .num{ font-size:13px; font-weight:800; line-height:1; }
+    #tabRoster .ro-stat .lbl{
+      font-size:7.5px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; color:#8E8E93; margin-top:1px;
+    }
     #tabRoster .ro-stat.here .num{ color:#1A6B30; }
     #tabRoster .ro-stat.late .num{ color:#A05D00; }
     #tabRoster .ro-stat.left_early .num{ color:#0F766E; }
     #tabRoster .ro-stat.absent .num{ color:#B8251C; }
     #tabRoster .ro-stat.holiday .num{ color:#0A52B8; }
-    #tabRoster .ro-stat.unset .num{ color:#6E6E73; }
-    #tabRoster .ro-weekline{ font-size:11px; color:#6E6E73; margin:8px 0 0; line-height:1.35; }
-    #tabRoster .ro-rows{ display:flex; flex-direction:column; gap:6px; }
-    #tabRoster .ro-row{ display:flex; align-items:center; gap:8px; background:#fff; border-radius:14px;
-      padding:8px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); transition:background .15s; }
+    #tabRoster .ro-weekline{
+      font-size:10px; color:#6E6E73; margin:0; line-height:1.2; flex:0 1 180px; min-width:0;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    #tabRoster .ro-weekly-stats{ display:none; }
+    #tabRoster .ro-add{
+      display:flex; gap:4px; align-items:center; flex-wrap:nowrap; min-width:0;
+    }
+    #tabRoster .ro-add-lbl{
+      font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93; flex:0 0 auto;
+      white-space:nowrap;
+    }
+    #tabRoster .ro-add input, #tabRoster .ro-add select{
+      height:28px; border:1px solid #D8DCE3; border-radius:7px; padding:0 7px;
+      font-size:12px; font-family:inherit; background:#fff;
+    }
+    #tabRoster .ro-add input{ flex:1; min-width:0; }
+    #tabRoster .ro-add select{ width:92px; flex:0 0 auto; }
+    #tabRoster .ro-add button{
+      border:none; border-radius:7px; padding:0 10px; height:28px; font-size:11px;
+      font-weight:800; cursor:pointer; background:#1C2430; color:#fff; font-family:inherit; flex:0 0 auto;
+    }
+    #tabRoster .ro-list-wrap{
+      flex:1; min-height:0; overflow:auto; padding:6px 10px calc(76px + env(safe-area-inset-bottom, 0px));
+      -webkit-overflow-scrolling:touch;
+    }
+    #tabRoster .ro-rows{ display:flex; flex-direction:column; gap:2px; }
+    #tabRoster .ro-row{
+      display:grid;
+      grid-template-columns:minmax(110px,1fr) minmax(210px,1.5fr) 24px;
+      grid-template-areas: "meta btns del";
+      align-items:center; gap:6px; background:#fff; border-radius:9px;
+      padding:4px 7px; border:1px solid #E5E8EF; transition:background .12s, border-color .12s;
+    }
     #tabRoster .ro-row.s-late{ background:#FFFBF0; }
     #tabRoster .ro-row.s-left_early{ background:#F0FDFA; }
     #tabRoster .ro-row.s-absent{ background:#FFF5F4; }
     #tabRoster .ro-row.s-holiday{ background:#F0F6FF; }
     #tabRoster .ro-row.s-here{ background:#F3FBF5; }
-    #tabRoster .ro-row.ro-next{ outline:2px solid #2554C7; outline-offset:1px; }
-    #tabRoster .ro-av{ width:32px; height:32px; border-radius:10px; background:#E5E5EA; color:#1D1D1F;
-      display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex:0 0 auto; }
-    #tabRoster .ro-name{ flex:1; min-width:0; font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    #tabRoster .ro-role{ font-size:9px; font-weight:700; color:#8E8E93; display:block; margin-top:1px; }
-    #tabRoster .ro-btns{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
-    #tabRoster .ro-btn{ border:none; border-radius:999px; padding:5px 8px; font-size:10px; font-weight:800;
-      cursor:pointer; background:#F2F2F7; color:#6E6E73; font-family:inherit; }
+    #tabRoster .ro-row.ro-next{ border-color:#2554C7; box-shadow:inset 3px 0 0 #2554C7; }
+    #tabRoster .ro-meta{ grid-area:meta; min-width:0; display:flex; flex-direction:column; gap:2px; }
+    #tabRoster .ro-namewrap{ min-width:0; display:flex; align-items:center; gap:6px; }
+    #tabRoster .ro-av{
+      width:22px; height:22px; border-radius:6px; background:#E5E5EA; color:#1D1D1F;
+      display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; flex:0 0 auto;
+    }
+    #tabRoster .ro-name{
+      min-width:0; font-size:12px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    #tabRoster .ro-role-sel{
+      border:none; border-radius:6px; padding:2px 4px; font-size:10px; font-weight:700;
+      background:#F2F2F7; color:#1D1D1F; font-family:inherit; width:100%; max-width:120px;
+    }
+    #tabRoster .ro-del{
+      grid-area:del; border:none; border-radius:6px; width:24px; height:24px; padding:0; cursor:pointer;
+      background:transparent; color:#C7C7CC; font-size:16px; font-weight:700; font-family:inherit; line-height:1;
+      justify-self:center;
+    }
+    #tabRoster .ro-del:hover{ background:#FFF5F4; color:#FF3B30; }
+    #tabRoster .ro-btns{ grid-area:btns; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; }
+    #tabRoster .ro-btn{
+      border:none; border-radius:6px; padding:7px 2px; font-size:10px; font-weight:800;
+      cursor:pointer; background:#F2F2F7; color:#6E6E73; font-family:inherit; white-space:nowrap;
+    }
     #tabRoster .ro-btn.on-here{ background:#34C759; color:#fff; }
     #tabRoster .ro-btn.on-late{ background:#FF9500; color:#fff; }
     #tabRoster .ro-btn.on-left_early{ background:#0F766E; color:#fff; }
     #tabRoster .ro-btn.on-absent{ background:#FF3B30; color:#fff; }
     #tabRoster .ro-btn.on-holiday{ background:#007AFF; color:#fff; }
-    #tabRoster .ro-empty{ text-align:center; color:#8E8E93; padding:28px 12px; font-size:13px; }
-    #tabRoster .ro-actions{ display:flex; gap:8px; margin:0 0 12px; flex-wrap:wrap; }
-    #tabRoster .ro-actions button{ border:none; border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;
-      cursor:pointer; background:#fff; color:#1D1D1F; box-shadow:0 1px 3px rgba(0,0,0,.08); font-family:inherit; }
-    @media (max-width:560px){
-      #tabRoster .ro-sum{ grid-template-columns:1fr; }
-      #tabRoster .ro-stats{ grid-template-columns:repeat(2,1fr); }
-      #tabRoster .ro-btn{ padding:5px 6px; font-size:9px; }
-      #tabRoster .ro-row{ flex-wrap:wrap; }
-      #tabRoster .ro-btns{ width:100%; justify-content:flex-start; }
+    #tabRoster .ro-empty{ text-align:center; color:#8E8E93; padding:36px 12px; font-size:13px; }
+    #tabRoster .ro-copy-mini{ display:none; }
+    @media (max-width:820px){
+      #tabRoster .ro-title{ display:none; }
+      #tabRoster .ro-weekline{ display:none; }
+      #tabRoster .ro-search{ max-width:none; flex:1 1 120px; }
+      #tabRoster .ro-actions{ margin-left:0; width:100%; }
+      #tabRoster .ro-actions button{ flex:1 1 auto; }
+      #tabRoster .ro-add{ flex-wrap:wrap; }
+      #tabRoster .ro-add input{ flex:1 1 140px; }
+      #tabRoster .ro-row{
+        grid-template-columns:minmax(0,1fr) 24px;
+        grid-template-areas:
+          "meta del"
+          "btns btns";
+        gap:4px; padding:5px 7px;
+      }
+      #tabRoster .ro-role-sel{ max-width:none; }
+      #tabRoster .ro-btn{ padding:8px 2px; font-size:11px; }
     }
   </style>
-  <div class="ro-wrap">
-    <h1 class="ro-title">Roster</h1>
-    <p class="ro-hint">Day and afternoon each have their own people list. Mark On shift / Late / Left early / Absent / Leave — marked people drop to the bottom so the next person stays on top. Resets every Monday.</p>
-    <div class="ro-shift" id="roShift" role="group" aria-label="Shift">
-      <button type="button" data-shift="morning" class="active">Day</button>
-      <button type="button" data-shift="afternoon">Afternoon</button>
-    </div>
-    <div class="ro-manage">
-      <h2 id="roManageTitle">People · Day</h2>
-      <p class="ro-manage-hint">This is the only place you need to manage who works the shift.</p>
+  <div class="ro-shell">
+    <div class="ro-chrome">
+      <div class="ro-bar">
+        <h1 class="ro-title">Roster</h1>
+        <div class="ro-shift" id="roShift" role="group" aria-label="Shift">
+          <button type="button" data-shift="morning" class="active">Day</button>
+          <button type="button" data-shift="afternoon">Afternoon</button>
+        </div>
+        <div class="ro-nav">
+          <button type="button" id="roPrev" aria-label="Previous week">‹</button>
+          <div class="ro-lbl" id="roLabel">This week<span>—</span></div>
+          <button type="button" id="roNext" aria-label="Next week">›</button>
+        </div>
+        <div class="ro-search"><input type="search" id="roSearch" placeholder="Search…"></div>
+        <div class="ro-actions">
+          <button type="button" id="roJumpToday">Today</button>
+          <button type="button" id="roCopyDaily" title="Copy daily update">Copy day</button>
+          <button type="button" id="roCopyWeekly" title="Copy weekly pays summary">Copy week</button>
+          <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear week</button>
+        </div>
+      </div>
+      <div class="ro-days" id="roDays"></div>
+      <div class="ro-sumline">
+        <div class="ro-daily-lbl" id="roDailyTitle">Today</div>
+        <div class="ro-stats" id="roDailyStats"></div>
+        <p class="ro-weekline" id="roWeeklyNote">Week marks</p>
+        <div class="ro-stats ro-weekly-stats" id="roWeeklyStats" aria-hidden="true"></div>
+        <button type="button" class="ro-copy-mini" id="roCopyDailyCard" title="Copy daily summary">Copy</button>
+        <button type="button" class="ro-copy-mini" id="roCopyWeeklyCard" title="Copy weekly summary">Copy</button>
+      </div>
       <div class="ro-add">
+        <span class="ro-add-lbl" id="roManageTitle">Add · Day</span>
         <input type="text" id="roNewName" placeholder="Add name" autocomplete="name">
         <select id="roNewRole">
           <option value="packer">Packer</option>
@@ -1077,40 +1168,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <button type="button" id="roAddStaff">Add</button>
       </div>
     </div>
-    <div class="ro-att-lbl">Attendance</div>
-    <div class="ro-top">
-      <div class="ro-nav">
-        <button type="button" id="roPrev" aria-label="Previous week">‹</button>
-        <div class="ro-lbl" id="roLabel">This week<span>—</span></div>
-        <button type="button" id="roNext" aria-label="Next week">›</button>
-      </div>
-      <div class="ro-search"><input type="search" id="roSearch" placeholder="Search staff…"></div>
+    <div class="ro-list-wrap">
+      <div class="ro-rows" id="roRows"></div>
     </div>
-    <div class="ro-actions">
-      <button type="button" id="roJumpToday">Jump to today</button>
-      <button type="button" id="roCopyDaily" title="Copy a clean daily update for your manager">Copy daily</button>
-      <button type="button" id="roCopyWeekly" title="Copy a pays-ready weekly attendance summary">Copy weekly</button>
-      <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear this week</button>
-    </div>
-    <div class="ro-days" id="roDays"></div>
-    <div class="ro-sum">
-      <div class="ro-card">
-        <div class="ro-card-head">
-          <h3 id="roDailyTitle">Daily summary</h3>
-          <button type="button" class="ro-copy-mini" id="roCopyDailyCard" title="Copy daily summary">Copy</button>
-        </div>
-        <div class="ro-stats" id="roDailyStats"></div>
-      </div>
-      <div class="ro-card">
-        <div class="ro-card-head">
-          <h3>Weekly summary</h3>
-          <button type="button" class="ro-copy-mini" id="roCopyWeeklyCard" title="Copy weekly summary for pays">Copy</button>
-        </div>
-        <div class="ro-stats" id="roWeeklyStats"></div>
-        <p class="ro-weekline" id="roWeeklyNote">Person-days marked this week.</p>
-      </div>
-    </div>
-    <div class="ro-rows" id="roRows"></div>
   </div>
 </div>
 
@@ -6821,11 +6881,11 @@ init();
 (function(){
   var KEY = 'shiftWeekAttendance';
   var STATUSES = [
-    {key:'here', label:'On shift'},
-    {key:'late', label:'Late'},
-    {key:'left_early', label:'Left early'},
-    {key:'absent', label:'Absent'},
-    {key:'holiday', label:'Leave'}
+    {key:'here', label:'On', full:'On shift'},
+    {key:'late', label:'Late', full:'Late'},
+    {key:'left_early', label:'Left', full:'Left early'},
+    {key:'absent', label:'Out', full:'Absent'},
+    {key:'holiday', label:'Leave', full:'Leave'}
   ];
   var DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri'];
   var ROLE_OPTS = [
@@ -7039,7 +7099,7 @@ init();
       buttons[i].classList.toggle('active', buttons[i].getAttribute('data-shift') === state.rosterShift);
     }
     var title = document.getElementById('roManageTitle');
-    if (title) title.textContent = 'People · ' + shiftLabel(state.rosterShift);
+    if (title) title.textContent = 'Add · ' + shiftLabel(state.rosterShift);
   }
   function statusFor(dateKey, personId){
     var day = state.byDate[dateKey] || {};
@@ -7074,10 +7134,10 @@ init();
     return counts;
   }
   function statsHtml(counts){
-    return '<div class="ro-stat here"><div class="num">'+counts.here+'</div><div class="lbl">On shift</div></div>'+
+    return '<div class="ro-stat here"><div class="num">'+counts.here+'</div><div class="lbl">On</div></div>'+
       '<div class="ro-stat late"><div class="num">'+counts.late+'</div><div class="lbl">Late</div></div>'+
-      '<div class="ro-stat left_early"><div class="num">'+counts.left_early+'</div><div class="lbl">Left early</div></div>'+
-      '<div class="ro-stat absent"><div class="num">'+counts.absent+'</div><div class="lbl">Absent</div></div>'+
+      '<div class="ro-stat left_early"><div class="num">'+counts.left_early+'</div><div class="lbl">Left</div></div>'+
+      '<div class="ro-stat absent"><div class="num">'+counts.absent+'</div><div class="lbl">Out</div></div>'+
       '<div class="ro-stat holiday"><div class="num">'+counts.holiday+'</div><div class="lbl">Leave</div></div>';
   }
   function sortStaffForMarking(staff, dateKey){
@@ -7126,10 +7186,9 @@ init();
     var daily = countDay(dateKey, allStaff);
     if (dailyTitle){
       var dayName = DAY_NAMES[state.dayIdx] || 'Day';
-      dailyTitle.textContent = 'Daily · ' + dayName + ' · ' + shiftName;
+      dailyTitle.textContent = dayName + ' · ' + shiftName;
     }
     dailyEl.innerHTML = statsHtml(daily);
-    dailyEl.style.gridTemplateColumns = 'repeat(5,1fr)';
 
     var weekly = emptyCounts();
     var marked = 0;
@@ -7139,10 +7198,10 @@ init();
       STATUSES.forEach(function(st){ weekly[st.key] += c[st.key]; marked += c[st.key]; });
     }
     weeklyEl.innerHTML = statsHtml(weekly);
-    weeklyEl.style.gridTemplateColumns = 'repeat(5,1fr)';
     if (weeklyNote){
-      weeklyNote.textContent = marked + ' mark'+(marked===1?'':'s')+' this week · '
-        + allStaff.length + ' on ' + shiftName.toLowerCase() + ' · unmarked stay on top';
+      weeklyNote.textContent = 'Week '+weekly.here+'/'+weekly.late+'/'+weekly.left_early+'/'+weekly.absent+'/'+weekly.holiday
+        +' · '+allStaff.length+' people';
+      weeklyNote.title = 'Week totals — On / Late / Left / Out / Leave · unmarked stay on top';
     }
 
     rowsEl.innerHTML = '';
@@ -7165,8 +7224,9 @@ init();
       row.className = 'ro-row' + (cur ? ' s-'+cur : '') + (p.id === nextUnsetId ? ' ro-next' : '');
       row.dataset.personId = p.id;
       var av = document.createElement('div'); av.className='ro-av'; av.textContent = initials(p.name);
-      var nameWrap = document.createElement('div'); nameWrap.style.minWidth='0'; nameWrap.style.flex='1';
+      var nameWrap = document.createElement('div'); nameWrap.className = 'ro-namewrap';
       var name = document.createElement('div'); name.className='ro-name'; name.textContent = p.name;
+      nameWrap.appendChild(av);
       nameWrap.appendChild(name);
       var roleSel = document.createElement('select');
       roleSel.className = 'ro-role-sel';
@@ -7180,6 +7240,9 @@ init();
       roleSel.addEventListener('change', function(){
         setStaffRoleFromTab(p.id, roleSel.value);
       });
+      var meta = document.createElement('div'); meta.className = 'ro-meta';
+      meta.appendChild(nameWrap);
+      meta.appendChild(roleSel);
       var del = document.createElement('button');
       del.type = 'button';
       del.className = 'ro-del';
@@ -7193,6 +7256,7 @@ init();
         b.type = 'button';
         b.className = 'ro-btn' + (cur === st.key ? ' on-'+st.key : '');
         b.textContent = st.label;
+        b.title = st.full || st.label;
         b.addEventListener('click', function(){
           setStatus(dateKey, p.id, cur === st.key ? '' : st.key);
           render();
@@ -7204,11 +7268,9 @@ init();
         });
         btns.appendChild(b);
       });
-      row.appendChild(av);
-      row.appendChild(nameWrap);
-      row.appendChild(roleSel);
-      row.appendChild(del);
+      row.appendChild(meta);
       row.appendChild(btns);
+      row.appendChild(del);
       rowsEl.appendChild(row);
     });
   }
