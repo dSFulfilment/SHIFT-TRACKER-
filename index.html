@@ -1140,7 +1140,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="ro-actions">
           <button type="button" id="roJumpToday">Today</button>
           <button type="button" id="roCopyDaily" title="Copy daily update">Copy day</button>
-          <button type="button" id="roCopyWeekly" title="Copy weekly pays summary">Copy week</button>
+          <button type="button" id="roCopyWeekly" title="Copy late / left early / absent dates">Copy week</button>
           <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear week</button>
         </div>
       </div>
@@ -7392,67 +7392,36 @@ init();
     var staff = rosterStaff().slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
     var shift = shiftLabel(state.rosterShift);
     var lines = [];
-    lines.push(shift.toUpperCase() + ' SHIFT — WEEKLY ATTENDANCE FOR PAYS');
-    lines.push('Week: ' + weekLabel(ws) + ' (Mon–Fri)');
+    lines.push(shift.toUpperCase() + ' SHIFT — LATE / LEFT EARLY / ABSENT');
+    lines.push('Week: ' + weekLabel(ws));
     lines.push('');
 
-    lines.push('DAY TOTALS');
-    var weekTotals = emptyCounts();
-    for (var i = 0; i < 5; i++){
-      var d = addDays(ws, i);
-      var key = ymd(d);
-      var c = countDay(key, staff);
-      STATUSES.forEach(function(st){ weekTotals[st.key] += c[st.key]; });
-      var dayLine = joinCountParts([
-        { label:'On shift', count:c.here },
-        { label:'Late', count:c.late },
-        { label:'Left early', count:c.left_early },
-        { label:'Absent', count:c.absent },
-        { label:'Leave', count:c.holiday }
-      ]);
-      lines.push('  ' + formatDayPays(d) + (dayLine ? '  ' + dayLine : ''));
-    }
-    lines.push('');
-    lines.push('WEEK TOTALS (person-days)');
-    var weekLine = joinCountParts([
-      { label:'On shift', count:weekTotals.here },
-      { label:'Late', count:weekTotals.late },
-      { label:'Left early', count:weekTotals.left_early },
-      { label:'Absent', count:weekTotals.absent },
-      { label:'Leave', count:weekTotals.holiday }
-    ]);
-    if (weekLine) lines.push('  ' + weekLine);
-    lines.push('  Days present for pays (On shift + Late + Left early): '
-      + (weekTotals.here + weekTotals.late + weekTotals.left_early));
-    lines.push('');
+    var any = false;
+    staff.forEach(function(p){
+      var lateDates = [];
+      var leftEarlyDates = [];
+      var absentDates = [];
+      for (var di = 0; di < 5; di++){
+        var d = addDays(ws, di);
+        var s = statusFor(ymd(d), p.id);
+        var dateLbl = formatDayPays(d);
+        if (s === 'late') lateDates.push(dateLbl);
+        else if (s === 'left_early') leftEarlyDates.push(dateLbl);
+        else if (s === 'absent') absentDates.push(dateLbl);
+      }
+      if (!lateDates.length && !leftEarlyDates.length && !absentDates.length) return;
+      any = true;
+      lines.push(p.name);
+      if (lateDates.length) lines.push('  Late — ' + lateDates.join(', '));
+      if (leftEarlyDates.length) lines.push('  Left early — ' + leftEarlyDates.join(', '));
+      if (absentDates.length) lines.push('  Absent — ' + absentDates.join(', '));
+      lines.push('');
+    });
 
-    lines.push('STAFF DETAIL');
     if (!staff.length){
-      lines.push('  (No people on ' + shift.toLowerCase() + ' roster yet)');
-    } else {
-      staff.forEach(function(p){
-        var dayParts = [];
-        var present = 0, lateN = 0, leftEarlyN = 0, absentN = 0, leaveN = 0;
-        for (var di = 0; di < 5; di++){
-          var s = statusFor(ymd(addDays(ws, di)), p.id);
-          if (!s) continue;
-          dayParts.push(DAY_NAMES[di] + ' ' + statusShort(s));
-          if (s === 'here') present++;
-          else if (s === 'late'){ present++; lateN++; }
-          else if (s === 'left_early'){ present++; leftEarlyN++; }
-          else if (s === 'absent') absentN++;
-          else if (s === 'holiday') leaveN++;
-        }
-        lines.push(p.name);
-        if (dayParts.length) lines.push('  ' + dayParts.join(' · '));
-        var detailBits = ['Pays days: ' + present];
-        if (lateN) detailBits.push('Late ' + lateN);
-        if (leftEarlyN) detailBits.push('Left early ' + leftEarlyN);
-        if (absentN) detailBits.push('Absent ' + absentN);
-        if (leaveN) detailBits.push('Leave ' + leaveN);
-        if (dayParts.length) lines.push('  ' + detailBits.join('  |  '));
-        lines.push('');
-      });
+      lines.push('(No people on ' + shift.toLowerCase() + ' roster yet)');
+    } else if (!any){
+      lines.push('No late, left early, or absent marks this week.');
     }
     return lines.join('\n').replace(/\n+$/, '');
   }
