@@ -211,9 +211,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .rotate-line{ position:absolute; display:none; top:-13px; left:50%; width:1px; height:13px;
     background:#CBCBC5; transform:translateX(-50%); }
 #app .card.selected .rotate-line{ display:block; }
-#app .break-table{ position:absolute; left:14px; bottom:14px; width:560px; background:rgba(255,255,255,.98);
+#app .break-table{ position:absolute; left:14px; bottom:14px; width:640px; background:rgba(255,255,255,.98);
     border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 14px rgba(0,0,0,.14); padding:14px 16px 12px;
     transform-origin:0% 100%; }
+#app .break-table td.bt-packers{ color:var(--staff); font-weight:600; cursor:default; max-width:140px;
+    font-size:11.5px; line-height:1.25; }
+#app .break-table td.bt-packers:empty::before{ content:attr(data-placeholder); color:#C1C7D0; font-style:italic; font-weight:400; }
+#app .break-table .bt-hint{ font-size:10.5px; color:var(--muted); margin:-2px 0 8px; }
 #app .break-table .bt-title{ font-size:15px; font-weight:700; color:var(--ink); margin-bottom:8px; cursor:text; }
 #app .break-table table{ width:100%; border-collapse:collapse; font-size:12.5px; }
 #app .break-table th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
@@ -344,6 +348,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 .bp-chip.runner{ background:var(--runner-bg); color:var(--runner); }
 .bp-chip.boxmaker{ background:var(--boxmaker-bg); color:var(--boxmaker); }
 .bp-chip.unassigned{ background:#F0F0EE; color:var(--muted); }
+.bp-st-badge{ display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.03em;
+  background:rgba(37,84,199,.14); color:var(--staff); border-radius:4px; padding:1px 4px; margin-left:2px; }
 .bp-chip select{ font-size:10.5px; font-weight:600; border:none; background:transparent; color:inherit;
   cursor:pointer; font-family:inherit; }
 .bp-chip .x{ cursor:pointer; color:inherit; opacity:.55; font-weight:700; line-height:1; padding:0 1px; }
@@ -605,6 +611,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <div class="toolgroup">
       <button class="btn station" id="addStation" title="Click, then tap the map to place an extra station">+ Station</button>
       <button class="btn station" id="alignStations" title="Place or snap stations A–T onto the packing plates on the floor plan">Align to plates</button>
+      <button class="btn station" id="syncBreaks" title="Push station packers into break groups (A–D → Group 1, etc.)">Sync breaks</button>
     </div>
     <div class="toolgroup">
       <button class="btn annot" id="addText" title="Click, then tap the map to place a text label">+ Text</button>
@@ -671,9 +678,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <button class="bp-shift-btn active" id="bpShiftMorning" data-shift="morning">Morning</button>
         <button class="bp-shift-btn" id="bpShiftAfternoon" data-shift="afternoon">Afternoon</button>
       </div>
-      <button class="bp-btn" id="bpImportBreaks">&#8635; Import breaks from Floor Planner</button>
-      <button class="bp-btn primary" id="bpAddGroup">+ Add break group</button>
+      <button class="bp-btn" id="bpImportBreaks" title="Copy group times/stations from the Floor Planner break table">&#8635; Import breaks from Floor Planner</button>
+      <button class="bp-btn primary" id="bpAutoAssign" title="Put each floor-assigned packer into the break group for their station">Auto-assign packers from stations</button>
+      <button class="bp-btn" id="bpAddGroup">+ Add break group</button>
     </div>
+    <div class="bp-sync-note" style="margin:-6px 0 12px">Packers auto-join the break group for their station (A–D → Group 1, E–H → Group 2, …). Sync also runs when you assign someone on the Floor Planner.</div>
 
     <div class="bp-grid">
       <div>
@@ -1244,10 +1253,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!ref || !ref.el) return;
     var nameField = ref.el.querySelector('.field.station-name');
     var entry = stationAssignedEntry(card.rosterId);
+    var breakHint = breakHintForStation(card.letter);
     if(nameField){
       if(entry) nameField.textContent = entry.name;
       else nameField.textContent = card.floorPlate ? 'Drop' : 'VACANT';
+      if(entry && breakHint){
+        nameField.title = entry.name+' · '+breakHint+' — double-click to clear';
+      } else if(entry){
+        nameField.title = 'Double-click to clear this assignment';
+      } else {
+        nameField.title = breakHint
+          ? ('Drop a packer here · '+breakHint)
+          : 'Drag a packer from the roster onto this plate to assign them';
+      }
     }
+    ref.el.title = entry && breakHint ? (entry.name+' · '+breakHint) : (breakHint || '');
     ref.el.classList.toggle('occupied', !!entry);
     ref.el.classList.toggle('vacant', !entry);
     STATUS_OPTIONS.forEach(function(o){ ref.el.classList.remove('status-'+o.key); });
@@ -1368,7 +1388,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     card.rosterId = null;
     updateStationCardVisual(card);
     updateCounts();
+    renderBreakTable();
     saveDebounced();
+    syncBreakPlannerPackersFromFloor();
     flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+'.');
   }
   // Safety net for duplicate station assignments that can arrive from an imported
@@ -1461,6 +1483,124 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function seedBreakRowsBlankTimes(){
     return seedBreakRows().map(function(r){ return { group:r.group, stations:r.stations, b15:'', b30:'', staff:r.staff }; });
   }
+  // Parse "A, B, C, D" / "A-D" style station lists into uppercase letters.
+  function parseStationLetters(str){
+    var out = [], seen = {};
+    String(str||'').toUpperCase().replace(/[A-Z]/g, function(L){
+      if(!seen[L]){ seen[L]=true; out.push(L); }
+      return L;
+    });
+    return out;
+  }
+  function breakRowForStation(letter){
+    var L = String(letter||'').toUpperCase();
+    if(!L) return null;
+    for(var i=0;i<breakRows.length;i++){
+      if(parseStationLetters(breakRows[i].stations).indexOf(L)>=0) return breakRows[i];
+    }
+    return null;
+  }
+  function breakHintForStation(letter){
+    var row = breakRowForStation(letter);
+    if(!row) return '';
+    var parts = [];
+    if(row.b15) parts.push('15m '+row.b15);
+    if(row.b30) parts.push('30m '+row.b30);
+    if(!parts.length) return 'Group '+(row.group||'?')+' (set break times)';
+    return 'Group '+(row.group||'?')+' · '+parts.join(' · ');
+  }
+  function packersForBreakRow(row){
+    var letters = parseStationLetters(row.stations);
+    if(!letters.length) return [];
+    var names = [], seen = {};
+    cards.forEach(function(c){
+      if(c.type!=='station' || !c.rosterId) return;
+      var L = String(c.letter||'').toUpperCase();
+      if(letters.indexOf(L)<0) return;
+      var entry = stationAssignedEntry(c.rosterId);
+      if(!entry || seen[entry.id]) return;
+      seen[entry.id] = true;
+      names.push(entry.name);
+    });
+    return names;
+  }
+  // Live-push floor station packers into Break Planner groups for this shift.
+  // Rebuilds packer lanes from station letters; leaves runner/boxmaker lanes alone.
+  function syncBreakPlannerPackersFromFloor(opts){
+    opts = opts || {};
+    if(!window.SharedSync) return;
+    var shift = currentShift;
+    var rowsSnap = breakRows.map(function(r){
+      return { group:r.group, stations:r.stations, b15:r.b15, b30:r.b30, staff:r.staff };
+    });
+    var stationMap = {}; // letter -> rosterId
+    cards.forEach(function(c){
+      if(c.type==='station' && c.rosterId && c.letter){
+        stationMap[String(c.letter).toUpperCase()] = c.rosterId;
+      }
+    });
+    function parseRange(str){
+      if(!str) return null;
+      var s = String(str).replace(/[\u2013\u2014]/g,'-');
+      var dashIdx = s.indexOf('-');
+      if(dashIdx<0) return null;
+      var left = s.slice(0,dashIdx).trim(), right = s.slice(dashIdx+1).trim();
+      function mer(p){ var m=p.match(/(am|pm)\s*$/i); return m?m[1].toLowerCase():null; }
+      var lm=mer(left), rm=mer(right);
+      if(!lm && rm) lm=rm; if(!rm && lm) rm=lm;
+      function toHM(p, m){
+        var clean=p.replace(/(am|pm)\s*$/i,'').trim().split(':');
+        var h=parseInt(clean[0],10), mi=clean[1]!==undefined?parseInt(clean[1],10):0;
+        if(isNaN(h)) return null; if(isNaN(mi)) mi=0;
+        if(m==='pm'&&h!==12) h+=12; if(m==='am'&&h===12) h=0;
+        return (h<10?'0':'')+h+':'+(mi<10?'0':'')+mi;
+      }
+      var L=toHM(left,lm), R=toHM(right,rm);
+      if(!L||!R) return null;
+      return {start:L,end:R};
+    }
+    function groupsFromRows(rows){
+      return rows.map(function(row){
+        var tea=parseRange(row.b15), meal=parseRange(row.b30);
+        return {
+          id:'bp'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+          label:'Group '+(row.group||''), stations:row.stations||'',
+          teaStart:tea?tea.start:'', teaEnd:tea?tea.end:'',
+          mealStart:meal?meal.start:'', mealEnd:meal?meal.end:'',
+          sourceNote:row.staff||'', packer:[], runner:[], boxmaker:[]
+        };
+      });
+    }
+    function applyPackers(groups){
+      var assigned = 0;
+      groups.forEach(function(g){
+        var letters = parseStationLetters(g.stations);
+        var packers = [];
+        letters.forEach(function(L){
+          var rid = stationMap[L];
+          if(rid && packers.indexOf(rid)<0){ packers.push(rid); assigned++; }
+        });
+        g.packer = packers;
+      });
+      return assigned;
+    }
+    window.SharedSync.scheduleSharedSave('breakPlanner', function(latest){
+      if(!latest[shift]) latest[shift] = { groups: [] };
+      var groups = latest[shift].groups;
+      var needsSeed = !groups || !groups.length || groups.every(function(g){ return !String(g.stations||'').trim(); });
+      if(needsSeed && rowsSnap.length){
+        groups = groupsFromRows(rowsSnap);
+        latest[shift].groups = groups;
+      }
+      if(!groups || !groups.length) return false;
+      applyPackers(groups);
+      return latest;
+    }, opts.delay == null ? 250 : opts.delay);
+    if(opts.announce){
+      var n = Object.keys(stationMap).length;
+      flashStatus(n ? ('Synced '+n+' station packer'+(n===1?'':'s')+' into break groups') : 'No station packers to sync yet');
+    }
+  }
 
   function updateCounts(){
     var s=0,k=0,st=0,stVacant=0;
@@ -1532,7 +1672,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fName = document.createElement('div');
       fName.className = 'field station-name';
       fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Drop' : 'VACANT');
-      fName.title = card.rosterId ? 'Double-click to clear this assignment' : 'Drag a packer from the roster onto this plate to assign them';
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         clearStationAssignment(card.id);
@@ -1633,6 +1772,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(card.color) applyCardColor(card, el);
     canvas.appendChild(el);
     els.set(card.id, {el:el, f1:f1, f2:f2});
+    if(card.type==='station') updateStationCardVisual(card);
     updateCounts();
     return el;
   }
@@ -1801,7 +1941,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     vacantBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
     vacantBtn.addEventListener('click', function(e){ e.stopPropagation(); clearStationAssignment(id); closeAssignPopover(); });
     assignPopover.appendChild(vacantBtn);
-    var sorted = staffRoster.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    // Stations are for packers (blue). Runners/box makers stay on the floor.
+    var sorted = staffRoster.slice()
+      .filter(function(p){
+        var r = p.role || 'unassigned';
+        return r==='packer' || r==='unassigned' || p.id===card.rosterId;
+      })
+      .sort(function(a,b){ return a.name.localeCompare(b.name); });
     sorted.forEach(function(p){
       var btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'role-opt';
@@ -2330,8 +2476,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     updateStationCardVisual(card);
     selectCard(card.id);
     updateCounts();
+    renderBreakTable();
     saveDebounced();
-    flashStatus(entry.name+' → Station '+(card.letter||'?'));
+    syncBreakPlannerPackersFromFloor();
+    var hint = breakHintForStation(card.letter);
+    flashStatus(entry.name+' → Station '+(card.letter||'?')+(hint ? ' · '+hint : ''));
     return true;
   }
 
@@ -2344,6 +2493,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     } else {
       flashStatus('Stations A–T already on the floor plates');
     }
+  });
+  document.getElementById('syncBreaks').addEventListener('click', function(){
+    syncBreakPlannerPackersFromFloor({ announce: true, delay: 0 });
+    renderBreakTable();
   });
   document.getElementById('addText').addEventListener('click', function(){ armTool('text'); });
   document.getElementById('addArrow').addEventListener('click', function(){ armTool('arrow'); });
@@ -2473,6 +2626,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     renderRoster();
     renderBreakTable();
     updateShiftButtons();
+    syncBreakPlannerPackersFromFloor({ delay: 400 });
     saveDebounced();
   }
   document.getElementById('shiftMorning').addEventListener('click', function(){ switchShift('morning'); });
@@ -2563,6 +2717,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       updateSnapButton();
       renderRoster();
       renderBreakTable();
+      syncBreakPlannerPackersFromFloor({ delay: 400 });
       saveDebounced();
       flashStatus('Backup restored');
     };
@@ -2769,10 +2924,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     title.addEventListener('pointerdown', function(e){ if(title.querySelector('.edit-input')) e.stopPropagation(); });
     container.appendChild(title);
 
+    var hint = document.createElement('div');
+    hint.className = 'bt-hint';
+    hint.textContent = 'Packers column fills automatically from station assignments (A–D → Group 1, …).';
+    container.appendChild(hint);
+
     var table = document.createElement('table');
     var thead = document.createElement('thead');
     var htr = document.createElement('tr');
-    ['Group','Stations','15-min break','30-min break','Staff needed',''].forEach(function(h){
+    ['Group','Stations','Packers','15-min break','30-min break','Staff needed',''].forEach(function(h){
       var th = document.createElement('th'); th.textContent = h; htr.appendChild(th);
     });
     thead.appendChild(htr); table.appendChild(thead);
@@ -2781,7 +2941,24 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var placeholders = { group:'#', stations:'Stations', b15:'Add time', b30:'Add time', staff:'Staff needed' };
     breakRows.forEach(function(row, idx){
       var tr = document.createElement('tr');
-      ['group','stations','b15','b30','staff'].forEach(function(key){
+      ['group','stations'].forEach(function(key){
+        var td = document.createElement('td');
+        makeEditableCell(td, row[key], function(v){
+          row[key]=v;
+          if(key==='stations') syncBreakPlannerPackersFromFloor();
+        }, placeholders[key]);
+        tr.appendChild(td);
+      });
+      var packTd = document.createElement('td');
+      packTd.className = 'bt-packers';
+      packTd.dataset.placeholder = 'Assign on floor';
+      var packNames = packersForBreakRow(row);
+      packTd.textContent = packNames.join(', ');
+      packTd.title = packNames.length
+        ? (packNames.join(', ')+' — from stations '+row.stations)
+        : 'Drop packers onto stations '+row.stations+' to fill this group';
+      tr.appendChild(packTd);
+      ['b15','b30','staff'].forEach(function(key){
         var td = document.createElement('td');
         makeEditableCell(td, row[key], function(v){ row[key]=v; }, placeholders[key]);
         tr.appendChild(td);
@@ -3312,6 +3489,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     updateSnapButton();
     renderRoster();
     renderBreakTable();
+    if(!hadReadError) syncBreakPlannerPackersFromFloor({ delay: 600 });
     if(hadReadError){
       // Do not persist anything over data we couldn't actually read — the user can
       // Import a backup, or this will resolve itself once storage is readable again.
@@ -3344,6 +3522,7 @@ var newRoleSelect = document.getElementById('bpNewRole');
 var addStaffBtn = document.getElementById('bpAddStaff');
 var addGroupBtn = document.getElementById('bpAddGroup');
 var importBreaksBtn = document.getElementById('bpImportBreaks');
+var autoAssignBtn = document.getElementById('bpAutoAssign');
 var shiftMorningBtn = document.getElementById('bpShiftMorning');
 var shiftAfternoonBtn = document.getElementById('bpShiftAfternoon');
 var toastEl = document.getElementById('bpToast');
@@ -3390,6 +3569,61 @@ function parseTimeRange(str){
   if (!L || !R) return null;
   function p2(n){ return (n < 10 ? '0' : '') + n; }
   return { start: p2(L.h) + ':' + p2(L.m), end: p2(R.h) + ':' + p2(R.m) };
+}
+function parseStationLetters(str){
+  var out = [], seen = {};
+  String(str||'').toUpperCase().replace(/[A-Z]/g, function(L){
+    if (!seen[L]){ seen[L] = true; out.push(L); }
+    return L;
+  });
+  return out;
+}
+function floorStationMap(shift){
+  var map = {}; // letter -> { rosterId, letter }
+  try{
+    var cards = plannerCache && plannerCache.shiftData && plannerCache.shiftData[shift] && plannerCache.shiftData[shift].cards;
+    if (!cards) return map;
+    cards.forEach(function(c){
+      if (c && c.type === 'station' && c.rosterId && c.letter){
+        map[String(c.letter).toUpperCase()] = c.rosterId;
+      }
+    });
+  }catch(e){}
+  return map;
+}
+// Rebuild each group's packer lane from floor station assignments.
+// Keeps runner/boxmaker lanes. Optionally seeds empty groups from Floor breakRows.
+function autoAssignPackersFromStations(sd, opts){
+  opts = opts || {};
+  var shift = currentShift;
+  var stationMap = floorStationMap(shift);
+  if (opts.seedFromFloor){
+    var rows = plannerCache && plannerCache.shiftData && plannerCache.shiftData[shift] && plannerCache.shiftData[shift].breakRows;
+    var needsSeed = !sd.groups.length || sd.groups.every(function(g){ return !String(g.stations||'').trim(); });
+    if (needsSeed && rows && rows.length){
+      sd.groups = rows.map(function(row){
+        var tea = parseTimeRange(row.b15);
+        var meal = parseTimeRange(row.b30);
+        return {
+          id: uid(), label: 'Group ' + (row.group || ''), stations: row.stations || '',
+          teaStart: tea ? tea.start : '', teaEnd: tea ? tea.end : '',
+          mealStart: meal ? meal.start : '', mealEnd: meal ? meal.end : '',
+          sourceNote: row.staff || '', packer: [], runner: [], boxmaker: []
+        };
+      });
+    }
+  }
+  var count = 0;
+  sd.groups.forEach(function(g){
+    var letters = parseStationLetters(g.stations);
+    var packers = [];
+    letters.forEach(function(L){
+      var rid = stationMap[L];
+      if (rid && packers.indexOf(rid) === -1){ packers.push(rid); count++; }
+    });
+    g.packer = packers;
+  });
+  return { assigned: count, stations: Object.keys(stationMap).length };
 }
 function hasSync(){ return typeof window !== 'undefined' && !!window.SharedSync; }
 
@@ -3695,10 +3929,17 @@ function renderGroups(){
     var lanes = ROLE_KEYS.map(function(role){
       var roleRoster = people.filter(function(p){ return p.role === role; });
       var assignedIds = g[role] || [];
+      var stationByRoster = {};
+      if (role === 'packer'){
+        var sm = floorStationMap(currentShift);
+        Object.keys(sm).forEach(function(L){ stationByRoster[sm[L]] = L; });
+      }
       var chips = assignedIds.map(function(pid){
         var p = people.filter(function(x){ return x.id === pid; })[0];
         if (!p) return '';
-        return '<span class="bp-chip ' + role + '">' + escapeHtml(p.name) +
+        var stLetter = stationByRoster[pid];
+        var stBadge = stLetter ? ' <span class="bp-st-badge" title="Station ' + stLetter + '">St ' + stLetter + '</span>' : '';
+        return '<span class="bp-chip ' + role + '">' + escapeHtml(p.name) + stBadge +
           '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>';
       }).join('');
       var available = roleRoster.filter(function(p){ return assignedIds.indexOf(p.id) === -1; });
@@ -3817,10 +4058,26 @@ importBreaksBtn.addEventListener('click', async function(){
     };
   });
   sd.groups = newGroups;
+  var auto = autoAssignPackersFromStations(sd);
   renderGroups();
   renderSummary();
   scheduleOwnSave();
-  bpToast('Imported ' + newGroups.length + ' break group(s) from Floor Planner');
+  bpToast('Imported ' + newGroups.length + ' group(s) · auto-assigned ' + auto.assigned + ' packer(s) from stations');
+});
+
+autoAssignBtn.addEventListener('click', async function(){
+  await refreshPlannerCache();
+  if (!plannerCache){ bpToast('No Floor Planner data found yet'); return; }
+  var sd = ensureShiftData(currentShift);
+  var result = autoAssignPackersFromStations(sd, { seedFromFloor: true });
+  renderGroups();
+  renderSummary();
+  scheduleOwnSave();
+  if (!result.stations){
+    bpToast('No packers on stations yet — assign them on the Floor Planner first');
+  } else {
+    bpToast('Auto-assigned ' + result.assigned + ' packer(s) from ' + result.stations + ' station(s)');
+  }
 });
 
 // role change / remove staff (event delegation on roster container)
