@@ -2612,7 +2612,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         clearStationAssignment(card.id);
       });
       el.appendChild(fName);
-      fLetter.title = 'Double-click to edit letter';
+      fLetter.title = 'Double-click to edit letter (Tools → Move)';
     } else if(card.type==='floorslot'){
       if(card.slotKind==='sku') normalizeSkuSlotFields(card);
       var fSlotLabel = document.createElement('div');
@@ -2620,7 +2620,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       fSlotLabel.dataset.f = 'label';
       fSlotLabel.dataset.placeholder = 'Label';
       fSlotLabel.textContent = card.label || card.key || '';
-      fSlotLabel.title = 'Double-click to edit writing';
+      fSlotLabel.title = 'Double-click to edit label (Tools → Move)';
       el.appendChild(fSlotLabel); fields.push(fSlotLabel);
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
