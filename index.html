@@ -828,7 +828,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       <div class="ft-sec">
         <div class="ft-sec-lbl">Move</div>
         <div class="ft-grid ft-one">
-          <button type="button" class="ft-tool move" id="toggleMove"><span class="swatch"></span><span>Move plates<span class="sub">Drag / resize / delete</span></span></button>
+          <button type="button" class="ft-tool move" id="toggleMove"><span class="swatch"></span><span>Move plates<span class="sub">Drag · double-click text</span></span></button>
         </div>
       </div>
       <div class="ft-sec">
@@ -3174,9 +3174,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   function startEdit(fieldEl, cardId){
-    if(fieldEl.querySelector('.edit-input')) return;
+    if(!fieldEl || fieldEl.querySelector('.edit-input')) return;
     var card = cards.find(function(c){ return c.id===cardId; });
+    if(!card) return;
     var key = fieldEl.dataset.f;
+    if(!key) return;
     var currentValue = card[key] || '';
     var input = document.createElement('input');
     input.type = 'text';
@@ -3208,9 +3210,32 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     input.addEventListener('blur', commit, {once:true});
     input.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
   }
+  // Writable plate / mark-up text fields (not assign/clear rows)
+  function editableWritingField(fieldEl, card){
+    if(!fieldEl || !card || !fieldEl.dataset || !fieldEl.dataset.f) return null;
+    var key = fieldEl.dataset.f;
+    if(card.type==='station' && key==='letter') return fieldEl;
+    if(card.type==='floorslot' && key==='label') return fieldEl;
+    if(card.type==='text' && key==='text') return fieldEl;
+    if(card.type==='staff' && key==='name') return fieldEl;
+    if(card.type==='sku' && (key==='sku' || key==='note')) return fieldEl;
+    return null;
+  }
+  function primaryWritingField(cardId){
+    var card = cards.find(function(c){ return c.id===cardId; });
+    var ref = els.get(cardId);
+    if(!card || !ref || !ref.el) return null;
+    if(card.type==='station') return ref.el.querySelector('.field.station-letter');
+    if(card.type==='floorslot') return ref.el.querySelector('.field.slot-label');
+    if(card.type==='text') return ref.el.querySelector('.field.label');
+    if(card.type==='staff') return ref.el.querySelector('.field.name');
+    if(card.type==='sku') return ref.el.querySelector('.field.code');
+    return null;
+  }
 
   // ---- drag existing card (only while Tools → Move is armed) ----
   var dragState = null;
+  var lastPlateEditTap = { id:null, t:0 };
   function onCardPointerDown(e, id){
     if(e.target.closest('.ctrl')) return;
     if(e.target.closest('.edit-input')) return;
@@ -3225,7 +3250,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       skuSlot = assignEl.classList.contains('next') ? 'next' : 'now';
     }
     // Default mode: tap assign zones to pick who/what; no dragging until Move is on.
-    // Double-click writing (letter/label/text) edits via the field dblclick handlers.
     if(armedTool !== 'move'){
       if(assignEl){
         selectCard(id);
@@ -3235,7 +3259,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       }
       return;
     }
-    // Label/letter edits only — assign zones open the picker instead of inline edit
+    // Move mode: drag to reposition. Assign rows don't count as text-edit targets.
     if(assignEl) fieldTarget = null;
     var rect = canvas.getBoundingClientRect();
     var startPx = (e.clientX-rect.left)/zoom;
@@ -3281,9 +3305,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         var refUp = els.get(card.id);
         if(refUp && refUp.el) refUp.el.classList.remove('dragging');
         if(!dragState.moved){
-          // Move tool: tap only selects (resize/delete handles appear). Assign is for when Move is off.
+          // Move tool: tap selects (resize/delete). Double-click edits plate text (letter/label).
           if(armedTool === 'move'){
             selectCard(dragState.id);
+            var editField = editableWritingField(dragState.fieldTarget, card) || primaryWritingField(dragState.id);
+            var nowTap = Date.now();
+            if(editField && lastPlateEditTap.id === dragState.id && (nowTap - lastPlateEditTap.t) < 450){
+              startEdit(editField, dragState.id);
+              lastPlateEditTap = { id:null, t:0 };
+            } else {
+              lastPlateEditTap = { id:dragState.id, t:nowTap };
+            }
           } else if(dragState.assignEl){
             selectCard(dragState.id);
             openAssignPicker(dragState.id, dragState.assignEl, dragState.skuSlot ? { skuSlot: dragState.skuSlot } : undefined);
@@ -3459,7 +3491,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   };
   var armedTool = null;
   var TOOL_CHIP_LABELS = {
-    move:'Move — drag plates',
+    move:'Move — drag · double-click text',
     station:'Add Packer — tap map',
     skuSlot:'Add SKU — tap map',
     boxmakerSlot:'Add Box — tap map',
@@ -3518,7 +3550,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     viewport.classList.toggle('move-armed', type === 'move');
     if(floorHintEl){
       var tips = {
-        move:'Drag to move · tap a plate for resize/delete · double-click writing to edit · Cancel when done',
+        move:'Drag to move · tap for resize/delete · double-click plate text to edit · Cancel when done',
         station:'Tap the map to place a Packer plate',
         skuSlot:'Tap the map to place a SKU plate',
         boxmakerSlot:'Tap the map to place a Box plate',
