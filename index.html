@@ -141,7 +141,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.vacant .field.station-name{ letter-spacing:.05em; text-transform:uppercase; color:#60a5fa; }
 /* Compact overlays that sit on the lettered packing plates drawn on the floor plan */
 #app .card.station.floor-plate{ width:44px; min-height:44px; height:44px; padding:2px 3px; border-radius:5px;
-    box-shadow:none; border-width:2.5px; gap:0; border-color:var(--staff); }
+    box-shadow:none; border-width:2.5px; gap:0; border-color:var(--staff); z-index:2; }
 #app .card.station.floor-plate.vacant{ background:rgba(37,84,199,.14); border-color:rgba(37,84,199,.65);
     border-style:dashed; }
 #app .card.station.floor-plate.vacant:hover,
@@ -150,11 +150,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.floor-plate.occupied{ background:linear-gradient(180deg,#dbeafe,#eff6ff);
     border-color:var(--staff); border-style:solid;
     box-shadow:0 1px 2px rgba(37,84,199,.18),0 3px 8px rgba(37,84,199,.22); }
-#app .card.station.floor-plate .field.station-letter{ font-size:11px; font-weight:800; line-height:1; color:#1e3a8a; }
+#app .card.station.floor-plate .field.station-letter{ font-size:13px; font-weight:800; line-height:1; color:#1e3a8a; }
 #app .card.station.floor-plate.vacant .field.station-letter{ color:rgba(37,84,199,.45); }
-#app .card.station.floor-plate .field.station-name{ font-size:8px; font-weight:700; line-height:1.1; max-height:2.3em;
+#app .card.station.floor-plate .field.station-name{ font-size:9px; font-weight:700; line-height:1.15; max-height:2.4em;
     overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:var(--staff); }
-#app .card.station.floor-plate.vacant .field.station-name{ font-size:7px; letter-spacing:.04em; color:#60a5fa; }
+#app .card.station.floor-plate.vacant .field.station-name{ font-size:8px; letter-spacing:.04em; color:#60a5fa; }
 #app .card.station.floor-plate .ctrl{ width:18px; height:18px; }
 #app .card.station.floor-plate .ctrl svg{ width:10px; height:10px; }
 #app .card.station.floor-plate .rotate-line{ display:none !important; }
@@ -164,23 +164,23 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot{ width:70px; min-height:34px; padding:3px 4px; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:0; border-width:2.5px; border-style:dashed;
     border-radius:6px; box-shadow:none; }
-#app .card.floorslot .field.slot-label{ font-size:8px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-    text-align:center; line-height:1.1; max-height:2.2em; overflow:hidden; }
-#app .card.floorslot .field.slot-name{ font-size:9px; font-weight:700; text-align:center; line-height:1.15;
-    max-height:2.4em; overflow:hidden; word-break:break-word; }
-#app .card.floorslot.vacant .field.slot-name{ letter-spacing:.04em; text-transform:uppercase; font-size:8px; }
-#app .card.floorslot.slot-sku .slot-skus{ display:flex; flex-direction:column; gap:1px; width:100%; margin-top:1px; }
-#app .card.floorslot.slot-sku .slot-sku-line{ font-size:9px; font-weight:700; text-align:center; line-height:1.15;
+#app .card.floorslot .field.slot-label{ font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+    text-align:center; line-height:1.15; max-height:2.4em; overflow:hidden; }
+#app .card.floorslot .field.slot-name{ font-size:11px; font-weight:700; text-align:center; line-height:1.2;
+    max-height:2.5em; overflow:hidden; word-break:break-word; }
+#app .card.floorslot.vacant .field.slot-name{ letter-spacing:.04em; text-transform:uppercase; font-size:10px; }
+#app .card.floorslot.slot-sku .slot-skus{ display:flex; flex-direction:column; gap:2px; width:100%; margin-top:2px; }
+#app .card.floorslot.slot-sku .slot-sku-line{ font-size:11px; font-weight:700; text-align:center; line-height:1.2;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap; max-width:100%; cursor:pointer; color:#14532d; }
-#app .card.floorslot.slot-sku .slot-sku-line.next{ color:#15803d; font-size:8px; }
-#app .card.floorslot.slot-sku .slot-sku-line.empty{ color:#86efac; font-weight:600; }
+#app .card.floorslot.slot-sku .slot-sku-line.next{ color:#15803d; font-size:10px; }
+#app .card.floorslot.slot-sku .slot-sku-line.empty{ color:#4ade80; font-weight:600; }
 #app .card.floorslot.slot-sku .field.slot-name{ display:none; }
 #app .card.floorslot .ctrl.rotate,
 #app .card.floorslot .rotate-line{ display:none !important; }
 #app .card.floorslot .ctrl{ width:18px; height:18px; }
 #app .card.floorslot .ctrl svg{ width:10px; height:10px; }
-#app .card.floorslot.slot-sku{ border-color:rgba(22,163,74,.65); background:rgba(22,163,74,.12); color:#14532d; }
+#app .card.floorslot.slot-sku{ z-index:4; border-color:rgba(22,163,74,.65); background:rgba(22,163,74,.12); color:#14532d; }
 #app .card.floorslot.slot-sku .field.slot-label{ color:#15803d; }
 #app .card.floorslot.slot-sku .field.slot-name{ color:#16a34a; }
 #app .card.floorslot.slot-sku.occupied{ border-style:solid; border-color:var(--sku);
@@ -811,7 +811,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <div class="g4">
       <div class="fl"><label>Shift Start</label><input type="time" id="shiftStart" value="14:00" oninput="onInput(); loadBreakPlannerData();"></div>
       <div class="fl"><label>Shift End</label><input type="time" id="shiftEnd" value="22:00" oninput="onInput()"></div>
-      <div class="fl"><label>Packers on Shift</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="Set automatically from packer cards placed on the Floor Plan"></div>
+      <div class="fl"><label>Packers on Shift</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="Set automatically from packers assigned to station plates on the Floor Plan"></div>
       <div class="fl"><label>Boxes / Person / hr</label><input type="number" id="bpph" value="15" min="0.5" step="0.5" oninput="onInput()"></div>
     </div>
     <div style="margin-top:.8rem">
@@ -1245,15 +1245,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   // SKU plates sit beside packer stations (no overlap) and hold current + planned-next.
   var FLOOR_SLOTS = {
     sku: [
-      // Green SKU bays sit beside / between packer plates — never on top of them.
-      { key:'SKU-AD', label:'SKU A–D', x:348, y:42, w:96, h:80 },
-      { key:'SKU-EH', label:'SKU E–H', x:558, y:36, w:96, h:80 },
-      // Right wing: plates sit in the gap under I–J / M–N (not over the packer cards)
-      { key:'SKU-IK', label:'SKU I–K', x:795, y:118, w:118, h:118 },
-      { key:'SKU-MP', label:'SKU M–P', x:795, y:334, w:118, h:116 },
-      { key:'SKU-QR', label:'SKU Q–R', x:590, y:430, w:50, h:72 },
-      { key:'SKU-S', label:'SKU S', x:612, y:575, w:52, h:52 },
-      { key:'SKU-T', label:'SKU T', x:758, y:42, w:34, h:55 }
+      // Green SKU bays sit in clear gaps — never over packer stations.
+      // Current SKU on top, planned next underneath on the same green plate.
+      { key:'SKU-AD', label:'SKU A–D', x:345, y:40, w:100, h:90 },
+      { key:'SKU-EH', label:'SKU E–H', x:555, y:34, w:100, h:90 },
+      // SKU T sits under station T (not beside / behind J)
+      { key:'SKU-T', label:'SKU T', x:714, y:90, w:52, h:78 },
+      // Right wing: under the I–J and M–N rows, with padding so they never sit on packers
+      { key:'SKU-IK', label:'SKU I–K', x:804, y:126, w:100, h:108 },
+      { key:'SKU-MP', label:'SKU M–P', x:804, y:340, w:100, h:108 },
+      { key:'SKU-QR', label:'SKU Q–R', x:590, y:432, w:54, h:64 },
+      { key:'SKU-S', label:'SKU S', x:616, y:578, w:56, h:56 }
     ],
     boxmaker: [
       { key:'BM-CARTON', label:'Carton closer', x:200, y:68, w:88, h:48 },
@@ -2031,17 +2033,50 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
   }
 
-  function updateCounts(){
-    var s=0,k=0,st=0,stVacant=0, slotsFilled=0, slotsTotal=0;
+  // Distinct people assigned onto floor plates (packing stations + runner/box-maker plates).
+  // Loose staff cards that are not on a plate do not count.
+  function countStaffOnPlates(){
+    var seen = {};
     cards.forEach(function(c){
-      if(c.type==='staff') s++;
-      else if(c.type==='sku') k++;
-      else if(c.type==='station'){ st++; if(!stationAssignedEntry(c.rosterId)) stVacant++; }
-      else if(c.type==='floorslot'){ slotsTotal++; if(slotRosterEntry(c)) slotsFilled++; }
+      if(!c || !c.rosterId) return;
+      if(c.type==='station'){
+        if(stationAssignedEntry(c.rosterId)) seen[c.rosterId] = true;
+      } else if(c.type==='floorslot' && c.slotKind!=='sku'){
+        if(slotRosterEntry(c)) seen[c.rosterId] = true;
+      }
     });
-    var txt = s+' staff · '+k+' SKU';
+    return Object.keys(seen).length;
+  }
+  function countPackersOnStations(){
+    var seen = {};
+    cards.forEach(function(c){
+      if(c.type==='station' && c.rosterId && stationAssignedEntry(c.rosterId)){
+        seen[c.rosterId] = true;
+      }
+    });
+    return Object.keys(seen).length;
+  }
+  function updateCounts(){
+    var onPlates = countStaffOnPlates();
+    var packers = countPackersOnStations();
+    var k=0, st=0, stVacant=0, slotsFilled=0, slotsTotal=0;
+    cards.forEach(function(c){
+      if(c.type==='sku') k++;
+      else if(c.type==='station'){ st++; if(!stationAssignedEntry(c.rosterId)) stVacant++; }
+      else if(c.type==='floorslot'){
+        slotsTotal++;
+        if(c.slotKind==='sku'){
+          if(c.rosterId || c.nextSkuId) slotsFilled++;
+        } else if(slotRosterEntry(c)){
+          slotsFilled++;
+        }
+      }
+    });
+    var txt = onPlates+' on plates';
+    if(packers>0) txt += ' · '+packers+' packer'+(packers===1?'':'s');
+    txt += ' · '+k+' SKU';
     if(st>0) txt += ' · '+st+' station'+(st===1?'':'s')+(stVacant>0 ? ' ('+stVacant+' vacant)' : '');
-    if(slotsTotal>0) txt += ' · '+slotsFilled+'/'+slotsTotal+' plates';
+    if(slotsTotal>0) txt += ' · '+slotsFilled+'/'+slotsTotal+' filled';
     document.getElementById('counts').textContent = txt;
   }
 
@@ -2775,7 +2810,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     circle:'addCircle', rect:'addRect', highlight:'addHighlight', draw:'addDraw' };
   var SLOT_TOOL_KIND = { skuSlot:'sku', boxmakerSlot:'boxmaker', runnerSlot:'runner' };
   var SLOT_DEFAULT_SIZE = {
-    sku: { w:90, h:72 },
+    sku: { w:96, h:84 },
     boxmaker: { w:88, h:44 },
     runner: { w:78, h:36 }
   };
@@ -3091,6 +3126,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(role!=='packer'){
       entry.role = 'packer';
       renderRoster();
+      if(window.SharedSync) scheduleRosterRoleChange(rosterId, 'packer');
     }
     var already = cards.find(function(c){ return c.type==='station' && c.id!==card.id && c.rosterId===rosterId; });
     if(already){
@@ -4991,21 +5027,25 @@ var floorPackerLoadAttempted = false; // true once loadBreakPlannerData() has co
 
 function hasSyncLayer() { return typeof window !== 'undefined' && !!window.SharedSync; }
 
-// Counts distinct packers currently represented on the Floor Plan for the given
-// shift: packers assigned to an occupied station placeholder, PLUS packer staff
-// cards placed on the board that aren't (yet) assigned to any station. Both sources
-// are deduplicated by rosterId, so a packer counted via a station is never also
-// double-counted from a loose staff card sharing the same person, and a duplicated
-// card for the same person only counts once.
+// Counts distinct packers on packing-station plates for the given shift.
+// Only station assignments count (not runners/box makers, not unassigned people,
+// not loose cards still in the roster). Station drop = packer on shift.
 function countFloorPackers(plannerRaw, key) {
   var sd = plannerRaw && plannerRaw.shiftData && plannerRaw.shiftData[key];
   if (!sd) return 0;
   var roleById = {};
   (sd.staffRoster || []).forEach(function(p){ if (p && p.id) roleById[p.id] = p.role || 'unassigned'; });
+  var rosterIds = {};
+  (sd.staffRoster || []).forEach(function(p){ if (p && p.id) rosterIds[p.id] = true; });
   var seen = {};
   (sd.cards || []).forEach(function(c){
-    if (!c || !c.rosterId || roleById[c.rosterId] !== 'packer') return;
-    if (c.type === 'station' || c.type === 'staff') seen[c.rosterId] = true;
+    if (!c || c.type !== 'station' || !c.rosterId) return;
+    // Must still be on the roster
+    if (!rosterIds[c.rosterId]) return;
+    var role = roleById[c.rosterId];
+    // Station plates are packers only — skip other roles if data is stale
+    if (role === 'runner' || role === 'boxmaker') return;
+    seen[c.rosterId] = true;
   });
   return Object.keys(seen).length;
 }
@@ -5153,11 +5193,11 @@ function onInput() {
       ? 'Couldn\u2019t reach the Floor Plan to count packers \u2014 rate paused until this reconnects.'
       : 'Loading packers from the Floor Plan\u2026';
   } else if (st <= 0) {
-    descEl.textContent = 'No packers on the Floor Plan yet \u2014 assign packers to stations or place packer cards there to calculate a rate.';
+    descEl.textContent = 'No packers on station plates yet \u2014 assign packers to stations A\u2013T on the Floor Plan to calculate a rate.';
   } else if (bp <= 0) {
-    descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' on the Floor Plan \u2014 enter Boxes/Person/hr above.';
+    descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' on station plates \u2014 enter Boxes/Person/hr above.';
   } else {
-    descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' \u00D7 ' + bp + ' boxes/hr = ' + pr.toFixed(0) + ' boxes/hr';
+    descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' on plates \u00D7 ' + bp + ' boxes/hr = ' + pr.toFixed(0) + ' boxes/hr';
   }
   document.getElementById('kcRate').textContent = pr > 0 ? pr.toFixed(0) : '\u2014';
 
@@ -5167,7 +5207,7 @@ function onInput() {
     if (floorPackerCount == null) reason = floorPackerLoadAttempted
       ? 'Can\u2019t reach the Floor Plan right now, so packers on shift is unknown. Your other data is safe \u2014 this will resume once it reconnects.'
       : 'Loading packers from the Floor Plan\u2026';
-    else if (st <= 0) reason = 'No packers on the Floor Plan yet. Go to the Floor Plan tab and assign packers to stations (or place packer cards) for this shift.';
+    else if (st <= 0) reason = 'No packers on station plates yet. Go to the Floor Plan tab and assign packers to stations A\u2013T for this shift.';
     else if (bp <= 0) reason = 'Enter Boxes / Person / hr above.';
     else reason = 'Fill in Shift Start, Shift End and Starting Boxes Left above.';
     document.getElementById('planBody').innerHTML = '<tr><td colspan="8" class="empty-td">' + reason + '</td></tr>';
