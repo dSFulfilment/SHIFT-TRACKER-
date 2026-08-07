@@ -1239,11 +1239,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     sku: [
       { key:'SKU-AD', label:'SKU A–D', x:348, y:48, w:96, h:68 },
       { key:'SKU-EH', label:'SKU E–H', x:558, y:42, w:96, h:68 },
-      { key:'SKU-IJ', label:'SKU I–J', x:838, y:118, w:52, h:72 },
-      { key:'SKU-KL', label:'SKU K–L', x:838, y:198, w:52, h:42 },
-      { key:'SKU-MN', label:'SKU M–N', x:838, y:340, w:52, h:88 },
-      { key:'SKU-OP', label:'SKU O–P', x:838, y:508, w:52, h:42 },
-      { key:'SKU-QR', label:'SKU Q–R', x:542, y:438, w:50, h:58 }
+      // Right wing: one plate for I–K, one for M–P (replaces the old split IJ/KL/MN/OP plates)
+      { key:'SKU-IK', label:'SKU I–K', x:828, y:100, w:72, h:175 },
+      { key:'SKU-MP', label:'SKU M–P', x:828, y:310, w:72, h:210 },
+      { key:'SKU-QR', label:'SKU Q–R', x:542, y:438, w:50, h:58 },
+      { key:'SKU-S', label:'SKU S', x:608, y:575, w:52, h:42 },
+      { key:'SKU-T', label:'SKU T', x:758, y:42, w:52, h:55 }
     ],
     boxmaker: [
       { key:'BM-CARTON', label:'Carton closer', x:200, y:68, w:88, h:48 },
@@ -1508,7 +1509,23 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function ensureFloorSlots(opts){
     opts = opts || {};
     var snapExisting = !!opts.snapExisting;
-    var created = 0, snapped = 0;
+    var created = 0, snapped = 0, removed = 0;
+    var knownKeys = {};
+    FLOOR_SLOT_KINDS.forEach(function(kind){
+      (FLOOR_SLOTS[kind]||[]).forEach(function(geom){ knownKeys[geom.key] = true; });
+    });
+    // Drop obsolete built-in plates (e.g. old SKU-IJ / SKU-KL) but keep user-added custom ones
+    cards.slice().forEach(function(c){
+      if(c.type!=='floorslot' || c.custom) return;
+      if(c.key && !knownKeys[c.key] && (c.floorPlate || c.floorPlate===undefined)){
+        var idx = cards.indexOf(c);
+        if(idx>=0) cards.splice(idx,1);
+        var ref = els.get(c.id);
+        if(ref){ ref.el.remove(); els.delete(c.id); }
+        if(selectedId===c.id) selectedId = null;
+        removed++;
+      }
+    });
     var byKey = {};
     cards.forEach(function(c){
       if(c.type==='floorslot' && c.key) byKey[c.key] = c;
@@ -1533,8 +1550,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         created++;
       });
     });
-    if(created || snapped) updateCounts();
-    return { created:created, snapped:snapped };
+    if(created || snapped || removed) updateCounts();
+    return { created:created, snapped:snapped, removed:removed };
   }
   function floorSlotCenter(card){
     return { x: card.x + (card.w||70)/2, y: card.y + (card.h||34)/2 };
