@@ -141,22 +141,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station .field.station-name{ font-size:9.5px; font-weight:600; text-align:center; color:#60a5fa; word-break:break-word; }
 #app .card.station.occupied .field.station-name{ color:var(--staff); }
 #app .card.station.vacant .field.station-name{ letter-spacing:.05em; text-transform:uppercase; color:#60a5fa; }
-/* Compact overlays that sit on the lettered packing plates drawn on the floor plan */
+/* Solid plates cover the printed floor letters so only our letter/name shows */
 #app .card.station.floor-plate{ width:44px; min-height:44px; height:44px; padding:2px 3px; border-radius:5px;
-    box-shadow:none; border-width:2.5px; gap:0; border-color:var(--staff); z-index:2; }
-#app .card.station.floor-plate.vacant{ background:rgba(37,84,199,.14); border-color:rgba(37,84,199,.65);
-    border-style:dashed; }
+    box-shadow:0 1px 2px rgba(0,0,0,.18); border-width:2px; gap:0; border-color:#111; z-index:2;
+    background:#fff; }
+#app .card.station.floor-plate.vacant{ background:#fff; border-color:#111; border-style:solid; }
 #app .card.station.floor-plate.vacant:hover,
-#app .card.station.floor-plate.drop-target{ background:rgba(37,84,199,.32); border-color:var(--staff); border-style:solid;
-    box-shadow:0 0 0 3px rgba(37,84,199,.35); }
-#app .card.station.floor-plate.occupied{ background:linear-gradient(180deg,#dbeafe,#eff6ff);
-    border-color:var(--staff); border-style:solid;
-    box-shadow:0 1px 2px rgba(37,84,199,.18),0 3px 8px rgba(37,84,199,.22); }
-#app .card.station.floor-plate .field.station-letter{ font-size:13px; font-weight:800; line-height:1; color:#1e3a8a; }
-#app .card.station.floor-plate.vacant .field.station-letter{ color:rgba(37,84,199,.45); }
+#app .card.station.floor-plate.drop-target{ background:#F3F4F6; border-color:#111; border-style:solid;
+    box-shadow:0 0 0 3px rgba(17,17,17,.28); }
+#app .card.station.floor-plate.occupied{ background:#fff; border-color:#111; border-style:solid;
+    box-shadow:0 1px 2px rgba(0,0,0,.2),0 2px 6px rgba(0,0,0,.12); }
+#app .card.station.floor-plate .field.station-letter{ font-size:14px; font-weight:800; line-height:1; color:#111; }
+#app .card.station.floor-plate.vacant .field.station-letter{ color:#111; }
 #app .card.station.floor-plate .field.station-name{ font-size:9px; font-weight:700; line-height:1.15; max-height:2.4em;
-    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:var(--staff); }
-#app .card.station.floor-plate.vacant .field.station-name{ font-size:9px; letter-spacing:0; text-transform:none; color:#3b82f6; }
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:#111; }
+#app .card.station.floor-plate.vacant .field.station-name{ font-size:9px; letter-spacing:0; text-transform:none; color:#111; }
 #app .card.station.floor-plate .ctrl{ width:18px; height:18px; }
 #app .card.station.floor-plate .ctrl svg{ width:10px; height:10px; }
 /* Role / SKU drop plates — same idea as packing stations, colour-matched */
