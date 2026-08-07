@@ -170,9 +170,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot .field.slot-name{ font-size:11px; font-weight:700; text-align:center; line-height:1.2;
     max-height:2.5em; overflow:hidden; word-break:break-word; cursor:pointer; }
 #app .card.floorslot.vacant .field.slot-name{ letter-spacing:.02em; font-size:10px; text-transform:none; opacity:.8; }
-#app .card.floorslot.slot-sku .slot-skus{ display:flex; flex-direction:column; gap:3px; width:100%; margin-top:1px; }
+#app .card.floorslot.slot-sku{ overflow:visible; height:auto !important; }
+#app .card.floorslot.slot-sku .field.slot-label{ flex:0 0 auto; }
+#app .card.floorslot.slot-sku .slot-skus{ display:flex; flex-direction:column; gap:3px; width:100%; margin-top:1px; flex:0 0 auto; }
 #app .card.floorslot.slot-sku .slot-sku-row{ display:flex; align-items:center; gap:4px; width:100%;
-  min-height:18px; padding:2px 4px; border-radius:5px; background:rgba(255,255,255,.55); cursor:pointer; }
+  min-height:18px; padding:2px 4px; border-radius:5px; background:rgba(255,255,255,.55); cursor:pointer; flex:0 0 auto; }
 #app .card.floorslot.slot-sku .slot-sku-row:hover{ background:rgba(255,255,255,.85); }
 #app .card.floorslot.slot-sku .slot-sku-row.empty{ background:rgba(255,255,255,.28); }
 #app .card.floorslot.slot-sku .slot-sku-tag{ flex:0 0 auto; font-size:7px; font-weight:800; letter-spacing:.04em;
@@ -184,8 +186,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot.slot-sku .slot-sku-row.next .slot-sku-line{ color:#ea580c; font-size:11px; }
 #app .card.floorslot.slot-sku .slot-sku-row.empty .slot-sku-line{ color:#fb923c; font-weight:700; }
 #app .card.floorslot.slot-sku .slot-sku-promote{ display:none; width:100%; margin-top:2px; border:none; border-radius:5px;
-  padding:4px 4px; font-size:9px; font-weight:800; letter-spacing:.02em; font-family:inherit; cursor:pointer;
-  background:var(--sku); color:#fff; line-height:1.2; }
+  padding:5px 4px; font-size:10px; font-weight:800; letter-spacing:.02em; font-family:inherit; cursor:pointer;
+  background:var(--sku); color:#fff; line-height:1.2; flex:0 0 auto; position:relative; z-index:6; }
 #app .card.floorslot.slot-sku .slot-sku-promote:hover{ background:#9a3412; }
 #app .card.floorslot.slot-sku.has-next .slot-sku-promote{ display:block; }
 #app .card.floorslot.slot-sku .field.slot-name{ display:none; }
@@ -1966,8 +1968,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       ref.el.style.left = card.x+'px';
       ref.el.style.top = card.y+'px';
       ref.el.style.width = card.w+'px';
-      ref.el.style.height = card.h+'px';
-      ref.el.style.minHeight = card.h+'px';
+      // SKU plates grow with Now/Next/Done — don't clip the Done button
+      if(card.slotKind==='sku'){
+        ref.el.style.height = 'auto';
+        ref.el.style.minHeight = card.h+'px';
+      } else {
+        ref.el.style.height = card.h+'px';
+        ref.el.style.minHeight = card.h+'px';
+      }
       ref.el.style.transform = 'rotate('+(card.rotation||0)+'deg)';
     }
     return true;
@@ -2095,20 +2103,22 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var card = cards.find(function(c){ return c.id===cardId; });
     if(!card || card.type!=='floorslot' || card.slotKind!=='sku') return false;
     normalizeSkuSlotFields(card);
-    if(!card.nextSkuId){
+    var nextId = card.nextSkuId;
+    if(!nextId){
       flashStatus('Set a planned next SKU first, then tap Done when the current one finishes');
       return false;
     }
     var was = skuRosterCode(card.rosterId);
-    var nowCode = skuRosterCode(card.nextSkuId);
-    card.rosterId = card.nextSkuId;
+    var nowCode = skuRosterCode(nextId) || 'SKU';
+    // Next becomes Now; Next clears for the following SKU
+    card.rosterId = nextId;
     card.nextSkuId = null;
     updateFloorSlotVisual(card);
     selectCard(card.id);
     updateCounts();
     renderRoster();
     saveDebounced();
-    flashStatus((was ? was+' done · ' : '')+nowCode+' is now current on '+(card.label||'SKU plate')+' — drop the next SKU when ready');
+    flashStatus((was ? was+' done · ' : '')+nowCode+' is now current on '+(card.label||'SKU plate')+' — set the next SKU when ready');
     return true;
   }
   function clearSkuFromOtherPlates(skuRosterId, exceptId){
@@ -2561,6 +2571,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(card.w) el.style.width = card.w+'px';
     if(isShapeType(card.type)){
       if(card.h) el.style.height = card.h+'px';
+    } else if(card.type==='floorslot' && card.slotKind==='sku' && card.h){
+      // Auto height so Now / Next / Done are all tappable
+      el.style.height = 'auto';
+      el.style.minHeight = card.h+'px';
     } else if((card.type==='station' || card.type==='floorslot') && card.h){
       el.style.height = card.h+'px';
       el.style.minHeight = card.h+'px';
@@ -2645,12 +2659,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         var promoBtn = document.createElement('button');
         promoBtn.type = 'button';
         promoBtn.className = 'slot-sku-promote';
-        promoBtn.textContent = 'Done → next';
-        promoBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-        promoBtn.addEventListener('click', function(e){
+        promoBtn.textContent = 'Done → now';
+        function onPromoteSku(e){
+          e.preventDefault();
           e.stopPropagation();
+          closeAssignPopover();
           promoteSkuNext(card.id);
-        });
+        }
+        promoBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); e.stopPropagation(); });
+        promoBtn.addEventListener('pointerup', onPromoteSku);
+        promoBtn.addEventListener('click', onPromoteSku);
         el.appendChild(promoBtn);
         if(card.nextSkuId) el.classList.add('has-next');
       }
