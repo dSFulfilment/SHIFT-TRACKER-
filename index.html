@@ -3345,26 +3345,46 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!dragState || dragState.pointerId == null || e.pointerId !== dragState.pointerId) return;
     onCardPointerUp(e);
   }
+  function openPlateAssignFromEvent(id, e){
+    var card = cards.find(function(c){ return c.id===id; });
+    var ref = els.get(id);
+    if(!card || !ref || !ref.el) return;
+    if(card.type!=='station' && card.type!=='floorslot'){ selectCard(id); return; }
+    selectCard(id);
+    var assignEl = e && e.target ? e.target.closest('.station-name, .slot-name, .slot-sku-row') : null;
+    var skuSlot = null;
+    if(assignEl && assignEl.classList.contains('slot-sku-row')){
+      skuSlot = assignEl.classList.contains('next') ? 'next' : 'now';
+    }
+    var assignAnchor = assignEl || ref.el.querySelector('.station-name, .slot-name, .slot-sku-row.now, .slot-label') || ref.el;
+    var skuOpt = (card.type==='floorslot' && card.slotKind==='sku')
+      ? { skuSlot: skuSlot || 'now' }
+      : undefined;
+    openAssignPicker(id, assignAnchor, skuOpt);
+  }
   function onCardPointerDown(e, id){
     if(e.target.closest('.ctrl.del, .ctrl.dup, .ctrl.resize, .ctrl.rotate, .ctrl.color, .ctrl.role, .ctrl.assign, .ctrl.status')) return;
     if(e.target.closest('.edit-input')) return;
     if(e.target.closest('.slot-sku-promote')) return;
-    // Drawing tools place on empty canvas — don't steal plate drags unless Move is on
-    if(armedTool && armedTool !== 'move'){
-      if(e.target.closest('.station-name, .slot-name, .slot-sku-row')){
-        e.preventDefault();
-        var skuSlotQuick = e.target.closest('.slot-sku-row');
+    var card = cards.find(function(c){ return c.id===id; });
+    if(!card) return;
+
+    // Only Tools → Move can drag plates. Otherwise tap to assign / select.
+    if(armedTool !== 'move'){
+      e.preventDefault();
+      if(card.type==='station' || card.type==='floorslot'){
+        openPlateAssignFromEvent(id, e);
+      } else if(e.target.closest('.field') && editableWritingField(e.target.closest('.field'), card)){
         selectCard(id);
-        openAssignPicker(id, e.target.closest('.station-name, .slot-name, .slot-sku-row'),
-          skuSlotQuick ? { skuSlot: skuSlotQuick.classList.contains('next') ? 'next' : 'now' } : undefined);
+        // Single tap selects; double-click still edits via existing dblclick handlers
+      } else {
+        selectCard(id);
       }
       return;
     }
+
     e.preventDefault();
     e.stopPropagation();
-    // Drag the plate that received the event (stacking puts stations above SKUs)
-    var card = cards.find(function(c){ return c.id===id; });
-    if(!card) return;
     var fieldTarget = e.target.closest('.field');
     var assignEl = e.target.closest('.station-name, .slot-name, .slot-sku-row');
     var skuSlot = null;
@@ -3373,8 +3393,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     endCardDragListeners();
     cleanupStuckDrag();
-    if(assignEl && armedTool !== 'move') fieldTarget = null;
-    if(armedTool === 'move' && assignEl) fieldTarget = null;
+    // Move mode: drag to reposition. Assign rows are not text-edit targets.
+    if(assignEl) fieldTarget = null;
     // Never reparent during an active drag — appendChild breaks pointer capture in WebKit
     selectCard(id, { skipRaise: true });
     var pt = canvasPointFromEvent(e);
@@ -3456,32 +3476,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     if(!card || !refUp || !refUp.el) return;
     if(!state.moved){
-      // Short tap: Move tool selects / edits; normal mode opens assign
-      if(armedTool === 'move'){
-        selectCard(state.id);
-        raiseCard(state.id);
-        var editField = editableWritingField(state.fieldTarget, card) || primaryWritingField(state.id);
-        var nowTap = Date.now();
-        if(editField && lastPlateEditTap.id === state.id && (nowTap - lastPlateEditTap.t) < 450){
-          startEdit(editField, state.id);
-          lastPlateEditTap = { id:null, t:0 };
-        } else {
-          lastPlateEditTap = { id:state.id, t:nowTap };
-        }
-      } else if(card.type==='station' || card.type==='floorslot'){
-        // Whole plate is tappable (not just the tiny “Tap” row) — fixes Boxes 1 etc.
-        selectCard(state.id);
-        var assignAnchor = state.assignEl || refUp.el.querySelector('.station-name, .slot-name, .slot-sku-row.now, .slot-label') || refUp.el;
-        var skuOpt = undefined;
-        if(card.type==='floorslot' && card.slotKind==='sku'){
-          skuOpt = { skuSlot: state.skuSlot || 'now' };
-        }
-        openAssignPicker(state.id, assignAnchor, skuOpt);
-      } else if(state.wasSelected && state.fieldTarget && editableWritingField(state.fieldTarget, card)){
-        selectCard(state.id);
-        startEdit(state.fieldTarget, state.id);
+      // Move tool short tap: select (resize/delete) / double-tap edits writing
+      selectCard(state.id);
+      raiseCard(state.id);
+      var editField = editableWritingField(state.fieldTarget, card) || primaryWritingField(state.id);
+      var nowTap = Date.now();
+      if(editField && lastPlateEditTap.id === state.id && (nowTap - lastPlateEditTap.t) < 450){
+        startEdit(editField, state.id);
+        lastPlateEditTap = { id:null, t:0 };
       } else {
-        selectCard(state.id);
+        lastPlateEditTap = { id:state.id, t:nowTap };
       }
       return;
     }
