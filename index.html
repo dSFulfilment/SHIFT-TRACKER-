@@ -41,6 +41,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .btn.station{ color:var(--staff); border-color:var(--staff); }
 #app .btn.station:hover{ background:var(--staff-bg); }
 #app .btn.station.drawing{ background:var(--staff); color:#fff; }
+#app .btn.sku{ color:var(--sku); border-color:var(--sku); }
+#app .btn.sku:hover{ background:var(--sku-bg); }
+#app .btn.sku.drawing{ background:var(--sku); color:#fff; }
+#app .btn.boxmaker{ color:var(--boxmaker); border-color:var(--boxmaker); }
+#app .btn.boxmaker:hover{ background:var(--boxmaker-bg); }
+#app .btn.boxmaker.drawing{ background:var(--boxmaker); color:#fff; }
+#app .btn.runner{ color:var(--runner); border-color:var(--runner); }
+#app .btn.runner:hover{ background:var(--runner-bg); }
+#app .btn.runner.drawing{ background:var(--runner); color:#fff; }
 #app .btn.annot.drawing{ background:var(--annot); color:#fff; }
 #app .btn.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
 #app .btn.active:hover{ background:var(--ink); }
@@ -161,7 +170,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     max-height:2.4em; overflow:hidden; word-break:break-word; }
 #app .card.floorslot.vacant .field.slot-name{ letter-spacing:.04em; text-transform:uppercase; font-size:8px; }
 #app .card.floorslot .ctrl.rotate,
-#app .card.floorslot .ctrl.resize,
 #app .card.floorslot .rotate-line{ display:none !important; }
 #app .card.floorslot .ctrl{ width:18px; height:18px; }
 #app .card.floorslot .ctrl svg{ width:10px; height:10px; }
@@ -651,7 +659,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     </div>
     <div class="toolgroup">
       <button class="btn station" id="addStation" title="Click, then tap the map to place an extra station">+ Station</button>
-      <button class="btn station" id="alignStations" title="Place or snap stations A–T plus SKU / box-maker / runner drop plates">Align to plates</button>
+      <button class="btn sku" id="addSkuSlot" title="Click, then tap the map to place a green SKU drop plate">+ SKU plate</button>
+      <button class="btn boxmaker" id="addBoxmakerSlot" title="Click, then tap the map to place a red box-maker drop plate">+ Box maker</button>
+      <button class="btn runner" id="addRunnerSlot" title="Click, then tap the map to place a black runner drop plate">+ Runner</button>
+      <button class="btn station" id="alignStations" title="Place or snap built-in stations A–T plus default SKU / box-maker / runner plates">Align to plates</button>
       <button class="btn station" id="syncBreaks" title="Push station packers into break groups (A–D → Group 1, etc.)">Sync breaks</button>
     </div>
     <div class="toolgroup">
@@ -1935,8 +1946,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     } else if(card.type==='floorslot'){
       var fSlotLabel = document.createElement('div');
       fSlotLabel.className = 'field slot-label';
+      fSlotLabel.dataset.f = 'label';
+      fSlotLabel.dataset.placeholder = 'Label';
       fSlotLabel.textContent = card.label || card.key || '';
-      el.appendChild(fSlotLabel);
+      fSlotLabel.title = 'Double-click to rename this plate';
+      el.appendChild(fSlotLabel); fields.push(fSlotLabel);
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
       fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Drop';
@@ -2327,8 +2341,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     input.select();
 
     function commit(){
-      card[key] = input.value.trim();
-      fieldEl.textContent = card[key];
+      var v = input.value.trim();
+      if(card.type==='floorslot' && key==='label'){
+        card.label = v || card.label || 'Drop plate';
+        fieldEl.textContent = card.label;
+        updateFloorSlotVisual(card);
+      } else {
+        card[key] = v;
+        fieldEl.textContent = card[key];
+      }
       saveDebounced();
     }
     input.addEventListener('keydown', function(e){
@@ -2502,8 +2523,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     card.w = newW; card.h = newH;
     var ref = els.get(card.id);
     ref.el.style.width = newW+'px';
-    if(isShapeType(card.type)){
+    if(isShapeType(card.type) || card.type==='station' || card.type==='floorslot'){
       ref.el.style.height = newH+'px';
+      ref.el.style.minHeight = newH+'px';
     } else {
       ref.el.style.minHeight = newH+'px';
     }
@@ -2529,8 +2551,20 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   // ---- unified "arm a tool, then draw it on the canvas" system ----
-  var TOOL_BTN_IDS = { station:'addStation', text:'addText', arrow:'addArrow', arrow2:'addArrow2', line:'addLine',
+  var TOOL_BTN_IDS = { station:'addStation', skuSlot:'addSkuSlot', boxmakerSlot:'addBoxmakerSlot', runnerSlot:'addRunnerSlot',
+    text:'addText', arrow:'addArrow', arrow2:'addArrow2', line:'addLine',
     circle:'addCircle', rect:'addRect', highlight:'addHighlight', draw:'addDraw' };
+  var SLOT_TOOL_KIND = { skuSlot:'sku', boxmakerSlot:'boxmaker', runnerSlot:'runner' };
+  var SLOT_DEFAULT_SIZE = {
+    sku: { w:90, h:56 },
+    boxmaker: { w:88, h:44 },
+    runner: { w:78, h:36 }
+  };
+  var SLOT_DEFAULT_LABEL = {
+    sku: 'SKU plate',
+    boxmaker: 'Box maker',
+    runner: 'Runner'
+  };
   var LINE_LIKE_TOOL = { arrow:1, arrow2:1, line:1 };
   var TOOL_DEFAULT_GEOM = {
     arrow:{ w:120, h:24 }, arrow2:{ w:120, h:24 }, line:{ w:120, h:16 },
@@ -2715,6 +2749,37 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     updateCounts();
     saveDebounced();
   }
+  function nextCustomSlotKey(kind){
+    var n = 1;
+    var prefix = (kind==='sku'?'SKU':kind==='boxmaker'?'BM':'RN')+'-CUSTOM-';
+    cards.forEach(function(c){
+      if(c.type==='floorslot' && c.key && String(c.key).indexOf(prefix)===0) n++;
+    });
+    return prefix+n;
+  }
+  function placeFloorSlotAt(e, kind){
+    e.preventDefault();
+    var size = SLOT_DEFAULT_SIZE[kind] || { w:80, h:40 };
+    var rect = canvas.getBoundingClientRect();
+    var px = snapVal((e.clientX-rect.left)/zoom - size.w/2);
+    var py = snapVal((e.clientY-rect.top)/zoom - size.h/2);
+    var card = {
+      id: uid(), type:'floorslot', slotKind:kind, key: nextCustomSlotKey(kind),
+      label: SLOT_DEFAULT_LABEL[kind] || 'Drop plate',
+      x: clamp(px,0,CANVAS_W-size.w), y: clamp(py,0,CANVAS_H-size.h),
+      w: size.w, h: size.h, rotation:0, rosterId:null, floorPlate:false, custom:true
+    };
+    cards.push(card);
+    var el = buildCardEl(card);
+    disarmTool();
+    selectCard(card.id);
+    updateCounts();
+    saveDebounced();
+    flashStatus('Placed '+(card.label)+' — double-click the label to rename, drag the corner to resize');
+    // Jump straight into renaming so the shift leader can label it on the spot
+    var labelField = el && el.querySelector('.field.slot-label');
+    if(labelField) startEdit(labelField, card.id);
+  }
 
   viewport.addEventListener('pointerdown', function(e){
     if(armedTool){
@@ -2722,6 +2787,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(armedTool==='draw'){ startFreehand(e); return; }
       if(armedTool==='text'){ placeTextAt(e); return; }
       if(armedTool==='station'){ placeStationAt(e); return; }
+      if(SLOT_TOOL_KIND[armedTool]){ placeFloorSlotAt(e, SLOT_TOOL_KIND[armedTool]); return; }
       startShapeDrag(e, armedTool);
       return;
     }
@@ -2738,6 +2804,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       // same letter and the same packer assignment.
       overrides.letter = nextStationLetter();
       overrides.rosterId = null;
+    }
+    if(orig.type==='floorslot'){
+      overrides.key = nextCustomSlotKey(orig.slotKind||'sku');
+      overrides.rosterId = null;
+      overrides.custom = true;
+      overrides.floorPlate = false;
+      if(orig.label) overrides.label = orig.label;
     }
     var copy = Object.assign({}, orig, overrides);
     cards.push(copy);
@@ -2822,6 +2895,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   document.getElementById('addStation').addEventListener('click', function(){ armTool('station'); });
+  document.getElementById('addSkuSlot').addEventListener('click', function(){ armTool('skuSlot'); });
+  document.getElementById('addBoxmakerSlot').addEventListener('click', function(){ armTool('boxmakerSlot'); });
+  document.getElementById('addRunnerSlot').addEventListener('click', function(){ armTool('runnerSlot'); });
   document.getElementById('alignStations').addEventListener('click', function(){
     var res = ensureFloorStations({ snapExisting: true });
     var slotRes = ensureFloorSlots({ snapExisting: true });
