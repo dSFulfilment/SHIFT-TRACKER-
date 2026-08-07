@@ -1927,14 +1927,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       }
       if(promoEl){
         if(skuNext){
-          promoEl.textContent = skuNow
-            ? ('Done → '+skuNext.code)
-            : ('Start → '+skuNext.code);
-          promoEl.title = skuNow
-            ? ('Mark '+skuNow.code+' done — '+skuNext.code+' becomes Now')
-            : ('Make '+skuNext.code+' the current (Now) SKU');
+          // Always Start on every plate that has a Next — Next becomes Now, old Now clears
+          promoEl.textContent = 'Start → '+skuNext.code;
+          promoEl.title = (skuNow ? skuNow.code+' finishes · ' : '')
+            +skuNext.code+' moves to Now';
         } else {
-          promoEl.textContent = 'Done → now';
+          promoEl.textContent = 'Start → now';
           promoEl.title = 'Set a planned next SKU first';
         }
       }
@@ -1942,7 +1940,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var tip = [];
       if(skuNow) tip.push('Now '+skuNow.code);
       if(skuNext) tip.push('Next '+skuNext.code);
-      if(skuNext) tip.push('tap Done when current finishes');
+      if(skuNext) tip.push('tap Start to make Next become Now');
       ref.el.title = tip.join(' · ');
       ref.el.classList.toggle('occupied', !!(skuNow || skuNext));
       ref.el.classList.toggle('vacant', !(skuNow || skuNext));
@@ -2110,7 +2108,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     var was = skuRosterCode(card.rosterId);
     var nowCode = skuRosterCode(nextId) || 'SKU';
-    // Next becomes Now; Next clears for the following SKU
+    // Next → Now; old Now is cleared (not swapped the other way)
     card.rosterId = nextId;
     card.nextSkuId = null;
     updateFloorSlotVisual(card);
@@ -2118,7 +2116,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     updateCounts();
     renderRoster();
     saveDebounced();
-    flashStatus((was ? was+' done · ' : '')+nowCode+' is now current on '+(card.label||'SKU plate')+' — set the next SKU when ready');
+    flashStatus((was ? was+' finished · ' : '')+'Started '+nowCode+' on '+(card.label||'SKU plate')+' — set the next SKU when ready');
     return true;
   }
   function clearSkuFromOtherPlates(skuRosterId, exceptId){
@@ -2659,7 +2657,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         var promoBtn = document.createElement('button');
         promoBtn.type = 'button';
         promoBtn.className = 'slot-sku-promote';
-        promoBtn.textContent = 'Done → now';
+        promoBtn.textContent = 'Start → now';
         promoBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
         promoBtn.addEventListener('click', function(e){
           e.stopPropagation();
@@ -3016,8 +3014,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         normalizeSkuSlotFields(card);
         if(card.nextSkuId && !q){
           addBtn(
-            '<span class="role-dot" style="background:var(--sku)"></span>Done — make '
-              +skuRosterCode(card.nextSkuId)+' current',
+            '<span class="role-dot" style="background:var(--sku)"></span>Start — '
+              +skuRosterCode(card.nextSkuId)+' → Now',
             'promote-opt',
             function(){ promoteSkuNext(id); }
           );
@@ -7392,47 +7390,43 @@ init();
     var dateKey = ymd(d);
     var staff = rosterStaff().slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
     var shift = shiftLabel(state.rosterShift);
+    var latePeople = peopleForStatus(dateKey, staff, 'late');
+    var leftEarlyPeople = peopleForStatus(dateKey, staff, 'left_early');
+    var absentPeople = peopleForStatus(dateKey, staff, 'absent');
+    var leavePeople = peopleForStatus(dateKey, staff, 'holiday');
+    var hereN = peopleForStatus(dateKey, staff, 'here').length;
+    var lateN = latePeople.length;
+    var leftEarlyN = leftEarlyPeople.length;
+    var absentN = absentPeople.length;
+    var leaveN = leavePeople.length;
+    var onFloor = hereN + lateN;
     var lines = [];
     lines.push(shift.toUpperCase() + ' SHIFT — DAILY UPDATE');
     lines.push(formatDayLong(d));
     lines.push('');
+    lines.push('SUMMARY');
+    lines.push('  On floor (On shift + Late): ' + onFloor);
+    lines.push('  On shift: ' + hereN);
+    lines.push('  Late: ' + lateN);
+    if (leftEarlyN) lines.push('  Left early: ' + leftEarlyN);
+    if (absentN) lines.push('  Absent: ' + absentN);
+    if (leaveN) lines.push('  Leave: ' + leaveN);
+    lines.push('  On ' + shift.toLowerCase() + ' roster: ' + staff.length);
+    lines.push('');
 
-    var here = peopleForStatus(dateKey, staff, 'here');
-    var late = peopleForStatus(dateKey, staff, 'late');
-    var leftEarly = peopleForStatus(dateKey, staff, 'left_early');
-    var absent = peopleForStatus(dateKey, staff, 'absent');
-    var leave = peopleForStatus(dateKey, staff, 'holiday');
-
-    function section(title, people, skipIfEmpty){
-      if (skipIfEmpty && !people.length) return;
+    function nameSection(title, people){
+      if (!people.length) return;
       lines.push(title + ' (' + people.length + ')');
-      if (!people.length){
-        lines.push('  none');
-      } else {
-        people.forEach(function(p){ lines.push('  - ' + p.name); });
-      }
+      people.forEach(function(p){ lines.push('  - ' + p.name); });
       lines.push('');
     }
-    section('ON SHIFT', here, false);
-    section('LATE', late, false);
-    section('LEFT EARLY', leftEarly, true);
-    section('ABSENT', absent, true);
-    section('LEAVE', leave, true);
+    nameSection('LATE', latePeople);
+    nameSection('LEFT EARLY', leftEarlyPeople);
+    nameSection('ABSENT', absentPeople);
+    nameSection('LEAVE', leavePeople);
 
-    var onFloor = here.length + late.length;
-    lines.push('SUMMARY');
-    lines.push('  Still on floor (On shift + Late): ' + onFloor);
-    var summary = joinCountParts([
-      { label:'On shift', count:here.length },
-      { label:'Late', count:late.length },
-      { label:'Left early', count:leftEarly.length },
-      { label:'Absent', count:absent.length },
-      { label:'Leave', count:leave.length }
-    ]);
-    if (summary) lines.push('  ' + summary);
-    lines.push('  On ' + shift.toLowerCase() + ' roster: ' + staff.length);
-    if (!staff.length) lines.push('  (No people on this roster yet)');
-    return lines.join('\n');
+    if (!staff.length) lines.push('(No people on this roster yet)');
+    return lines.join('\n').replace(/\n+$/, '');
   }
   function buildWeeklyCopy(){
     var ws = state.weekStart || startOfWeek(new Date());
