@@ -6938,10 +6938,6 @@ init();
     });
   })();
 
-  function namesForStatus(dateKey, staff, statusKey){
-    return staff.filter(function(p){ return statusFor(dateKey, p.id) === statusKey; })
-      .map(function(p){ return p.name; });
-  }
   function peopleForStatus(dateKey, staff, statusKey){
     return staff.filter(function(p){ return statusFor(dateKey, p.id) === statusKey; });
   }
@@ -6950,10 +6946,6 @@ init();
   }
   function formatDayPays(d){
     return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
-  }
-  function bulletNames(names){
-    if (!names.length) return ['  none'];
-    return names.map(function(n){ return '  - ' + n; });
   }
   function statusShort(s){
     if (s === 'here') return 'Here';
