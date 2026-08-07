@@ -115,7 +115,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     background-size:16px 16px; background-position:0 0,0 8px,8px -8px,-8px 0;
     background-color:#F7F7F4; padding:24px; }
 #app #viewport.draw-armed{ cursor:crosshair; }
-#app #viewport.move-armed{ cursor:grab; }
+#app #viewport.move-armed,
+#app #viewport.is-dragging{ cursor:grab; touch-action:none; }
+#app #viewport.is-dragging{ cursor:grabbing; }
+#app #viewport.is-dragging .card,
+#app .card.dragging{ cursor:grabbing; }
 #app #canvas{ position:relative; width:956px; height:711px; transform-origin:0 0;
     box-shadow:0 0 0 1px #ddd,0 12px 32px rgba(0,0,0,.10); background:#fff; }
 #app #bgImage{ display:block; width:956px; height:711px; user-select:none; -webkit-user-drag:none; pointer-events:none; }
@@ -452,10 +456,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #floorToolsDock .ft-done.show{ display:inline-flex; }
 #floorToolsDock .ft-done svg{ width:22px; height:22px; display:block; }
 #app #viewport.move-armed .card.station,
-#app #viewport.move-armed .card.floorslot{ z-index:6; }
+#app #viewport.move-armed .card.floorslot,
+#app #viewport.is-dragging .card.station,
+#app #viewport.is-dragging .card.floorslot{ z-index:6; }
+#app .card.selected{ z-index:18; }
 #app #viewport.move-armed .card.station.selected,
 #app #viewport.move-armed .card.floorslot.selected,
-#app #viewport.move-armed .card.dragging{ z-index:40 !important; }
+#app #viewport.move-armed .card.dragging,
+#app .card.dragging{ z-index:40 !important; }
 #app .role-popover .assign-search-wrap{ position:sticky; top:0; z-index:2; background:#fff; padding:2px 0 6px; }
 #app .role-popover .assign-search{ width:100%; height:30px; border:1px solid var(--line); border-radius:7px;
   padding:0 8px; font-size:12px; font-family:inherit; box-sizing:border-box; }
@@ -2613,7 +2621,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fName = document.createElement('div');
       fName.className = 'field station-name';
       fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Tap' : 'Vacant');
-      fName.title = 'Tap to assign · double-click assigned name to clear · Tools → Move to drag/resize';
+      fName.title = 'Tap to assign · drag to move · double-click assigned name to clear';
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
@@ -2633,7 +2641,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
       fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Tap';
-      fSlotName.title = 'Tap to assign · double-click assigned name to clear · Tools → Move to drag/resize';
+      fSlotName.title = 'Tap to assign · drag to move · double-click assigned name to clear';
       fSlotName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
@@ -3271,7 +3279,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     return null;
   }
 
-  // ---- drag existing card (only while Tools → Move is armed) ----
+  // ---- drag existing cards (drag always moves; short tap still assigns) ----
   var dragState = null;
   var lastPlateEditTap = { id:null, t:0 };
   function endCardDragListeners(){
@@ -3279,48 +3287,58 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     window.removeEventListener('pointerup', onCardPointerUp);
     window.removeEventListener('pointercancel', onCardPointerUp);
     document.body.style.userSelect = '';
+    if(viewport) viewport.classList.remove('is-dragging');
   }
   function onCardPointerDown(e, id){
     if(e.target.closest('.ctrl.del, .ctrl.dup, .ctrl.resize, .ctrl.rotate, .ctrl.color, .ctrl.role, .ctrl.assign, .ctrl.status')) return;
     if(e.target.closest('.edit-input')) return;
     if(e.target.closest('.slot-sku-promote')) return;
+    // Drawing tools place on empty canvas — don't steal plate drags unless Move is on
+    if(armedTool && armedTool !== 'move'){
+      if(e.target.closest('.station-name, .slot-name, .slot-sku-row')){
+        e.preventDefault();
+        var skuSlotQuick = e.target.closest('.slot-sku-row');
+        selectCard(id);
+        openAssignPicker(id, e.target.closest('.station-name, .slot-name, .slot-sku-row'),
+          skuSlotQuick ? { skuSlot: skuSlotQuick.classList.contains('next') ? 'next' : 'now' } : undefined);
+      }
+      return;
+    }
     e.preventDefault();
+    var rect = canvas.getBoundingClientRect();
+    var startPx = (e.clientX-rect.left)/zoom;
+    var startPy = (e.clientY-rect.top)/zoom;
+    // If a smaller plate sits under this click, drag that one instead of the big covering plate
+    id = topCardIdAt(startPx, startPy, id) || id;
     var card = cards.find(function(c){ return c.id===id; });
     if(!card) return;
+    var refHit = els.get(id);
     var fieldTarget = e.target.closest('.field');
     var assignEl = e.target.closest('.station-name, .slot-name, .slot-sku-row');
+    // If hit-test retargeted to another plate, assign zones on the original target don't apply
+    if(refHit && e.target && refHit.el && !refHit.el.contains(e.target)){
+      fieldTarget = null;
+      assignEl = null;
+    }
     var skuSlot = null;
     if(assignEl && assignEl.classList.contains('slot-sku-row')){
       skuSlot = assignEl.classList.contains('next') ? 'next' : 'now';
     }
-    // Default mode: tap assign zones to pick who/what; no dragging until Move is on.
-    if(armedTool !== 'move'){
-      if(assignEl){
-        selectCard(id);
-        openAssignPicker(id, assignEl, skuSlot ? { skuSlot: skuSlot } : undefined);
-      } else {
-        selectCard(id);
-      }
-      return;
-    }
-    // Move mode: always allow another drag — clean up any stuck prior drag first
     endCardDragListeners();
     if(dragState){
       var stuck = els.get(dragState.id);
       if(stuck && stuck.el) stuck.el.classList.remove('dragging');
       dragState = null;
     }
-    // Move mode: drag to reposition. Assign rows don't count as text-edit targets.
-    if(assignEl) fieldTarget = null;
-    selectCard(id);
-    var rect = canvas.getBoundingClientRect();
-    var startPx = (e.clientX-rect.left)/zoom;
-    var startPy = (e.clientY-rect.top)/zoom;
+    if(assignEl && armedTool !== 'move') fieldTarget = null;
+    if(armedTool === 'move' && assignEl) fieldTarget = null;
+    selectCard(id, { skipRaise: true });
     var ref0 = els.get(id);
     dragState = { id:id, startPx:startPx, startPy:startPy, origX:card.x, origY:card.y, moved:false,
       fieldTarget:fieldTarget, assignEl:assignEl, skuSlot:skuSlot, wasSelected:true,
       pointerId: e.pointerId };
     document.body.style.userSelect='none';
+    if(viewport) viewport.classList.add('is-dragging');
     if(ref0 && ref0.el && typeof ref0.el.setPointerCapture === 'function'){
       try{ ref0.el.setPointerCapture(e.pointerId); }catch(err){}
     }
@@ -3340,9 +3358,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var card = cards.find(function(c){ return c.id===dragState.id; });
       var ref = card ? els.get(card.id) : null;
       if(!card || !ref || !ref.el) return;
+      if(!ref.el.classList.contains('dragging')){
+        raiseCard(card.id);
+        ref.el.classList.add('dragging');
+      }
       card.x = snapVal(dragState.origX + dx);
       card.y = snapVal(dragState.origY + dy);
-      ref.el.classList.add('dragging');
       ref.el.style.left = card.x+'px';
       ref.el.style.top = card.y+'px';
       if(card.type==='staff'){
@@ -3372,9 +3393,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     if(!card || !refUp || !refUp.el) return;
     if(!state.moved){
-      // Move tool: tap selects (resize/delete). Double-click edits plate text (letter/label).
+      // Short tap: Move tool selects / edits; normal mode opens assign
       if(armedTool === 'move'){
         selectCard(state.id);
+        raiseCard(state.id);
         var editField = editableWritingField(state.fieldTarget, card) || primaryWritingField(state.id);
         var nowTap = Date.now();
         if(editField && lastPlateEditTap.id === state.id && (nowTap - lastPlateEditTap.t) < 450){
@@ -3386,7 +3408,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       } else if(state.assignEl){
         selectCard(state.id);
         openAssignPicker(state.id, state.assignEl, state.skuSlot ? { skuSlot: state.skuSlot } : undefined);
-      } else if(state.wasSelected && state.fieldTarget){
+      } else if(state.wasSelected && state.fieldTarget && editableWritingField(state.fieldTarget, card)){
+        selectCard(state.id);
         startEdit(state.fieldTarget, state.id);
       } else {
         selectCard(state.id);
@@ -3428,6 +3451,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     refUp.el.style.left = card.x+'px';
     refUp.el.style.top = card.y+'px';
     selectCard(card.id);
+    raiseCard(card.id);
     saveDebounced();
   }
 
@@ -3510,17 +3534,58 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   // ---- select ----
-  function selectCard(id){
-    if(selectedId && els.has(selectedId)) els.get(selectedId).el.classList.remove('selected');
+  function selectCard(id, opts){
+    opts = opts || {};
+    if(selectedId && els.has(selectedId) && selectedId !== id){
+      els.get(selectedId).el.classList.remove('selected');
+    }
     selectedId = id;
     var ref = els.get(id);
+    if(!ref || !ref.el) return;
     ref.el.classList.add('selected');
-    canvas.appendChild(ref.el);
+    // Re-parenting mid-pointerdown breaks drag on some browsers — skip while dragging starts
+    if(!opts.skipRaise) canvas.appendChild(ref.el);
     var card = cards.find(function(c){ return c.id===id; });
     if(card && isColorable(card.type) && card.color){
       activeDrawColor = card.color;
       syncDrawColorChrome();
     }
+  }
+  function raiseCard(id){
+    var ref = els.get(id);
+    if(ref && ref.el && ref.el.parentNode === canvas) canvas.appendChild(ref.el);
+  }
+  function cardBounds(card, el){
+    var w = Number(card.w) || (el && el.offsetWidth) || 40;
+    var h = Number(card.h) || (el && el.offsetHeight) || 40;
+    if(el && card.type==='floorslot' && card.slotKind==='sku') h = el.offsetHeight || h;
+    return { x:card.x, y:card.y, w:w, h:h, area:Math.max(1, w*h) };
+  }
+  function isFloorPlateCard(card){
+    return !!card && (card.type==='station' || card.type==='floorslot');
+  }
+  // Prefer the smallest floor plate under a point so big SKU plates don't steal station/box hits.
+  // Markup (highlight/line/etc.) keeps its own drag — don't retarget those onto plates underneath.
+  function topCardIdAt(canvasX, canvasY, preferId){
+    var preferCard = preferId ? cards.find(function(c){ return c.id===preferId; }) : null;
+    if(preferCard && !isFloorPlateCard(preferCard)) return preferId;
+    var hits = [];
+    cards.forEach(function(c){
+      if(!isFloorPlateCard(c)) return;
+      var ref = els.get(c.id);
+      if(!ref || !ref.el) return;
+      var b = cardBounds(c, ref.el);
+      if(canvasX >= b.x && canvasX <= b.x + b.w && canvasY >= b.y && canvasY <= b.y + b.h){
+        hits.push({ id:c.id, area:b.area, preferred: preferId && c.id===preferId });
+      }
+    });
+    if(!hits.length) return preferId || null;
+    hits.sort(function(a,b){
+      if(a.area !== b.area) return a.area - b.area;
+      if(a.preferred !== b.preferred) return a.preferred ? -1 : 1;
+      return 0;
+    });
+    return hits[0].id;
   }
   function deselectAll(){
     if(selectedId && els.has(selectedId)) els.get(selectedId).el.classList.remove('selected');
