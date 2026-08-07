@@ -388,49 +388,36 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   flex-direction:column; align-items:flex-start; gap:10px; max-width:min(360px, calc(100vw - 32px)); }
 #floorToolsDock.floor-visible{ display:flex; }
 #floorToolsDock .ft-fab{ border:1px solid var(--line); background:#fff; color:var(--ink);
-  border-radius:999px; padding:12px 18px; font:inherit; font-size:13px; font-weight:800;
-  cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.18); letter-spacing:.01em;
+  border-radius:999px; width:52px; height:52px; padding:0; display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.18);
   transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .15s, color .15s, border-color .15s; }
+#floorToolsDock .ft-fab svg{ width:24px; height:24px; display:block; }
 #floorToolsDock .ft-fab:hover{ background:#F7F7F4; }
 #floorToolsDock .ft-fab.armed, #floorToolsDock.open .ft-fab{ background:var(--ink); color:#fff; border-color:var(--ink); }
 #floorToolsDock .ft-fab:active{ transform:scale(.96); }
-#floorToolsDock .ft-panel{ width:min(340px, calc(100vw - 32px)); max-height:min(78vh, 640px); overflow:auto;
+#floorToolsDock .ft-panel{ width:min(280px, calc(100vw - 32px)); max-height:min(78vh, 640px); overflow:auto;
   background:#fff; border:1px solid var(--line); border-radius:18px;
-  box-shadow:0 18px 48px rgba(0,0,0,.22); padding:12px 12px 14px;
+  box-shadow:0 18px 48px rgba(0,0,0,.22); padding:10px 10px 12px;
   transform-origin:left bottom; opacity:0; visibility:hidden; pointer-events:none;
   transform:translateY(18px) scale(.92); transition:opacity .22s ease, transform .34s cubic-bezier(.34,1.56,.64,1), visibility 0s linear .34s; }
 #floorToolsDock.open .ft-panel{ opacity:1; visibility:visible; pointer-events:auto;
   transform:translateY(0) scale(1); transition:opacity .18s ease, transform .34s cubic-bezier(.34,1.56,.64,1), visibility 0s; }
-#floorToolsDock .ft-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
-#floorToolsDock .ft-title{ font-size:15px; font-weight:800; letter-spacing:-.02em; }
-#floorToolsDock .ft-close{ width:32px; height:32px; border:none; border-radius:50%; background:#F2F2F7;
-  color:#6E6E73; font-size:17px; cursor:pointer; line-height:1; }
-#floorToolsDock .ft-sec{ margin:0 0 10px; }
-#floorToolsDock .ft-sec-lbl{ font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
-  color:var(--muted); margin:0 0 6px; }
-#floorToolsDock .ft-sec-hint{ font-size:11px; color:#8E8E93; margin:0 0 8px; line-height:1.35; }
-#floorToolsDock .ft-grid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-#floorToolsDock .ft-tool{ display:flex; align-items:center; gap:8px; width:100%; border:1px solid var(--line);
-  border-radius:12px; background:#FAFAF8; padding:10px 11px; cursor:pointer; font:inherit; font-size:12.5px;
-  font-weight:700; color:var(--ink); text-align:left; }
+#floorToolsDock .ft-head{ display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-bottom:6px; }
+#floorToolsDock .ft-close{ width:30px; height:30px; border:none; border-radius:50%; background:#F2F2F7;
+  color:#6E6E73; font-size:16px; cursor:pointer; line-height:1; display:inline-flex; align-items:center; justify-content:center; }
+#floorToolsDock .ft-sec{ margin:0 0 8px; }
+#floorToolsDock .ft-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+#floorToolsDock .ft-tool{ position:relative; display:inline-flex; align-items:center; justify-content:center;
+  width:100%; aspect-ratio:1; border:1px solid var(--line); border-radius:14px; background:#FAFAF8;
+  padding:0; cursor:pointer; color:var(--ink); }
 #floorToolsDock .ft-tool:hover{ background:#F1F1EE; }
-#floorToolsDock .ft-tool .swatch{ width:12px; height:12px; border-radius:50%; flex:0 0 auto;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.14); }
-#floorToolsDock .ft-tool.station .swatch{ background:var(--staff); }
-#floorToolsDock .ft-tool.sku .swatch{ background:var(--sku); }
-#floorToolsDock .ft-tool.boxmaker .swatch{ background:var(--boxmaker); }
-#floorToolsDock .ft-tool.runner .swatch{ background:var(--runner); }
-#floorToolsDock .ft-tool.move .swatch{ background:var(--ink); }
-#floorToolsDock .ft-tool.annot .swatch,
-#floorToolsDock .ft-tool .swatch.ft-color{
-  width:18px; height:18px; background:var(--draw-color, var(--annot));
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.18), 0 0 0 2px #fff;
-  border:1px solid rgba(0,0,0,.08); cursor:pointer;
-}
-#floorToolsDock .ft-tool.drawing .swatch.ft-color{
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 2px rgba(255,255,255,.55);
-}
-#floorToolsDock .ft-tool .sub{ display:block; font-size:10px; font-weight:600; color:var(--muted); margin-top:2px; }
+#floorToolsDock .ft-tool .ft-ico{ width:26px; height:26px; display:block; pointer-events:none; }
+#floorToolsDock .ft-tool .ft-ico svg{ width:26px; height:26px; display:block; }
+#floorToolsDock .ft-tool .swatch{ display:none; }
+#floorToolsDock .ft-tool.annot .swatch.ft-color{
+  display:block; position:absolute; right:5px; bottom:5px; width:12px; height:12px; border-radius:50%;
+  background:var(--draw-color, var(--annot)); box-shadow:inset 0 0 0 1px rgba(0,0,0,.18), 0 0 0 2px #fff;
+  border:1px solid rgba(0,0,0,.08); cursor:pointer; }
 #floorToolsDock .ft-tool.drawing{ color:#fff; border-color:transparent; }
 #floorToolsDock .ft-tool.station.drawing{ background:var(--staff); }
 #floorToolsDock .ft-tool.sku.drawing{ background:var(--sku); }
@@ -438,25 +425,37 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #floorToolsDock .ft-tool.runner.drawing{ background:var(--runner); }
 #floorToolsDock .ft-tool.annot.drawing{ background:var(--draw-color, var(--annot)); }
 #floorToolsDock .ft-tool.move.drawing{ background:var(--ink); }
-#floorToolsDock .ft-tool.drawing .sub{ color:rgba(255,255,255,.85); }
-#floorToolsDock .ft-actions{ display:flex; flex-wrap:wrap; gap:7px; }
-#floorToolsDock .ft-actions .btn{ flex:1 1 96px; justify-content:center; }
+#floorToolsDock .ft-actions{ display:flex; flex-wrap:wrap; gap:6px; }
+#floorToolsDock .ft-actions .btn{ flex:1 1 56px; justify-content:center; min-height:40px; }
+#floorToolsDock .ft-actions .btn.ft-ico-btn{ padding:8px; }
+#floorToolsDock .ft-actions .btn.ft-ico-btn svg{ width:20px; height:20px; display:block; }
 #floorToolsDock #toggleSnap:not(.active){ color:var(--muted); }
-#floorToolsDock .ft-grid.ft-one{ grid-template-columns:1fr; }
+#floorToolsDock .ft-grid.ft-one{ grid-template-columns:repeat(4, 1fr); }
 #floorToolsScrim{ display:none; position:fixed; inset:0; z-index:9997; background:transparent; }
 #floorToolsScrim.open{ display:block; }
 @media (max-width:640px){
   #floorToolsDock{ bottom:72px; }
 }
-#app #floorToolChip{ display:none; position:fixed; top:56px; left:12px; z-index:10050; align-items:center; gap:8px;
-  background:rgba(28,36,48,.92); color:#fff; border-radius:999px; padding:7px 8px 7px 12px; font-size:12px;
-  font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.2); pointer-events:auto; }
+#app #floorToolChip{ display:none; position:fixed; top:56px; left:12px; z-index:10050; align-items:center; gap:6px;
+  background:rgba(28,36,48,.92); color:#fff; border-radius:999px; padding:6px 6px 6px 10px;
+  box-shadow:0 4px 14px rgba(0,0,0,.2); pointer-events:auto; }
 #app #floorToolChip.show{ display:flex; }
+#app #floorToolChip .ft-chip-ico{ width:20px; height:20px; display:block; }
+#app #floorToolChip .ft-chip-ico svg{ width:20px; height:20px; display:block; }
 #app #floorToolChip button{ border:none; border-radius:999px; background:rgba(255,255,255,.18); color:#fff;
-  font:inherit; font-size:11px; font-weight:800; padding:5px 10px; cursor:pointer; touch-action:manipulation; }
+  width:30px; height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; touch-action:manipulation; }
+#app #floorToolChip button svg{ width:16px; height:16px; display:block; }
 #app #floorToolChip button:hover{ background:rgba(255,255,255,.28); }
-#floorToolsDock .ft-done{ display:none; width:100%; justify-content:center; background:var(--ink); color:#fff; border-color:var(--ink); }
+#floorToolsDock .ft-done{ display:none; width:100%; aspect-ratio:1; align-items:center; justify-content:center;
+  background:var(--ink); color:#fff; border-color:var(--ink); border-radius:14px; padding:0; }
 #floorToolsDock .ft-done.show{ display:inline-flex; }
+#floorToolsDock .ft-done svg{ width:22px; height:22px; display:block; }
+#app #viewport.move-armed .card.station,
+#app #viewport.move-armed .card.floorslot{ z-index:6; }
+#app #viewport.move-armed .card.station.selected,
+#app #viewport.move-armed .card.floorslot.selected,
+#app #viewport.move-armed .card.dragging{ z-index:40 !important; }
 #app .role-popover .assign-search-wrap{ position:sticky; top:0; z-index:2; background:#fff; padding:2px 0 6px; }
 #app .role-popover .assign-search{ width:100%; height:30px; border:1px solid var(--line); border-radius:7px;
   padding:0 8px; font-size:12px; font-family:inherit; box-sizing:border-box; }
@@ -823,55 +822,48 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   </header>
   <div id="floorToolsScrim" aria-hidden="true"></div>
   <div id="floorToolsDock" class="floor-visible" aria-live="polite">
-    <div class="ft-panel" id="floorToolsModal" role="dialog" aria-labelledby="ftTitle" aria-hidden="true">
+    <div class="ft-panel" id="floorToolsModal" role="dialog" aria-label="Tools" aria-hidden="true">
       <div class="ft-head">
-        <div class="ft-title" id="ftTitle">Tools</div>
         <button type="button" class="ft-close" id="floorToolsClose" title="Close">×</button>
       </div>
       <div class="ft-sec">
-        <div class="ft-sec-lbl">Move</div>
         <div class="ft-grid ft-one">
-          <button type="button" class="ft-tool move" id="toggleMove"><span class="swatch"></span><span>Move plates<span class="sub">Drag · double-click text</span></span></button>
-        </div>
-        <div class="ft-actions" style="margin-top:8px">
-          <button type="button" class="btn ft-done" id="floorToolDone" title="Finish and leave the current tool">Done — cancel tool</button>
+          <button type="button" class="ft-tool move" id="toggleMove" title="Move plates"><span class="ft-ico" data-ico="move"></span></button>
+          <button type="button" class="btn ft-done ft-ico-btn" id="floorToolDone" title="Done — leave tool"></button>
         </div>
       </div>
       <div class="ft-sec">
-        <div class="ft-sec-lbl">Add plate</div>
         <div class="ft-grid">
-          <button type="button" class="ft-tool station" id="addStation"><span class="swatch"></span><span>Packer<span class="sub">Station plate</span></span></button>
-          <button type="button" class="ft-tool sku" id="addSkuSlot"><span class="swatch"></span><span>SKU<span class="sub">Current + next</span></span></button>
-          <button type="button" class="ft-tool boxmaker" id="addBoxmakerSlot"><span class="swatch"></span><span>Box<span class="sub">Box maker plate</span></span></button>
-          <button type="button" class="ft-tool runner" id="addRunnerSlot"><span class="swatch"></span><span>Runner<span class="sub">Runner plate</span></span></button>
+          <button type="button" class="ft-tool station" id="addStation" title="Add packer plate"><span class="ft-ico" data-ico="packer"></span></button>
+          <button type="button" class="ft-tool sku" id="addSkuSlot" title="Add SKU plate"><span class="ft-ico" data-ico="sku"></span></button>
+          <button type="button" class="ft-tool boxmaker" id="addBoxmakerSlot" title="Add box plate"><span class="ft-ico" data-ico="box"></span></button>
+          <button type="button" class="ft-tool runner" id="addRunnerSlot" title="Add runner plate"><span class="ft-ico" data-ico="runner"></span></button>
         </div>
       </div>
       <div class="ft-sec">
-        <div class="ft-sec-lbl">Mark up <span style="font-weight:600;letter-spacing:0;text-transform:none;color:#8E8E93">· tap circle for colour</span></div>
         <div class="ft-grid">
-          <button type="button" class="ft-tool annot" id="addText"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Text<span class="sub">Label on map</span></span></button>
-          <button type="button" class="ft-tool annot" id="addArrow"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Arrow<span class="sub">Draw direction</span></span></button>
-          <button type="button" class="ft-tool annot" id="addArrow2"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Double arrow<span class="sub">Both ways</span></span></button>
-          <button type="button" class="ft-tool annot" id="addLine"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Line<span class="sub">Straight mark</span></span></button>
-          <button type="button" class="ft-tool annot" id="addDraw"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Pen<span class="sub">Freehand</span></span></button>
-          <button type="button" class="ft-tool annot" id="addHighlight"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Zone<span class="sub">Highlight area</span></span></button>
-          <button type="button" class="ft-tool annot" id="addCircle"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Circle<span class="sub">Round outline</span></span></button>
-          <button type="button" class="ft-tool annot" id="addRect"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Box shape<span class="sub">Rectangle</span></span></button>
+          <button type="button" class="ft-tool annot" id="addText" title="Text"><span class="ft-ico" data-ico="text"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addArrow" title="Arrow"><span class="ft-ico" data-ico="arrow"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addArrow2" title="Double arrow"><span class="ft-ico" data-ico="arrow2"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addLine" title="Line"><span class="ft-ico" data-ico="line"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addDraw" title="Pen"><span class="ft-ico" data-ico="pen"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addHighlight" title="Zone"><span class="ft-ico" data-ico="zone"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addCircle" title="Circle"><span class="ft-ico" data-ico="circle"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
+          <button type="button" class="ft-tool annot" id="addRect" title="Box shape"><span class="ft-ico" data-ico="rect"></span><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span></button>
         </div>
       </div>
       <div class="ft-sec">
-        <div class="ft-sec-lbl">Board</div>
         <div class="ft-actions">
-          <button type="button" class="btn active" id="toggleSnap" title="Snap items to grid while dragging">Snap</button>
-          <button type="button" class="btn" id="alignStations" title="Snap built-in plates back into place">Reset</button>
-          <button type="button" class="btn" id="printBtn" title="Print this layout">Print</button>
-          <button type="button" class="btn danger" id="clearAll" title="Clear this shift board and restore vacant plates">Clear</button>
+          <button type="button" class="btn active" id="toggleSnap" title="Snap to grid">Snap</button>
+          <button type="button" class="btn" id="alignStations" title="Reset plate positions">Reset</button>
+          <button type="button" class="btn" id="printBtn" title="Print">Print</button>
+          <button type="button" class="btn danger" id="clearAll" title="Clear board">Clear</button>
         </div>
       </div>
     </div>
-    <button type="button" class="ft-fab" id="floorToolsBtn" title="Open floor tools" aria-expanded="false" aria-controls="floorToolsModal">Tools</button>
+    <button type="button" class="ft-fab" id="floorToolsBtn" title="Tools" aria-label="Tools" aria-expanded="false" aria-controls="floorToolsModal"></button>
   </div>
-  <div id="floorToolChip"><span id="floorToolChipLabel">Tool armed</span><button type="button" id="floorToolCancel">Cancel</button></div>
+  <div id="floorToolChip"><span class="ft-chip-ico" id="floorToolChipIcon"></span><button type="button" id="floorToolCancel" title="Cancel tool" aria-label="Cancel tool"></button></div>
   <div id="main">
     <aside id="rosterPanel">
       <div class="roster-search-wrap">
@@ -2328,6 +2320,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(name==='resize') return '<svg viewBox="0 0 16 16" fill="none"><path d="M4 12L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 12L12 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
     if(name==='move') return '<svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5L8 14.5M1.5 8L14.5 8M5 4L8 1.5L11 4M5 12L8 14.5L11 12M4 5L1.5 8L4 11M12 5L14.5 8L12 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     if(name==='color') return '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor" stroke="#fff" stroke-width="1.5"/></svg>';
+    if(name==='tools') return '<svg viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a4.5 4.5 0 0 0-6.1 6.1L3 18l3 3 5.6-5.6a4.5 4.5 0 0 0 6.1-6.1l-2.5 2.5-3-3 2.5-2.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    if(name==='packer') return '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4" width="14" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M9 10h6M9 14h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    if(name==='sku') return '<svg viewBox="0 0 24 24" fill="none"><path d="M4 8l8-4 8 4v8l-8 4-8-4V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 4v16M4 8l8 4 8-4" stroke="currentColor" stroke-width="1.8"/></svg>';
+    if(name==='box') return '<svg viewBox="0 0 24 24" fill="none"><path d="M3 8l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 8v8l9 4 9-4V8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+    if(name==='runner') return '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M8 21l2.5-7 2 2.5L15 11l3 2M9.5 12l-2 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if(name==='text') return '<svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M12 6v12M8 18h8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
+    if(name==='arrow') return '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if(name==='arrow2') return '<svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M9 7L4 12l5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if(name==='line') return '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19L19 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+    if(name==='pen') return '<svg viewBox="0 0 24 24" fill="none"><path d="M4 20l4.2-1.2L19 8l-3-3L5.2 15.8 4 20z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14.5 6.5l3 3" stroke="currentColor" stroke-width="1.8"/></svg>';
+    if(name==='zone') return '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2.5"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    if(name==='circle') return '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7.5" stroke="currentColor" stroke-width="1.9"/></svg>';
+    if(name==='rect') return '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="6" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.9"/></svg>';
+    if(name==='check') return '<svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if(name==='x') return '<svg viewBox="0 0 24 24" fill="none"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
     return '';
   }
 
@@ -3267,8 +3274,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   // ---- drag existing card (only while Tools → Move is armed) ----
   var dragState = null;
   var lastPlateEditTap = { id:null, t:0 };
+  function endCardDragListeners(){
+    window.removeEventListener('pointermove', onCardPointerMove);
+    window.removeEventListener('pointerup', onCardPointerUp);
+    window.removeEventListener('pointercancel', onCardPointerUp);
+    document.body.style.userSelect = '';
+  }
   function onCardPointerDown(e, id){
-    if(e.target.closest('.ctrl')) return;
+    if(e.target.closest('.ctrl.del, .ctrl.dup, .ctrl.resize, .ctrl.rotate, .ctrl.color, .ctrl.role, .ctrl.assign, .ctrl.status')) return;
     if(e.target.closest('.edit-input')) return;
     if(e.target.closest('.slot-sku-promote')) return;
     e.preventDefault();
@@ -3290,19 +3303,34 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       }
       return;
     }
+    // Move mode: always allow another drag — clean up any stuck prior drag first
+    endCardDragListeners();
+    if(dragState){
+      var stuck = els.get(dragState.id);
+      if(stuck && stuck.el) stuck.el.classList.remove('dragging');
+      dragState = null;
+    }
     // Move mode: drag to reposition. Assign rows don't count as text-edit targets.
     if(assignEl) fieldTarget = null;
+    selectCard(id);
     var rect = canvas.getBoundingClientRect();
     var startPx = (e.clientX-rect.left)/zoom;
     var startPy = (e.clientY-rect.top)/zoom;
+    var ref0 = els.get(id);
     dragState = { id:id, startPx:startPx, startPy:startPy, origX:card.x, origY:card.y, moved:false,
-      fieldTarget:fieldTarget, assignEl:assignEl, skuSlot:skuSlot, wasSelected:(selectedId===id) };
+      fieldTarget:fieldTarget, assignEl:assignEl, skuSlot:skuSlot, wasSelected:true,
+      pointerId: e.pointerId };
     document.body.style.userSelect='none';
+    if(ref0 && ref0.el && typeof ref0.el.setPointerCapture === 'function'){
+      try{ ref0.el.setPointerCapture(e.pointerId); }catch(err){}
+    }
     window.addEventListener('pointermove', onCardPointerMove);
     window.addEventListener('pointerup', onCardPointerUp);
+    window.addEventListener('pointercancel', onCardPointerUp);
   }
   function onCardPointerMove(e){
     if(!dragState) return;
+    if(dragState.pointerId != null && e.pointerId != null && e.pointerId !== dragState.pointerId) return;
     var rect = canvas.getBoundingClientRect();
     var px = (e.clientX-rect.left)/zoom;
     var py = (e.clientY-rect.top)/zoom;
@@ -3310,9 +3338,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(Math.abs(dx)>3 || Math.abs(dy)>3) dragState.moved = true;
     if(dragState.moved){
       var card = cards.find(function(c){ return c.id===dragState.id; });
+      var ref = card ? els.get(card.id) : null;
+      if(!card || !ref || !ref.el) return;
       card.x = snapVal(dragState.origX + dx);
       card.y = snapVal(dragState.origY + dy);
-      var ref = els.get(card.id);
       ref.el.classList.add('dragging');
       ref.el.style.left = card.x+'px';
       ref.el.style.top = card.y+'px';
@@ -3327,81 +3356,79 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
   }
   function onCardPointerUp(e){
-    window.removeEventListener('pointermove', onCardPointerMove);
-    window.removeEventListener('pointerup', onCardPointerUp);
-    document.body.style.userSelect='';
-    if(dragState){
-      var card = cards.find(function(c){ return c.id===dragState.id; });
-      if(card){
-        var refUp = els.get(card.id);
-        if(refUp && refUp.el) refUp.el.classList.remove('dragging');
-        if(!dragState.moved){
-          // Move tool: tap selects (resize/delete). Double-click edits plate text (letter/label).
-          if(armedTool === 'move'){
-            selectCard(dragState.id);
-            var editField = editableWritingField(dragState.fieldTarget, card) || primaryWritingField(dragState.id);
-            var nowTap = Date.now();
-            if(editField && lastPlateEditTap.id === dragState.id && (nowTap - lastPlateEditTap.t) < 450){
-              startEdit(editField, dragState.id);
-              lastPlateEditTap = { id:null, t:0 };
-            } else {
-              lastPlateEditTap = { id:dragState.id, t:nowTap };
-            }
-          } else if(dragState.assignEl){
-            selectCard(dragState.id);
-            openAssignPicker(dragState.id, dragState.assignEl, dragState.skuSlot ? { skuSlot: dragState.skuSlot } : undefined);
-          } else if(dragState.wasSelected && dragState.fieldTarget){
-            startEdit(dragState.fieldTarget, dragState.id);
-          } else {
-            selectCard(dragState.id);
-          }
+    if(dragState && dragState.pointerId != null && e && e.pointerId != null && e.pointerId !== dragState.pointerId) return;
+    var state = dragState;
+    endCardDragListeners();
+    dragState = null;
+    clearStationDropHighlights();
+    if(!state) return;
+    var card = cards.find(function(c){ return c.id===state.id; });
+    var refUp = card ? els.get(card.id) : null;
+    if(refUp && refUp.el){
+      refUp.el.classList.remove('dragging');
+      if(typeof refUp.el.releasePointerCapture === 'function' && state.pointerId != null){
+        try{ refUp.el.releasePointerCapture(state.pointerId); }catch(err){}
+      }
+    }
+    if(!card || !refUp || !refUp.el) return;
+    if(!state.moved){
+      // Move tool: tap selects (resize/delete). Double-click edits plate text (letter/label).
+      if(armedTool === 'move'){
+        selectCard(state.id);
+        var editField = editableWritingField(state.fieldTarget, card) || primaryWritingField(state.id);
+        var nowTap = Date.now();
+        if(editField && lastPlateEditTap.id === state.id && (nowTap - lastPlateEditTap.t) < 450){
+          startEdit(editField, state.id);
+          lastPlateEditTap = { id:null, t:0 };
         } else {
-          var ref = els.get(card.id);
-          var w = ref.el.offsetWidth, h = ref.el.offsetHeight;
-          var cx = card.x + w/2, cy = card.y + h/2;
-          if(card.type==='staff'){
-            clearStationDropHighlights();
-            var entry = staffRoster.find(function(p){ return p.id===card.rosterId; });
-            var dKind = dragKindForStaff(entry);
-            if(dKind==='packer'){
-              var dropStation = findStationAt(cx, cy, 40);
-              if(dropStation && card.rosterId && assignPackerToStation(dropStation.id, card.rosterId)){
-                deleteCard(card.id);
-                dragState = null;
-                return;
-              }
-            } else {
-              var dropSlot = findFloorSlotAt(cx, cy, dKind, 40);
-              if(dropSlot && card.rosterId && assignToFloorSlot(dropSlot.id, card.rosterId, dKind)){
-                deleteCard(card.id);
-                dragState = null;
-                return;
-              }
-            }
-          } else if(card.type==='sku'){
-            clearStationDropHighlights();
-            var skuSlot = findFloorSlotAt(cx, cy, 'sku', 40);
-            if(skuSlot && card.rosterId){
-              var force = null;
-              if(!skuSlot.rosterId) force = 'now';
-              else if(skuSlotFromPoint(skuSlot, cy) === 'next') force = 'next';
-              if(assignToFloorSlot(skuSlot.id, card.rosterId, 'sku', force)){
-                deleteCard(card.id);
-                dragState = null;
-                return;
-              }
-            }
-          }
-          card.x = clamp(card.x, 0, CANVAS_W - w);
-          card.y = clamp(card.y, 0, CANVAS_H - h);
-          ref.el.style.left = card.x+'px';
-          ref.el.style.top = card.y+'px';
-          saveDebounced();
+          lastPlateEditTap = { id:state.id, t:nowTap };
+        }
+      } else if(state.assignEl){
+        selectCard(state.id);
+        openAssignPicker(state.id, state.assignEl, state.skuSlot ? { skuSlot: state.skuSlot } : undefined);
+      } else if(state.wasSelected && state.fieldTarget){
+        startEdit(state.fieldTarget, state.id);
+      } else {
+        selectCard(state.id);
+      }
+      return;
+    }
+    var w = refUp.el.offsetWidth, h = refUp.el.offsetHeight;
+    var cx = card.x + w/2, cy = card.y + h/2;
+    if(card.type==='staff'){
+      var entry = staffRoster.find(function(p){ return p.id===card.rosterId; });
+      var dKind = dragKindForStaff(entry);
+      if(dKind==='packer'){
+        var dropStation = findStationAt(cx, cy, 40);
+        if(dropStation && card.rosterId && assignPackerToStation(dropStation.id, card.rosterId)){
+          deleteCard(card.id);
+          return;
+        }
+      } else {
+        var dropSlot = findFloorSlotAt(cx, cy, dKind, 40);
+        if(dropSlot && card.rosterId && assignToFloorSlot(dropSlot.id, card.rosterId, dKind)){
+          deleteCard(card.id);
+          return;
+        }
+      }
+    } else if(card.type==='sku'){
+      var skuDrop = findFloorSlotAt(cx, cy, 'sku', 40);
+      if(skuDrop && card.rosterId){
+        var force = null;
+        if(!skuDrop.rosterId) force = 'now';
+        else if(skuSlotFromPoint(skuDrop, cy) === 'next') force = 'next';
+        if(assignToFloorSlot(skuDrop.id, card.rosterId, 'sku', force)){
+          deleteCard(card.id);
+          return;
         }
       }
     }
-    clearStationDropHighlights();
-    dragState = null;
+    card.x = clamp(card.x, 0, CANVAS_W - w);
+    card.y = clamp(card.y, 0, CANVAS_H - h);
+    refUp.el.style.left = card.x+'px';
+    refUp.el.style.top = card.y+'px';
+    selectCard(card.id);
+    saveDebounced();
   }
 
   // ---- rotate ----
@@ -3521,31 +3548,34 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     circle:{ w:80, h:80 }, rect:{ w:110, h:70 }, highlight:{ w:130, h:90 }
   };
   var armedTool = null;
-  var TOOL_CHIP_LABELS = {
-    move:'Move — drag · double-click text',
-    station:'Add Packer — tap map',
-    skuSlot:'Add SKU — tap map',
-    boxmakerSlot:'Add Box — tap map',
-    runnerSlot:'Add Runner — tap map',
-    text:'Add Text — tap map',
-    arrow:'Arrow — drag on map',
-    arrow2:'Double arrow — drag on map',
-    line:'Line — drag on map',
-    highlight:'Zone — drag on map',
-    draw:'Pen — drag on map',
-    circle:'Circle — drag on map',
-    rect:'Box shape — drag on map'
+  var TOOL_CHIP_ICONS = {
+    move:'move', station:'packer', skuSlot:'sku', boxmakerSlot:'box', runnerSlot:'runner',
+    text:'text', arrow:'arrow', arrow2:'arrow2', line:'line', highlight:'zone',
+    draw:'pen', circle:'circle', rect:'rect'
   };
+  function hydrateToolIcons(){
+    var toolsBtn = document.getElementById('floorToolsBtn');
+    if(toolsBtn && !toolsBtn.querySelector('svg')) toolsBtn.innerHTML = iconSvg('tools');
+    var doneBtn = document.getElementById('floorToolDone');
+    if(doneBtn && !doneBtn.querySelector('svg')) doneBtn.innerHTML = iconSvg('check');
+    var cancelBtn = document.getElementById('floorToolCancel');
+    if(cancelBtn && !cancelBtn.querySelector('svg')) cancelBtn.innerHTML = iconSvg('x');
+    var icos = document.querySelectorAll('#floorToolsDock .ft-ico[data-ico]');
+    for(var i=0;i<icos.length;i++){
+      var name = icos[i].getAttribute('data-ico');
+      if(name) icos[i].innerHTML = iconSvg(name);
+    }
+  }
   function updateToolChrome(){
     var toolsBtn = document.getElementById('floorToolsBtn');
     if(toolsBtn) toolsBtn.classList.toggle('armed', !!armedTool);
     var chip = document.getElementById('floorToolChip');
-    var chipLbl = document.getElementById('floorToolChipLabel');
+    var chipIco = document.getElementById('floorToolChipIcon');
     var doneBtn = document.getElementById('floorToolDone');
     if(chip){
       if(armedTool){
         chip.classList.add('show');
-        if(chipLbl) chipLbl.textContent = TOOL_CHIP_LABELS[armedTool] || 'Tool armed';
+        if(chipIco) chipIco.innerHTML = iconSvg(TOOL_CHIP_ICONS[armedTool] || 'tools');
       } else {
         chip.classList.remove('show');
       }
@@ -3964,6 +3994,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var cancelChip = document.getElementById('floorToolCancel');
     var toolChip = document.getElementById('floorToolChip');
     var doneToolBtn = document.getElementById('floorToolDone');
+    hydrateToolIcons();
     syncDrawColorChrome();
     if(dock){
       function onToolColorPick(e){
@@ -4002,6 +4033,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(doneToolBtn) doneToolBtn.addEventListener('click', cancelArmedTool);
     document.addEventListener('keydown', function(e){
       if(e.key === 'Escape'){
+        // Let the assign-picker Esc handler clear an active role/SKU first
+        if(assignPopover && assignPopover.classList.contains('open')) return;
         if(dock && dock.classList.contains('open')){
           closeFloorToolsModal();
           return;
