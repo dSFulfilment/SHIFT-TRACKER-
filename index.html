@@ -2963,12 +2963,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
   var assignPopover = document.getElementById('assignPopover');
   var activeAssignCardId = null;
+  var activeAssignSkuSlot = null; // 'now' | 'next' when picking a SKU row
   assignPopover.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
   function openAssignPicker(id, anchorEl, opts){
     opts = opts || {};
     var card = cards.find(function(c){ return c.id===id; });
     if(!card) return;
     activeAssignCardId = id;
+    activeAssignSkuSlot = (card.type==='floorslot' && card.slotKind==='sku')
+      ? (opts.skuSlot === 'next' ? 'next' : 'now')
+      : null;
     assignPopover.innerHTML = '';
     assignPopover.classList.toggle('sku-assign', card.type==='floorslot' && card.slotKind==='sku');
 
@@ -3136,6 +3140,32 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function closeAssignPopover(){
     assignPopover.classList.remove('open');
     activeAssignCardId = null;
+    activeAssignSkuSlot = null;
+  }
+  // Esc while the assign picker is open clears the active role / SKU on that plate.
+  function clearAssignOnEscape(){
+    if(!assignPopover.classList.contains('open') || !activeAssignCardId) return false;
+    var id = activeAssignCardId;
+    var skuSlot = activeAssignSkuSlot;
+    var card = cards.find(function(c){ return c.id===id; });
+    closeAssignPopover();
+    if(!card) return true;
+    if(card.type==='floorslot' && card.slotKind==='sku'){
+      var which = skuSlot === 'next' ? 'next' : 'now';
+      if((which==='next' && card.nextSkuId) || (which!=='next' && card.rosterId)){
+        clearFloorSlotSku(id, which);
+      }
+      return true;
+    }
+    if(card.type==='floorslot' && card.rosterId){
+      clearFloorSlotAssignment(id);
+      return true;
+    }
+    if(card.type==='station' && card.rosterId){
+      clearStationAssignment(id);
+      return true;
+    }
+    return true;
   }
 
   var floorHintEl = document.getElementById('floorHint');
@@ -4026,7 +4056,22 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       e.preventDefault();
       deleteCard(selectedId);
     }
-    if(e.key==='Escape'){ deselectAll(); disarmTool(); closeColorPopover(); }
+    if(e.key==='Escape'){
+      // Click an active role / SKU → Esc clears that assignment
+      if(clearAssignOnEscape()){
+        e.preventDefault();
+        closeRolePopover();
+        closeStatusPopover();
+        closeColorPopover();
+        return;
+      }
+      closeAssignPopover();
+      closeRolePopover();
+      closeStatusPopover();
+      deselectAll();
+      disarmTool();
+      closeColorPopover();
+    }
   });
 
   document.getElementById('rosterSearch').addEventListener('input', renderRoster);
