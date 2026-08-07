@@ -2538,7 +2538,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     if(assignCtrl){
       assignCtrl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-      assignCtrl.addEventListener('click', function(e){ e.stopPropagation(); openAssignPicker(card.id, assignCtrl); });
+      assignCtrl.addEventListener('click', function(e){
+        e.stopPropagation();
+        if(tryQuickAssignToCard(card)) return;
+        openAssignPicker(card.id, assignCtrl);
+      });
     }
     if(statusCtrl){
       statusCtrl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
