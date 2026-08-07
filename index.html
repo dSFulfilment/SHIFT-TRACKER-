@@ -159,9 +159,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.floor-plate.vacant .field.station-name{ font-size:9px; letter-spacing:0; text-transform:none; color:#3b82f6; }
 #app .card.station.floor-plate .ctrl{ width:18px; height:18px; }
 #app .card.station.floor-plate .ctrl svg{ width:10px; height:10px; }
-#app .card.station.floor-plate .rotate-line{ display:none !important; }
-#app .card.station.floor-plate .ctrl.rotate{ display:none !important; }
-#app .card.station.floor-plate:not(.selected) .ctrl.resize{ display:none !important; }
 /* Role / SKU drop plates — same idea as packing stations, colour-matched */
 #app .card.floorslot{ width:70px; min-height:34px; padding:6px 6px 5px; display:flex; flex-direction:column;
     align-items:stretch; justify-content:center; gap:2px; border-width:2.5px; border-style:dashed;
@@ -193,10 +190,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot.slot-sku .slot-sku-promote:hover{ background:#9a3412; }
 #app .card.floorslot.slot-sku.has-next .slot-sku-promote{ display:block; }
 #app .card.floorslot.slot-sku .field.slot-name{ display:none; }
-#app .card.floorslot .ctrl.rotate,
-#app .card.floorslot .rotate-line{ display:none !important; }
 #app .card.floorslot .ctrl{ width:20px; height:20px; }
 #app .card.floorslot .ctrl svg{ width:11px; height:11px; }
+/* Packing plates: no rotate arrows / floating chrome unless Move tool is on */
+#app .card.station .ctrl,
+#app .card.floorslot .ctrl,
+#app .card.station .rotate-line,
+#app .card.floorslot .rotate-line,
+#app .card.station .drag-grip,
+#app .card.floorslot .drag-grip{ display:none !important; }
+#app #viewport.move-armed .card.station.selected .ctrl.resize,
+#app #viewport.move-armed .card.floorslot.selected .ctrl.resize,
+#app #viewport.move-armed .card.station.selected .ctrl.del,
+#app #viewport.move-armed .card.floorslot.selected .ctrl.del{ display:flex !important; }
 #app .card.floorslot.slot-sku{ z-index:5; border-color:rgba(194,65,12,.85); background:rgba(254,215,170,.72); color:#9a3412; }
 #app .card.floorslot.slot-sku .field.slot-label{ color:#9a3412; }
 #app .card.floorslot.slot-sku .field.slot-name{ color:#c2410c; }
@@ -417,18 +423,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   box-shadow:0 4px 14px rgba(0,0,0,.18); max-width:min(920px, calc(100% - 32px)); overflow:hidden; text-overflow:ellipsis; }
 #app #floorLegend{ display:flex; align-items:center; gap:10px; font-size:11px; color:var(--muted); white-space:nowrap; }
 #app #floorLegend .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; vertical-align:middle; }
-#app .card.floor-plate:not(.selected) .ctrl.dup,
-#app .card.floor-plate:not(.selected) .ctrl.del,
-#app .card.floor-plate:not(.selected) .ctrl.color,
-#app .card.floor-plate:not(.selected) .ctrl.status,
-#app .card.floor-plate:not(.selected) .ctrl.resize{ display:none !important; }
-#app .card.floorslot:not(.selected) .ctrl.dup,
-#app .card.floorslot:not(.selected) .ctrl.del,
-#app .card.floorslot:not(.selected) .ctrl.resize{ display:none !important; }
-#app .card.floor-plate.selected .ctrl.del,
-#app .card.floorslot.selected .ctrl.del,
-#app .card.floor-plate.selected .ctrl.resize,
-#app .card.floorslot.selected .ctrl.resize{ width:22px; height:22px; }
+#app #viewport.move-armed .card.station.selected .ctrl.del,
+#app #viewport.move-armed .card.floorslot.selected .ctrl.del,
+#app #viewport.move-armed .card.station.selected .ctrl.resize,
+#app #viewport.move-armed .card.floorslot.selected .ctrl.resize{ width:22px; height:22px; }
 #app .break-table{ display:none !important; }
 #app .role-popover{ display:none; position:fixed; z-index:300; background:#fff; border:1px solid var(--line);
     border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:6px; flex-direction:column; gap:2px; min-width:132px; }
@@ -2481,7 +2479,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fName = document.createElement('div');
       fName.className = 'field station-name';
       fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Tap' : 'Vacant');
-      fName.title = 'Tap to assign · double-click to clear · Tools → Move to drag';
+      fName.title = 'Tap to assign · double-click to clear · Tools → Move to drag/resize';
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
@@ -2574,16 +2572,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     // circle, rect, and highlight need no inner content — the card's own border/fill draws the shape
 
-    if(card.type==='station' || card.type==='floorslot'){
-      var grip = document.createElement('div');
-      grip.className = 'drag-grip';
-      grip.title = 'Drag to move (Move tool on)';
-      grip.innerHTML = iconSvg('move');
-      el.appendChild(grip);
+    var isPlate = card.type==='station' || card.type==='floorslot';
+    var line = null, rotCtrl = null;
+    // Packing plates never get rotate arrows — use Tools → Move to drag/resize instead
+    if(!isPlate){
+      line = document.createElement('div'); line.className='rotate-line'; el.appendChild(line);
+      rotCtrl = document.createElement('div'); rotCtrl.className='ctrl rotate'; rotCtrl.title='Rotate'; rotCtrl.innerHTML=iconSvg('rot'); el.appendChild(rotCtrl);
     }
-
-    var line = document.createElement('div'); line.className='rotate-line'; el.appendChild(line);
-    var rotCtrl = document.createElement('div'); rotCtrl.className='ctrl rotate'; rotCtrl.title='Rotate'; rotCtrl.innerHTML=iconSvg('rot'); el.appendChild(rotCtrl);
     var dupCtrl = document.createElement('div'); dupCtrl.className='ctrl dup'; dupCtrl.title='Duplicate'; dupCtrl.innerHTML=iconSvg('dup'); el.appendChild(dupCtrl);
     var delCtrl = document.createElement('div'); delCtrl.className='ctrl del'; delCtrl.title='Delete'; delCtrl.innerHTML=iconSvg('del'); el.appendChild(delCtrl);
     var resizeCtrl = document.createElement('div'); resizeCtrl.className='ctrl resize'; resizeCtrl.title='Resize'; resizeCtrl.innerHTML=iconSvg('resize'); el.appendChild(resizeCtrl);
@@ -2602,7 +2597,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       el.appendChild(roleCtrl);
     }
     var assignCtrl = null, statusCtrl = null;
-    if(isAssignable(card.type)){
+    // Plates assign by tap — skip floating assign/status chrome on them
+    if(isAssignable(card.type) && !isPlate){
       assignCtrl = document.createElement('div'); assignCtrl.className='ctrl assign';
       assignCtrl.title = card.type==='floorslot'
         ? ('Assign '+(card.slotKind==='sku'?'SKU':card.slotKind==='boxmaker'?'box maker':'runner'))
@@ -2616,7 +2612,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       }
       el.appendChild(assignCtrl);
     }
-    if(isStatusable(card.type)){
+    if(isStatusable(card.type) && !isPlate){
       statusCtrl = document.createElement('div'); statusCtrl.className='ctrl status'; statusCtrl.title='Set status';
       statusCtrl.innerHTML = iconSvg('color');
       statusCtrl.style.color = STATUS_COLORS[card.status||'active'];
@@ -2628,7 +2624,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       f.addEventListener('dblclick', function(e){ e.stopPropagation(); startEdit(f, card.id); });
       f.addEventListener('pointerdown', function(e){ if(f.querySelector('.edit-input')) e.stopPropagation(); });
     });
-    rotCtrl.addEventListener('pointerdown', function(e){ onRotatePointerDown(e, card.id); });
+    if(rotCtrl) rotCtrl.addEventListener('pointerdown', function(e){ onRotatePointerDown(e, card.id); });
     resizeCtrl.addEventListener('pointerdown', function(e){ onResizePointerDown(e, card.id); });
     dupCtrl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
     dupCtrl.addEventListener('click', function(e){ e.stopPropagation(); duplicateCard(card.id); });
