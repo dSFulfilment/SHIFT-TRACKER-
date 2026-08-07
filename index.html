@@ -147,7 +147,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.vacant .field.station-name{ letter-spacing:.05em; text-transform:uppercase; color:#60a5fa; }
 /* Solid plates cover the printed floor letters; letter colour = role (packer blue) */
 #app .card.station.floor-plate{ width:44px; min-height:44px; height:44px; padding:2px 3px; border-radius:5px;
-    box-shadow:0 1px 2px rgba(37,84,199,.18); border-width:2px; gap:0; border-color:var(--staff); z-index:2;
+    box-shadow:0 1px 2px rgba(37,84,199,.18); border-width:2px; gap:0; border-color:var(--staff); z-index:6;
     background:#fff; }
 #app .card.station.floor-plate.vacant{ background:#fff; border-color:var(--staff); border-style:solid; }
 #app .card.station.floor-plate.vacant:hover,
@@ -183,11 +183,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot.slot-sku .slot-sku-row:hover{ background:rgba(255,255,255,.85); }
 #app .card.floorslot.slot-sku .slot-sku-row.empty{ background:rgba(255,255,255,.28); }
 #app .card.floorslot.slot-sku .slot-sku-tag{ flex:0 0 auto; font-size:7px; font-weight:800; letter-spacing:.04em;
-  text-transform:uppercase; color:#9a3412; opacity:.85; line-height:1; }
+  text-transform:uppercase; color:var(--sku); opacity:.85; line-height:1; }
 #app .card.floorslot.slot-sku .slot-sku-line{ flex:1; min-width:0; font-size:12px; font-weight:800; text-align:left; line-height:1.15;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace; overflow:hidden; text-overflow:ellipsis;
-  white-space:nowrap; color:#9a3412; }
-#app .card.floorslot.slot-sku .slot-sku-row.next .slot-sku-tag{ color:#c2410c; }
+  white-space:nowrap; color:var(--sku); }
+#app .card.floorslot.slot-sku .slot-sku-row.next .slot-sku-tag{ color:var(--sku); }
 #app .card.floorslot.slot-sku .slot-sku-row.next .slot-sku-line{ color:#ea580c; font-size:11px; }
 #app .card.floorslot.slot-sku .slot-sku-row.empty .slot-sku-line{ color:#fb923c; font-weight:700; }
 #app .card.floorslot.slot-sku .slot-sku-promote{ display:none; width:100%; margin-top:2px; border:none; border-radius:5px;
@@ -224,15 +224,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.highlight.selected .ctrl.color{
   display:flex !important; width:26px; height:26px; z-index:9;
 }
-#app .card.floorslot.slot-sku{ z-index:5; border-color:var(--sku); background:#fff; color:var(--sku); }
+/* SKU under stations/box/runner so overlaps stay grabable without hit-test stealing */
+#app .card.floorslot.slot-sku{ z-index:4; border-color:var(--sku); background:#fff; color:var(--sku); }
+#app .card.floorslot.slot-boxmaker,
+#app .card.floorslot.slot-runner{ z-index:6; }
 #app .card.floorslot.slot-sku .field.slot-label{ color:var(--sku); font-size:11px; }
 #app .card.floorslot.slot-sku .field.slot-name{ color:var(--sku); }
 #app .card.floorslot.slot-sku.occupied{ border-style:solid; border-color:var(--sku);
-    background:linear-gradient(180deg,#ffedd5,#fff7ed);
+    background:#fff;
     box-shadow:0 1px 2px rgba(194,65,12,.2),0 4px 12px rgba(194,65,12,.22); }
-#app .card.floorslot.slot-sku.occupied .field.slot-name{ color:#9a3412; }
+#app .card.floorslot.slot-sku.occupied .field.slot-label{ color:var(--sku); }
+#app .card.floorslot.slot-sku.occupied .field.slot-name{ color:var(--sku); }
 #app .card.floorslot.slot-sku.drop-target{ border-style:solid; border-color:var(--sku);
-    background:rgba(251,146,60,.45); box-shadow:0 0 0 3px rgba(194,65,12,.4); }
+    background:var(--sku-bg); box-shadow:0 0 0 3px rgba(194,65,12,.4); }
 #app .card.drag-grip{ position:absolute; top:-9px; left:50%; transform:translateX(-50%); z-index:8;
   width:30px; height:16px; border-radius:8px; background:rgba(28,36,48,.92); color:#fff;
   display:none; align-items:center; justify-content:center; cursor:grab; box-shadow:0 2px 6px rgba(0,0,0,.2);
@@ -1646,11 +1650,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     ],
     // Only the real crew spots on the palletising strip: 2 boxes, 2 palletisers, 1 carton closer.
     boxmaker: [
-      { key:'BM-BOXES-1', label:'Boxes 1', x:120, y:296, w:88, h:42 },
-      { key:'BM-BOXES-2', label:'Boxes 2', x:218, y:296, w:88, h:42 },
-      { key:'BM-PAL-1', label:'Palletising 1', x:316, y:296, w:110, h:42 },
-      { key:'BM-PAL-2', label:'Palletising 2', x:436, y:296, w:110, h:42 },
-      { key:'BM-CARTON', label:'Carton closer', x:556, y:296, w:110, h:42 }
+      { key:'BM-BOXES-1', label:'Boxes 1', x:120, y:292, w:90, h:48 },
+      { key:'BM-BOXES-2', label:'Boxes 2', x:218, y:292, w:90, h:48 },
+      { key:'BM-PAL-1', label:'Palletising 1', x:316, y:292, w:110, h:48 },
+      { key:'BM-PAL-2', label:'Palletising 2', x:436, y:292, w:110, h:48 },
+      { key:'BM-CARTON', label:'Carton closer', x:556, y:292, w:110, h:48 }
     ],
     runner: [
       { key:'RN-1', label:'Runner 1', x:390, y:168, w:88, h:34 },
@@ -2187,28 +2191,22 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     var entry = staffRoster.find(function(p){ return p.id===rosterId; });
     if(!entry) return false;
-    var role = entry.role || 'unassigned';
     var need = card.slotKind; // runner | boxmaker
-    if(role!==need){
-      if(role==='packer'){
-        flashStatus('Packers go on blue stations A–T — this plate is for '+(need==='boxmaker'?'box makers':'runners'));
-        return false;
-      }
-      // Auto-set role when dropping onto the matching coloured plate
+    // Anyone can go on any role plate — role follows the plate
+    if((entry.role || 'unassigned') !== need){
       entry.role = need;
       renderRoster();
       if(window.SharedSync) scheduleRosterRoleChange(rosterId, need);
     }
-    var already = cards.find(function(c){
-      return c.type==='floorslot' && c.slotKind===need && c.id!==card.id && c.rosterId===rosterId;
-    });
-    if(already){
-      flashStatus(entry.name+' is already on '+(already.label||already.key)+' — clear that one first to move them.');
-      return false;
-    }
-    // Also clear station assignment if they somehow had one
+    // Move them off any other role plate / station first
     cards.forEach(function(c){
-      if(c.type==='station' && c.rosterId===rosterId){ c.rosterId=null; updateStationCardVisual(c); }
+      if(c.id===card.id) return;
+      if(c.type==='floorslot' && c.slotKind!=='sku' && c.rosterId===rosterId){
+        c.rosterId = null; updateFloorSlotVisual(c);
+      }
+      if(c.type==='station' && c.rosterId===rosterId){
+        c.rosterId = null; updateStationCardVisual(c);
+      }
     });
     card.rosterId = rosterId;
     updateFloorSlotVisual(card);
@@ -2224,6 +2222,25 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(role==='runner') return 'runner';
     if(role==='boxmaker') return 'boxmaker';
     return 'packer';
+  }
+  // Prefer the coloured plate under the pointer (any role) so Boxes 1 etc. always accept drops
+  function findStaffDropTarget(canvasX, canvasY, maxDist){
+    maxDist = (maxDist == null) ? 40 : maxDist;
+    var roleSlot = findFloorSlotAt(canvasX, canvasY, 'boxmaker', maxDist)
+      || findFloorSlotAt(canvasX, canvasY, 'runner', maxDist);
+    var station = findStationAt(canvasX, canvasY, maxDist);
+    if(roleSlot && station){
+      var rs = floorSlotCenter(roleSlot);
+      var ss = { x: station.x + (station.w||44)/2, y: station.y + (station.h||44)/2 };
+      var dRole = Math.hypot(canvasX - rs.x, canvasY - rs.y);
+      var dSt = Math.hypot(canvasX - ss.x, canvasY - ss.y);
+      return dRole <= dSt
+        ? { kind: roleSlot.slotKind, card: roleSlot }
+        : { kind: 'packer', card: station };
+    }
+    if(roleSlot) return { kind: roleSlot.slotKind, card: roleSlot };
+    if(station) return { kind: 'packer', card: station };
+    return null;
   }
   function highlightStationDrop(station){
     clearStationDropHighlights();
@@ -2332,10 +2349,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(name==='move') return '<svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5L8 14.5M1.5 8L14.5 8M5 4L8 1.5L11 4M5 12L8 14.5L11 12M4 5L1.5 8L4 11M12 5L14.5 8L12 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     if(name==='color') return '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor" stroke="#fff" stroke-width="1.5"/></svg>';
     if(name==='tools') return '<svg viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a4.5 4.5 0 0 0-6.1 6.1L3 18l3 3 5.6-5.6a4.5 4.5 0 0 0 6.1-6.1l-2.5 2.5-3-3 2.5-2.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
-    if(name==='packer') return '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4" width="14" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M9 10h6M9 14h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-    if(name==='sku') return '<svg viewBox="0 0 24 24" fill="none"><path d="M4 8l8-4 8 4v8l-8 4-8-4V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 4v16M4 8l8 4 8-4" stroke="currentColor" stroke-width="1.8"/></svg>';
-    if(name==='box') return '<svg viewBox="0 0 24 24" fill="none"><path d="M3 8l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 8v8l9 4 9-4V8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
-    if(name==='runner') return '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M8 21l2.5-7 2 2.5L15 11l3 2M9.5 12l-2 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    // Packer = hand holding a barcode scanner
+    if(name==='packer') return '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 13.5c0-1.2.9-2.2 2.1-2.3l3.4-.3c.7-.1 1.4.4 1.5 1.1l.6 4.2c.1.8-.4 1.5-1.2 1.7l-2.2.5c-1.5.4-3.1-.5-3.5-2l-.5-1.9c-.1-.4-.2-.7-.2-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M11.2 12.2l2.2-.4c.9-.2 1.8.4 2 1.3l.5 2.4c.1.7-.3 1.4-1 1.6l-1.6.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="14.2" y="4.2" width="5.6" height="8.2" rx="1.4" stroke="currentColor" stroke-width="1.6"/><path d="M15.6 7.2h2.8M15.6 9.2h2.8M15.6 11.2h1.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M17 4.2V3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="17" cy="2.6" r=".9" fill="currentColor"/></svg>';
+    // SKU = clear “SKU” wordmark
+    if(name==='sku') return '<svg viewBox="0 0 24 24" fill="none"><text x="12" y="16.5" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="9" font-weight="800" fill="currentColor" letter-spacing=".04em">SKU</text></svg>';
+    // Box maker = cardboard box
+    if(name==='box') return '<svg viewBox="0 0 24 24" fill="none"><path d="M3.5 8.2L12 4l8.5 4.2v9.1L12 21.5 3.5 17.3V8.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 8.2L12 12.5l8.5-4.3M12 12.5V21.5M8 6.2l8 4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    // Runner = running person
+    if(name==='runner') return '<svg viewBox="0 0 24 24" fill="none"><circle cx="14.2" cy="4.4" r="2.1" stroke="currentColor" stroke-width="1.7"/><path d="M10.2 21.2l1.2-5.2 2.4 2.2 1.3-3.8 3.2 1.6M9.2 11.6l2.6 1.1 2.1-3.4 2.8 1.2M8.2 14.8L5.6 17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     if(name==='text') return '<svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M12 6v12M8 18h8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
     if(name==='arrow') return '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     if(name==='arrow2') return '<svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M9 7L4 12l5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -3115,22 +3136,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         }
         addSection(card.type==='station' ? 'Assign packer' : ('Assign '+(card.slotKind==='boxmaker'?'box maker':'runner')));
         var wantRole = card.type==='floorslot' ? card.slotKind : 'packer';
+        // Show everyone — putting them on this plate sets their role to match
         var sorted = staffRoster.slice()
-          .filter(function(p){
-            if(!matchQ(p.name, q)) return false;
-            var r = p.role || 'unassigned';
-            if(p.id===card.rosterId) return true;
-            if(wantRole==='packer') return r==='packer' || r==='unassigned';
-            return r===wantRole || r==='unassigned';
-          })
+          .filter(function(p){ return matchQ(p.name, q); })
           .sort(function(a,b){ return a.name.localeCompare(b.name); });
         if(!sorted.length){
-          addBtn(q ? 'No staff match' : 'No matching staff in roster', 'vacant-opt', function(){}, false);
+          addBtn(q ? 'No staff match' : 'No staff in roster yet', 'vacant-opt', function(){}, false);
         }
         sorted.forEach(function(p){
           var already = cards.find(function(c){
-            if(card.type==='floorslot') return c.type==='floorslot' && c.slotKind===wantRole && c.id!==id && c.rosterId===p.id;
-            return c.type==='station' && c.id!==id && c.rosterId===p.id;
+            if(c.id===id || c.rosterId!==p.id) return false;
+            return c.type==='station' || (c.type==='floorslot' && c.slotKind!=='sku');
           });
           var alreadyLabel = already
             ? (already.type==='station' ? (already.letter||'?') : (already.label||already.key||'?'))
@@ -3285,12 +3301,49 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   // ---- drag existing cards (drag always moves; short tap still assigns) ----
   var dragState = null;
   var lastPlateEditTap = { id:null, t:0 };
+  var DRAG_THRESHOLD = 8; // px in canvas space — avoids tap jitter starting a move
+  function canvasPointFromEvent(e){
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = rect.width / CANVAS_W;
+    var scaleY = rect.height / CANVAS_H;
+    // Prefer measured scale (handles zoom + subpixel) over the zoom variable alone
+    var sx = scaleX > 0.01 ? scaleX : zoom;
+    var sy = scaleY > 0.01 ? scaleY : zoom;
+    return {
+      x: (e.clientX - rect.left) / sx,
+      y: (e.clientY - rect.top) / sy
+    };
+  }
   function endCardDragListeners(){
-    window.removeEventListener('pointermove', onCardPointerMove);
-    window.removeEventListener('pointerup', onCardPointerUp);
-    window.removeEventListener('pointercancel', onCardPointerUp);
+    window.removeEventListener('pointermove', onCardPointerMove, true);
+    window.removeEventListener('pointerup', onCardPointerUp, true);
+    window.removeEventListener('pointercancel', onCardPointerUp, true);
+    window.removeEventListener('lostpointercapture', onCardLostCapture, true);
     document.body.style.userSelect = '';
-    if(viewport) viewport.classList.remove('is-dragging');
+    document.body.style.cursor = '';
+    if(viewport){
+      viewport.classList.remove('is-dragging');
+      viewport.style.touchAction = '';
+    }
+  }
+  function cleanupStuckDrag(){
+    if(!dragState) return;
+    var stuck = els.get(dragState.id);
+    if(stuck && stuck.el){
+      stuck.el.classList.remove('dragging');
+      if(dragState.pointerId != null && typeof stuck.el.releasePointerCapture === 'function'){
+        try{ stuck.el.releasePointerCapture(dragState.pointerId); }catch(err){}
+      }
+    }
+    if(dragState.captureEl && dragState.pointerId != null && typeof dragState.captureEl.releasePointerCapture === 'function'){
+      try{ dragState.captureEl.releasePointerCapture(dragState.pointerId); }catch(err){}
+    }
+    dragState = null;
+  }
+  function onCardLostCapture(e){
+    // Capture can drop if the browser scrolls; finish the drag cleanly
+    if(!dragState || dragState.pointerId == null || e.pointerId !== dragState.pointerId) return;
+    onCardPointerUp(e);
   }
   function onCardPointerDown(e, id){
     if(e.target.closest('.ctrl.del, .ctrl.dup, .ctrl.resize, .ctrl.rotate, .ctrl.color, .ctrl.role, .ctrl.assign, .ctrl.status')) return;
@@ -3308,91 +3361,98 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       return;
     }
     e.preventDefault();
-    var rect = canvas.getBoundingClientRect();
-    var startPx = (e.clientX-rect.left)/zoom;
-    var startPy = (e.clientY-rect.top)/zoom;
-    // If a smaller plate sits under this click, drag that one instead of the big covering plate
-    id = topCardIdAt(startPx, startPy, id) || id;
+    e.stopPropagation();
+    // Drag the plate that received the event (stacking puts stations above SKUs)
     var card = cards.find(function(c){ return c.id===id; });
     if(!card) return;
-    var refHit = els.get(id);
     var fieldTarget = e.target.closest('.field');
     var assignEl = e.target.closest('.station-name, .slot-name, .slot-sku-row');
-    // If hit-test retargeted to another plate, assign zones on the original target don't apply
-    if(refHit && e.target && refHit.el && !refHit.el.contains(e.target)){
-      fieldTarget = null;
-      assignEl = null;
-    }
     var skuSlot = null;
     if(assignEl && assignEl.classList.contains('slot-sku-row')){
       skuSlot = assignEl.classList.contains('next') ? 'next' : 'now';
     }
     endCardDragListeners();
-    if(dragState){
-      var stuck = els.get(dragState.id);
-      if(stuck && stuck.el) stuck.el.classList.remove('dragging');
-      dragState = null;
-    }
+    cleanupStuckDrag();
     if(assignEl && armedTool !== 'move') fieldTarget = null;
     if(armedTool === 'move' && assignEl) fieldTarget = null;
+    // Never reparent during an active drag — appendChild breaks pointer capture in WebKit
     selectCard(id, { skipRaise: true });
+    var pt = canvasPointFromEvent(e);
     var ref0 = els.get(id);
-    dragState = { id:id, startPx:startPx, startPy:startPy, origX:card.x, origY:card.y, moved:false,
-      fieldTarget:fieldTarget, assignEl:assignEl, skuSlot:skuSlot, wasSelected:true,
-      pointerId: e.pointerId };
+    dragState = {
+      id:id,
+      startPx:pt.x, startPy:pt.y,
+      origX:Number(card.x)||0, origY:Number(card.y)||0,
+      moved:false,
+      fieldTarget:fieldTarget, assignEl:assignEl, skuSlot:skuSlot,
+      wasSelected:true,
+      pointerId: e.pointerId,
+      captureEl: null
+    };
     document.body.style.userSelect='none';
-    if(viewport) viewport.classList.add('is-dragging');
-    if(ref0 && ref0.el && typeof ref0.el.setPointerCapture === 'function'){
-      try{ ref0.el.setPointerCapture(e.pointerId); }catch(err){}
+    if(viewport){
+      viewport.classList.add('is-dragging');
+      viewport.style.touchAction = 'none';
     }
-    window.addEventListener('pointermove', onCardPointerMove);
-    window.addEventListener('pointerup', onCardPointerUp);
-    window.addEventListener('pointercancel', onCardPointerUp);
+    // Capture on the viewport (stable node) — not the card — so z-index/select can't drop it
+    var captureEl = viewport || (ref0 && ref0.el) || canvas;
+    dragState.captureEl = captureEl;
+    if(captureEl && typeof captureEl.setPointerCapture === 'function'){
+      try{ captureEl.setPointerCapture(e.pointerId); }catch(err){}
+    }
+    window.addEventListener('pointermove', onCardPointerMove, true);
+    window.addEventListener('pointerup', onCardPointerUp, true);
+    window.addEventListener('pointercancel', onCardPointerUp, true);
+    window.addEventListener('lostpointercapture', onCardLostCapture, true);
   }
   function onCardPointerMove(e){
     if(!dragState) return;
     if(dragState.pointerId != null && e.pointerId != null && e.pointerId !== dragState.pointerId) return;
-    var rect = canvas.getBoundingClientRect();
-    var px = (e.clientX-rect.left)/zoom;
-    var py = (e.clientY-rect.top)/zoom;
-    var dx = px - dragState.startPx, dy = py - dragState.startPy;
-    if(Math.abs(dx)>3 || Math.abs(dy)>3) dragState.moved = true;
-    if(dragState.moved){
-      var card = cards.find(function(c){ return c.id===dragState.id; });
-      var ref = card ? els.get(card.id) : null;
-      if(!card || !ref || !ref.el) return;
-      if(!ref.el.classList.contains('dragging')){
-        raiseCard(card.id);
-        ref.el.classList.add('dragging');
-      }
-      card.x = snapVal(dragState.origX + dx);
-      card.y = snapVal(dragState.origY + dy);
-      ref.el.style.left = card.x+'px';
-      ref.el.style.top = card.y+'px';
-      if(card.type==='staff'){
-        var entry = staffRoster.find(function(p){ return p.id===card.rosterId; });
-        var dKind = dragKindForStaff(entry);
-        if(dKind==='packer') highlightStationDrop(findStationAt(px, py, 40));
-        else highlightFloorSlotDrop(findFloorSlotAt(px, py, dKind, 40));
-      } else if(card.type==='sku'){
-        highlightFloorSlotDrop(findFloorSlotAt(px, py, 'sku', 40));
-      }
+    var pt = canvasPointFromEvent(e);
+    var dx = pt.x - dragState.startPx, dy = pt.y - dragState.startPy;
+    if(!dragState.moved && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)){
+      dragState.moved = true;
+      var refStart = els.get(dragState.id);
+      if(refStart && refStart.el) refStart.el.classList.add('dragging');
+      document.body.style.cursor = 'grabbing';
+      closeAssignPopover();
+      closeColorPopover();
+      closeRolePopover();
+      closeStatusPopover();
+    }
+    if(!dragState.moved) return;
+    e.preventDefault();
+    var card = cards.find(function(c){ return c.id===dragState.id; });
+    var ref = card ? els.get(card.id) : null;
+    if(!card || !ref || !ref.el) return;
+    // Live position unsapped — snap only on release (avoids sticky/jumpy moves)
+    var w = ref.el.offsetWidth || Number(card.w) || 40;
+    var h = ref.el.offsetHeight || Number(card.h) || 40;
+    card.x = clamp(dragState.origX + dx, 0, CANVAS_W - w);
+    card.y = clamp(dragState.origY + dy, 0, CANVAS_H - h);
+    ref.el.style.left = card.x+'px';
+    ref.el.style.top = card.y+'px';
+    if(card.type==='staff'){
+      var dropT = findStaffDropTarget(pt.x, pt.y, 40);
+      if(dropT && dropT.kind==='packer') highlightStationDrop(dropT.card);
+      else if(dropT) highlightFloorSlotDrop(dropT.card);
+      else clearStationDropHighlights();
+    } else if(card.type==='sku'){
+      highlightFloorSlotDrop(findFloorSlotAt(pt.x, pt.y, 'sku', 40));
     }
   }
   function onCardPointerUp(e){
     if(dragState && dragState.pointerId != null && e && e.pointerId != null && e.pointerId !== dragState.pointerId) return;
     var state = dragState;
-    endCardDragListeners();
-    dragState = null;
-    clearStationDropHighlights();
     if(!state) return;
+    dragState = null;
+    endCardDragListeners();
+    clearStationDropHighlights();
     var card = cards.find(function(c){ return c.id===state.id; });
     var refUp = card ? els.get(card.id) : null;
-    if(refUp && refUp.el){
-      refUp.el.classList.remove('dragging');
-      if(typeof refUp.el.releasePointerCapture === 'function' && state.pointerId != null){
-        try{ refUp.el.releasePointerCapture(state.pointerId); }catch(err){}
-      }
+    if(refUp && refUp.el) refUp.el.classList.remove('dragging');
+    if(state.captureEl && state.pointerId != null && typeof state.captureEl.releasePointerCapture === 'function'){
+      try{ state.captureEl.releasePointerCapture(state.pointerId); }catch(err){}
     }
     if(!card || !refUp || !refUp.el) return;
     if(!state.moved){
@@ -3408,9 +3468,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         } else {
           lastPlateEditTap = { id:state.id, t:nowTap };
         }
-      } else if(state.assignEl){
+      } else if(card.type==='station' || card.type==='floorslot'){
+        // Whole plate is tappable (not just the tiny “Tap” row) — fixes Boxes 1 etc.
         selectCard(state.id);
-        openAssignPicker(state.id, state.assignEl, state.skuSlot ? { skuSlot: state.skuSlot } : undefined);
+        var assignAnchor = state.assignEl || refUp.el.querySelector('.station-name, .slot-name, .slot-sku-row.now, .slot-label') || refUp.el;
+        var skuOpt = undefined;
+        if(card.type==='floorslot' && card.slotKind==='sku'){
+          skuOpt = { skuSlot: state.skuSlot || 'now' };
+        }
+        openAssignPicker(state.id, assignAnchor, skuOpt);
       } else if(state.wasSelected && state.fieldTarget && editableWritingField(state.fieldTarget, card)){
         selectCard(state.id);
         startEdit(state.fieldTarget, state.id);
@@ -3420,22 +3486,18 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       return;
     }
     var w = refUp.el.offsetWidth, h = refUp.el.offsetHeight;
+    card.x = snapVal(clamp(card.x, 0, CANVAS_W - w));
+    card.y = snapVal(clamp(card.y, 0, CANVAS_H - h));
+    refUp.el.style.left = card.x+'px';
+    refUp.el.style.top = card.y+'px';
     var cx = card.x + w/2, cy = card.y + h/2;
     if(card.type==='staff'){
-      var entry = staffRoster.find(function(p){ return p.id===card.rosterId; });
-      var dKind = dragKindForStaff(entry);
-      if(dKind==='packer'){
-        var dropStation = findStationAt(cx, cy, 40);
-        if(dropStation && card.rosterId && assignPackerToStation(dropStation.id, card.rosterId)){
-          deleteCard(card.id);
-          return;
-        }
-      } else {
-        var dropSlot = findFloorSlotAt(cx, cy, dKind, 40);
-        if(dropSlot && card.rosterId && assignToFloorSlot(dropSlot.id, card.rosterId, dKind)){
-          deleteCard(card.id);
-          return;
-        }
+      var dropTarget = findStaffDropTarget(cx, cy, 40);
+      if(dropTarget && card.rosterId){
+        var okDrop = dropTarget.kind==='packer'
+          ? assignPackerToStation(dropTarget.card.id, card.rosterId)
+          : assignToFloorSlot(dropTarget.card.id, card.rosterId, dropTarget.kind);
+        if(okDrop){ deleteCard(card.id); return; }
       }
     } else if(card.type==='sku'){
       var skuDrop = findFloorSlotAt(cx, cy, 'sku', 40);
@@ -3449,12 +3511,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         }
       }
     }
-    card.x = clamp(card.x, 0, CANVAS_W - w);
-    card.y = clamp(card.y, 0, CANVAS_H - h);
-    refUp.el.style.left = card.x+'px';
-    refUp.el.style.top = card.y+'px';
     selectCard(card.id);
     raiseCard(card.id);
+    // Keep shift snapshot in sync immediately so a following shift switch can't lose the move
+    if(shiftData && shiftData[currentShift]) shiftData[currentShift].cards = cards;
     saveDebounced();
   }
 
@@ -3984,32 +4044,22 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     saveDebounced();
   }
 
-  // Assigns a packer (by roster id) to a station placeholder. Stations are blue and
-  // only take packers — runners (black) and box makers (red) stay as floor cards.
-  // Prevents assigning the same person to two stations at once.
+  // Assign anyone to a packing station — role becomes packer. Moves them off other plates.
   function assignPackerToStation(stationCardId, rosterId){
     var card = cards.find(function(c){ return c.id===stationCardId; });
     if(!card || card.type!=='station') return false;
     var entry = staffRoster.find(function(p){ return p.id===rosterId; });
     if(!entry) return false;
-    var role = entry.role || 'unassigned';
-    if(role==='runner' || role==='boxmaker'){
-      flashStatus((role==='runner' ? 'Runners' : 'Box makers')+' go on their '+(role==='runner'?'black':'red')+' plates — stations are for packers');
-      return false;
-    }
-    // Dropping onto a station marks them as a packer (blue → blue).
-    if(role!=='packer'){
+    if((entry.role || 'unassigned') !== 'packer'){
       entry.role = 'packer';
       renderRoster();
       if(window.SharedSync) scheduleRosterRoleChange(rosterId, 'packer');
     }
-    var already = cards.find(function(c){ return c.type==='station' && c.id!==card.id && c.rosterId===rosterId; });
-    if(already){
-      flashStatus(entry.name+' is already on Station '+(already.letter||'?')+' \u2014 clear that one first if you want to move them.');
-      return false;
-    }
-    // Leave any runner/box-maker plate they were on
     cards.forEach(function(c){
+      if(c.id===card.id) return;
+      if(c.type==='station' && c.rosterId===rosterId){
+        c.rosterId = null; updateStationCardVisual(c);
+      }
       if(c.type==='floorslot' && c.slotKind!=='sku' && c.rosterId===rosterId){
         c.rosterId = null; updateFloorSlotVisual(c);
       }
@@ -4548,9 +4598,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var hx = (e.clientX-rectH.left)/zoom;
     var hy = (e.clientY-rectH.top)/zoom;
     if(rosterDragState.kind==='staff'){
-      var dKind = dragKindForStaff(rosterDragState.entry);
-      if(dKind==='packer') highlightStationDrop(findStationAt(hx, hy, 40));
-      else highlightFloorSlotDrop(findFloorSlotAt(hx, hy, dKind, 40));
+      var hoverDrop = findStaffDropTarget(hx, hy, 40);
+      if(hoverDrop && hoverDrop.kind==='packer') highlightStationDrop(hoverDrop.card);
+      else if(hoverDrop) highlightFloorSlotDrop(hoverDrop.card);
+      else clearStationDropHighlights();
     } else if(rosterDragState.kind==='sku'){
       highlightFloorSlotDrop(findFloorSlotAt(hx, hy, 'sku', 40));
     }
@@ -4565,25 +4616,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var px = (e.clientX-rect.left)/zoom;
       var py = (e.clientY-rect.top)/zoom;
       if(rosterDragState.kind==='staff'){
-        var dKind = dragKindForStaff(rosterDragState.entry);
-        if(dKind==='packer'){
-          var station = findStationAt(px, py, 40);
-          if(station){
-            assignPackerToStation(station.id, rosterDragState.entry.id);
-            clearStationDropHighlights();
-            rosterDragState.ghost.remove();
-            rosterDragState = null;
-            return;
-          }
-        } else {
-          var roleSlot = findFloorSlotAt(px, py, dKind, 40);
-          if(roleSlot){
-            assignToFloorSlot(roleSlot.id, rosterDragState.entry.id, dKind);
-            clearStationDropHighlights();
-            rosterDragState.ghost.remove();
-            rosterDragState = null;
-            return;
-          }
+        var staffDrop = findStaffDropTarget(px, py, 40);
+        if(staffDrop){
+          if(staffDrop.kind==='packer') assignPackerToStation(staffDrop.card.id, rosterDragState.entry.id);
+          else assignToFloorSlot(staffDrop.card.id, rosterDragState.entry.id, staffDrop.kind);
+          clearStationDropHighlights();
+          rosterDragState.ghost.remove();
+          rosterDragState = null;
+          return;
         }
         dropStaffCard(rosterDragState.entry, px-STAFF_CARD_W/2, py-CARD_H/2);
       } else {
