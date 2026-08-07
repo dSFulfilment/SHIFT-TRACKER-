@@ -954,23 +954,26 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     #tabRoster .ro-copy-mini:hover{ background:#E5E5EA; }
     #tabRoster .ro-actions #roCopyDaily,
     #tabRoster .ro-actions #roCopyWeekly{ background:#1C2430; color:#fff; }
-    #tabRoster .ro-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+    #tabRoster .ro-stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
     #tabRoster .ro-stat{ text-align:center; padding:6px 4px; border-radius:10px; background:#F2F2F7; }
     #tabRoster .ro-stat .num{ font-size:18px; font-weight:800; line-height:1; }
     #tabRoster .ro-stat .lbl{ font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#8E8E93; margin-top:4px; }
     #tabRoster .ro-stat.here .num{ color:#1A6B30; }
     #tabRoster .ro-stat.late .num{ color:#A05D00; }
+    #tabRoster .ro-stat.left_early .num{ color:#0F766E; }
     #tabRoster .ro-stat.absent .num{ color:#B8251C; }
     #tabRoster .ro-stat.holiday .num{ color:#0A52B8; }
     #tabRoster .ro-stat.unset .num{ color:#6E6E73; }
     #tabRoster .ro-weekline{ font-size:11px; color:#6E6E73; margin:8px 0 0; line-height:1.35; }
     #tabRoster .ro-rows{ display:flex; flex-direction:column; gap:6px; }
     #tabRoster .ro-row{ display:flex; align-items:center; gap:8px; background:#fff; border-radius:14px;
-      padding:8px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+      padding:8px 10px; box-shadow:0 1px 3px rgba(0,0,0,.06); transition:background .15s; }
     #tabRoster .ro-row.s-late{ background:#FFFBF0; }
+    #tabRoster .ro-row.s-left_early{ background:#F0FDFA; }
     #tabRoster .ro-row.s-absent{ background:#FFF5F4; }
     #tabRoster .ro-row.s-holiday{ background:#F0F6FF; }
     #tabRoster .ro-row.s-here{ background:#F3FBF5; }
+    #tabRoster .ro-row.ro-next{ outline:2px solid #2554C7; outline-offset:1px; }
     #tabRoster .ro-av{ width:32px; height:32px; border-radius:10px; background:#E5E5EA; color:#1D1D1F;
       display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex:0 0 auto; }
     #tabRoster .ro-name{ flex:1; min-width:0; font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -980,6 +983,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       cursor:pointer; background:#F2F2F7; color:#6E6E73; font-family:inherit; }
     #tabRoster .ro-btn.on-here{ background:#34C759; color:#fff; }
     #tabRoster .ro-btn.on-late{ background:#FF9500; color:#fff; }
+    #tabRoster .ro-btn.on-left_early{ background:#0F766E; color:#fff; }
     #tabRoster .ro-btn.on-absent{ background:#FF3B30; color:#fff; }
     #tabRoster .ro-btn.on-holiday{ background:#007AFF; color:#fff; }
     #tabRoster .ro-empty{ text-align:center; color:#8E8E93; padding:28px 12px; font-size:13px; }
@@ -996,7 +1000,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   </style>
   <div class="ro-wrap">
     <h1 class="ro-title">Roster</h1>
-    <p class="ro-hint">Day and afternoon each have their own people list. Add or remove staff and set roles here — Floor Plan and Breaks use this list. Mark attendance below; resets every Monday.</p>
+    <p class="ro-hint">Day and afternoon each have their own people list. Mark On shift / Late / Left early / Absent / Holiday — marked people drop to the bottom so the next person stays on top. Resets every Monday.</p>
     <div class="ro-shift" id="roShift" role="group" aria-label="Shift">
       <button type="button" data-shift="morning" class="active">Day</button>
       <button type="button" data-shift="afternoon">Afternoon</button>
@@ -2092,17 +2096,35 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
   // Clears a station's assignment. Shared by the double-click-to-clear gesture and
   // the "— Vacant —" option in the assignment popover, so there's one code path.
+  function removePersonFromBreakPlanner(shift, personId){
+    if(!window.SharedSync || !personId) return;
+    window.SharedSync.scheduleSharedSave('breakPlanner', function(latest){
+      if(!latest[shift] || !latest[shift].groups) return false;
+      var changed = false;
+      latest[shift].groups.forEach(function(g){
+        ['packer','runner','boxmaker'].forEach(function(rk){
+          var before = (g[rk]||[]).length;
+          g[rk] = (g[rk]||[]).filter(function(id){ return id !== personId; });
+          if(g[rk].length !== before) changed = true;
+        });
+      });
+      return changed ? latest : false;
+    }, 0);
+  }
   function clearStationAssignment(cardId){
     var card = cards.find(function(c){ return c.id===cardId; });
     if(!card || card.type!=='station' || !card.rosterId) return;
-    var clearedName = stationDisplayName(card.rosterId);
+    var clearedId = card.rosterId;
+    var clearedName = stationDisplayName(clearedId);
     card.rosterId = null;
     updateStationCardVisual(card);
     updateCounts();
     renderBreakTable();
     saveDebounced();
+    // Rebuild packer lanes from stations, and strip this person from Breaks entirely.
     syncBreakPlannerPackersFromFloor({ delay: 0 });
-    flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+' · removed from break group.');
+    removePersonFromBreakPlanner(currentShift, clearedId);
+    flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+' · removed from Breaks.');
   }
   function skuSlotFromPoint(slotCard, canvasY){
     if(!slotCard) return 'now';
@@ -6636,8 +6658,9 @@ init();
 (function(){
   var KEY = 'shiftWeekAttendance';
   var STATUSES = [
-    {key:'here', label:'Here'},
+    {key:'here', label:'On shift'},
     {key:'late', label:'Late'},
+    {key:'left_early', label:'Left early'},
     {key:'absent', label:'Absent'},
     {key:'holiday', label:'Holiday'}
   ];
@@ -6823,8 +6846,26 @@ init();
       return latest;
     });
     if (ok){
+      // Also pull them out of Breaks groups for this shift
+      try{
+        if (window.SharedSync && typeof window.SharedSync.writeSharedState === 'function'){
+          await window.SharedSync.writeSharedState('breakPlanner', function(latest){
+            var shift = state.rosterShift || 'morning';
+            if (!latest[shift] || !latest[shift].groups) return false;
+            var changed = false;
+            latest[shift].groups.forEach(function(g){
+              ['packer','runner','boxmaker'].forEach(function(rk){
+                var before = (g[rk]||[]).length;
+                g[rk] = (g[rk]||[]).filter(function(pid){ return pid !== id; });
+                if (g[rk].length !== before) changed = true;
+              });
+            });
+            return changed ? latest : false;
+          });
+        }
+      }catch(e){}
       await refresh();
-      rosterToast('Removed from ' + shiftLabel(state.rosterShift) + ' roster');
+      rosterToast('Removed from ' + shiftLabel(state.rosterShift) + ' roster + Breaks');
     }
   }
   function updateShiftButtons(){
@@ -6859,7 +6900,7 @@ init();
     if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
     return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
   }
-  function emptyCounts(){ return { here:0, late:0, absent:0, holiday:0, unset:0 }; }
+  function emptyCounts(){ return { here:0, late:0, left_early:0, absent:0, holiday:0, unset:0 }; }
   function countDay(dateKey, staff){
     var counts = emptyCounts();
     staff.forEach(function(p){
@@ -6871,14 +6912,25 @@ init();
   }
   function statsHtml(counts, includeUnset){
     var html =
-      '<div class="ro-stat here"><div class="num">'+counts.here+'</div><div class="lbl">Here</div></div>'+
+      '<div class="ro-stat here"><div class="num">'+counts.here+'</div><div class="lbl">On shift</div></div>'+
       '<div class="ro-stat late"><div class="num">'+counts.late+'</div><div class="lbl">Late</div></div>'+
+      '<div class="ro-stat left_early"><div class="num">'+counts.left_early+'</div><div class="lbl">Left early</div></div>'+
       '<div class="ro-stat absent"><div class="num">'+counts.absent+'</div><div class="lbl">Absent</div></div>'+
       '<div class="ro-stat holiday"><div class="num">'+counts.holiday+'</div><div class="lbl">Holiday</div></div>';
     if (includeUnset){
       html += '<div class="ro-stat unset"><div class="num">'+counts.unset+'</div><div class="lbl">Unset</div></div>';
     }
     return html;
+  }
+  function sortStaffForMarking(staff, dateKey){
+    return staff.slice().sort(function(a, b){
+      var sa = statusFor(dateKey, a.id);
+      var sb = statusFor(dateKey, b.id);
+      // Unmarked stay on top for fast marking; marked people sink to the bottom
+      if (!sa && sb) return -1;
+      if (sa && !sb) return 1;
+      return a.name.localeCompare(b.name);
+    });
   }
   function render(){
     ensureCurrentWeekFresh();
@@ -6909,7 +6961,7 @@ init();
     }
     var dateKey = ymd(addDays(ws, state.dayIdx));
     var allStaff = rosterStaff();
-    var staff = allStaff;
+    var staff = sortStaffForMarking(allStaff, dateKey);
     var q = (state.search || '').trim().toLowerCase();
     if (q) staff = staff.filter(function(p){ return p.name.toLowerCase().indexOf(q) >= 0; });
 
@@ -6919,7 +6971,7 @@ init();
       dailyTitle.textContent = 'Daily · ' + dayName + ' · ' + shiftName;
     }
     dailyEl.innerHTML = statsHtml(daily, true);
-    dailyEl.style.gridTemplateColumns = 'repeat(5,1fr)';
+    dailyEl.style.gridTemplateColumns = includeUnsetGrid(true);
 
     var weekly = emptyCounts();
     var marked = 0;
@@ -6930,9 +6982,10 @@ init();
       weekly.unset += c.unset;
     }
     weeklyEl.innerHTML = statsHtml(weekly, false);
+    weeklyEl.style.gridTemplateColumns = includeUnsetGrid(false);
     if (weeklyNote){
       weeklyNote.textContent = marked + ' mark'+(marked===1?'':'s')+' this week · '
-        + allStaff.length + ' on ' + shiftName.toLowerCase() + ' · fresh each Monday';
+        + allStaff.length + ' on ' + shiftName.toLowerCase() + ' · unmarked stay on top';
     }
 
     rowsEl.innerHTML = '';
@@ -6945,10 +6998,15 @@ init();
       rowsEl.appendChild(empty);
       return;
     }
+    var nextUnsetId = null;
+    staff.forEach(function(p){
+      if (!nextUnsetId && !statusFor(dateKey, p.id)) nextUnsetId = p.id;
+    });
     staff.forEach(function(p){
       var cur = statusFor(dateKey, p.id);
       var row = document.createElement('div');
-      row.className = 'ro-row' + (cur ? ' s-'+cur : '');
+      row.className = 'ro-row' + (cur ? ' s-'+cur : '') + (p.id === nextUnsetId ? ' ro-next' : '');
+      row.dataset.personId = p.id;
       var av = document.createElement('div'); av.className='ro-av'; av.textContent = initials(p.name);
       var nameWrap = document.createElement('div'); nameWrap.style.minWidth='0'; nameWrap.style.flex='1';
       var name = document.createElement('div'); name.className='ro-name'; name.textContent = p.name;
@@ -6981,6 +7039,11 @@ init();
         b.addEventListener('click', function(){
           setStatus(dateKey, p.id, cur === st.key ? '' : st.key);
           render();
+          // Keep the next unmarked person in view for fast roll-call
+          var next = document.querySelector('#roRows .ro-row.ro-next');
+          if (next && typeof next.scrollIntoView === 'function'){
+            try{ next.scrollIntoView({ block:'nearest', behavior:'smooth' }); }catch(e){ next.scrollIntoView(true); }
+          }
         });
         btns.appendChild(b);
       });
@@ -6991,6 +7054,9 @@ init();
       row.appendChild(btns);
       rowsEl.appendChild(row);
     });
+  }
+  function includeUnsetGrid(includeUnset){
+    return includeUnset ? 'repeat(6,1fr)' : 'repeat(5,1fr)';
   }
   async function refresh(){
     ensureCurrentWeekFresh();
@@ -7011,7 +7077,7 @@ init();
   document.getElementById('roLabel').addEventListener('click', jumpToday);
   document.getElementById('roJumpToday').addEventListener('click', jumpToday);
   document.getElementById('roClearWeek').addEventListener('click', function(){
-    if (!confirm('Clear all Here / Late / Absent / Holiday marks for this week?')) return;
+    if (!confirm('Clear all On shift / Late / Left early / Absent / Holiday marks for this week?')) return;
     pruneToWeek(state.weekStart || startOfWeek(new Date()));
     state.byDate = {};
     state.activeWeekKey = ymd(state.weekStart || startOfWeek(new Date()));
@@ -7053,8 +7119,9 @@ init();
     return d.toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
   }
   function statusShort(s){
-    if (s === 'here') return 'Here';
+    if (s === 'here') return 'On shift';
     if (s === 'late') return 'Late';
+    if (s === 'left_early') return 'Left early';
     if (s === 'absent') return 'Absent';
     if (s === 'holiday') return 'Holiday';
     return '-';
@@ -7072,6 +7139,7 @@ init();
 
     var here = peopleForStatus(dateKey, staff, 'here');
     var late = peopleForStatus(dateKey, staff, 'late');
+    var leftEarly = peopleForStatus(dateKey, staff, 'left_early');
     var absent = peopleForStatus(dateKey, staff, 'absent');
     var holiday = peopleForStatus(dateKey, staff, 'holiday');
     var unset = staff.filter(function(p){ return !statusFor(dateKey, p.id); });
@@ -7087,8 +7155,9 @@ init();
       }
       lines.push('');
     }
-    section('HERE', here);
+    section('ON SHIFT', here);
     section('LATE', late);
+    section('LEFT EARLY', leftEarly);
     section('ABSENT', absent);
     section('HOLIDAY', holiday);
     if (unset.length){
@@ -7097,8 +7166,9 @@ init();
 
     var onFloor = here.length + late.length;
     lines.push('SUMMARY');
-    lines.push('  On floor (Here + Late): ' + onFloor);
-    lines.push('  Here ' + here.length + ' · Late ' + late.length + ' · Absent ' + absent.length + ' · Holiday ' + holiday.length);
+    lines.push('  Still on floor (On shift + Late): ' + onFloor);
+    lines.push('  On shift ' + here.length + ' · Late ' + late.length + ' · Left early ' + leftEarly.length
+      + ' · Absent ' + absent.length + ' · Holiday ' + holiday.length);
     lines.push('  On ' + shift.toLowerCase() + ' roster: ' + staff.length);
     if (!staff.length) lines.push('  (No people on this roster yet)');
     return lines.join('\n');
@@ -7120,19 +7190,22 @@ init();
       var c = countDay(key, staff);
       STATUSES.forEach(function(st){ weekTotals[st.key] += c[st.key]; });
       lines.push('  ' + formatDayPays(d)
-        + '  Here ' + c.here
+        + '  On shift ' + c.here
         + ' · Late ' + c.late
+        + ' · Left early ' + c.left_early
         + ' · Absent ' + c.absent
         + ' · Holiday ' + c.holiday
         + (c.unset ? ' · Not marked ' + c.unset : ''));
     }
     lines.push('');
     lines.push('WEEK TOTALS (person-days)');
-    lines.push('  Here ' + weekTotals.here
+    lines.push('  On shift ' + weekTotals.here
       + ' · Late ' + weekTotals.late
+      + ' · Left early ' + weekTotals.left_early
       + ' · Absent ' + weekTotals.absent
       + ' · Holiday ' + weekTotals.holiday);
-    lines.push('  Days present for pays (Here + Late): ' + (weekTotals.here + weekTotals.late));
+    lines.push('  Days present for pays (On shift + Late + Left early): '
+      + (weekTotals.here + weekTotals.late + weekTotals.left_early));
     lines.push('');
 
     lines.push('STAFF DETAIL');
@@ -7141,20 +7214,22 @@ init();
     } else {
       staff.forEach(function(p){
         var dayParts = [];
-        var present = 0, lateN = 0, absentN = 0, holidayN = 0, unsetN = 0;
+        var present = 0, lateN = 0, leftEarlyN = 0, absentN = 0, holidayN = 0, unsetN = 0;
         for (var di = 0; di < 5; di++){
           var s = statusFor(ymd(addDays(ws, di)), p.id);
           dayParts.push(DAY_NAMES[di] + ' ' + statusShort(s));
           if (s === 'here') present++;
           else if (s === 'late'){ present++; lateN++; }
+          else if (s === 'left_early'){ present++; leftEarlyN++; }
           else if (s === 'absent') absentN++;
           else if (s === 'holiday') holidayN++;
           else unsetN++;
         }
         lines.push(p.name + ' — ' + roleLabel(p.role));
         lines.push('  ' + dayParts.join(' · '));
-        lines.push('  Pays days (Here+Late): ' + present
+        lines.push('  Pays days (On shift+Late+Left early): ' + present
           + '  |  Late ' + lateN
+          + '  |  Left early ' + leftEarlyN
           + '  |  Absent ' + absentN
           + '  |  Holiday ' + holidayN
           + (unsetN ? '  |  Not marked ' + unsetN : ''));
