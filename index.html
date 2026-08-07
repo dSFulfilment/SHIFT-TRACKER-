@@ -1931,10 +1931,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
             ? ('Done → '+skuNext.code)
             : ('Start → '+skuNext.code);
           promoEl.title = skuNow
-            ? ('Mark '+skuNow.code+' done and make '+skuNext.code+' current')
-            : ('Make '+skuNext.code+' the current SKU');
+            ? ('Mark '+skuNow.code+' done — '+skuNext.code+' becomes Now')
+            : ('Make '+skuNext.code+' the current (Now) SKU');
         } else {
-          promoEl.textContent = 'Done → next';
+          promoEl.textContent = 'Done → now';
           promoEl.title = 'Set a planned next SKU first';
         }
       }
@@ -2660,15 +2660,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         promoBtn.type = 'button';
         promoBtn.className = 'slot-sku-promote';
         promoBtn.textContent = 'Done → now';
-        function onPromoteSku(e){
-          e.preventDefault();
+        promoBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+        promoBtn.addEventListener('click', function(e){
           e.stopPropagation();
           closeAssignPopover();
           promoteSkuNext(card.id);
-        }
-        promoBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); e.stopPropagation(); });
-        promoBtn.addEventListener('pointerup', onPromoteSku);
-        promoBtn.addEventListener('click', onPromoteSku);
+        });
         el.appendChild(promoBtn);
         if(card.nextSkuId) el.classList.add('has-next');
       }
