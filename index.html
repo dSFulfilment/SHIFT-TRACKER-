@@ -811,7 +811,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <div class="bp-header">
       <span class="bp-title">Break Planner</span>
       <div class="bp-shiftgroup">
-        <button class="bp-shift-btn active" id="bpShiftMorning" data-shift="morning">Morning</button>
+        <button class="bp-shift-btn active" id="bpShiftMorning" data-shift="morning">Day</button>
         <button class="bp-shift-btn" id="bpShiftAfternoon" data-shift="afternoon">Afternoon</button>
       </div>
       <button class="bp-btn" id="bpImportBreaks" title="Rebuild break groups from station map (A–D → Group 1, …)">&#8635; Sync groups from stations</button>
@@ -3649,7 +3649,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     saveDebounced();
   });
   function updateNotesUI(){
-    notesPanelTitle.textContent = 'Handoff Notes — '+(currentShift==='morning' ? 'Morning' : 'Afternoon');
+    notesPanelTitle.textContent = 'Handoff Notes — '+(currentShift==='morning' ? 'Day' : 'Afternoon');
     notesText.value = notes;
   }
   updateNotesUI();
@@ -5068,7 +5068,7 @@ importBreaksBtn.addEventListener('click', async function(){
   if (!plannerCache){ bpToast('No Floor Planner data found yet'); return; }
   var rows = plannerCache.shiftData && plannerCache.shiftData[currentShift] && plannerCache.shiftData[currentShift].breakRows;
   if (!rows || !rows.length){
-    bpToast('No break rows on the ' + (currentShift === 'morning' ? 'Morning' : 'Afternoon') + ' Floor Planner board \u2014 try the other shift if you set them up there.');
+    bpToast('No break rows on the ' + (currentShift === 'morning' ? 'Day' : 'Afternoon') + ' Floor Planner board \u2014 try the other shift if you set them up there.');
     return;
   }
   var newGroups = rows.map(function(row){
