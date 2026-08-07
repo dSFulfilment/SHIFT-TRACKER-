@@ -740,11 +740,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <span class="brand">Shift Floor Planner</span>
     <span class="clock" id="liveClock">--:--</span>
     <div class="shiftgroup">
-      <button class="btn shift-btn" id="shiftMorning" data-shift="morning">Morning</button>
+      <button class="btn shift-btn" id="shiftMorning" data-shift="morning">Day</button>
       <button class="btn shift-btn" id="shiftAfternoon" data-shift="afternoon">Afternoon</button>
     </div>
     <button class="btn" id="notesBtn" title="Handoff notes">Notes</button>
-    <button class="btn active" id="toggleRoster" title="Show or hide the staff roster">Roster</button>
+    <button class="btn active" id="toggleRoster" title="Show or hide SKUs">SKUs</button>
     <span class="counts" id="importStatus"></span>
     <button class="btn" id="retryLoadBtn" style="display:none">Retry loading</button>
     <span class="counts" id="counts">0 on plates</span>
@@ -781,7 +781,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   <div id="main">
     <aside id="rosterPanel">
       <div class="roster-search-wrap">
-        <input type="search" id="rosterSearch" placeholder="Search staff or SKU…" />
+        <input type="search" id="rosterSearch" placeholder="Search SKUs…" />
       </div>
       <div id="rosterContent"></div>
     </aside>
@@ -824,7 +824,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       <div>
         <div class="bp-card">
           <div class="bp-section-lbl">Roster by role</div>
-          <div class="bp-sync-note">Shared live with the Floor Planner &#8212; add or remove someone here or there, either way.</div>
+          <div class="bp-sync-note">Same people list as the Roster tab (Day / Afternoon). Prefer managing staff there; changes sync here automatically.</div>
           <div id="bpRosterSections"></div>
           <div class="bp-addrow">
             <input type="text" id="bpNewName" placeholder="Add staff name">
@@ -879,6 +879,29 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     #tabRoster .ro-search input{ width:100%; height:36px; border:none; border-radius:12px; padding:0 12px;
       background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); font-size:14px; }
     #tabRoster .ro-hint{ font-size:11px; color:#8E8E93; margin:0 0 12px; line-height:1.45; }
+    #tabRoster .ro-shift{ display:flex; gap:6px; margin:0 0 12px; }
+    #tabRoster .ro-shift button{ flex:1; border:none; border-radius:12px; padding:10px 12px; font-size:13px;
+      font-weight:800; cursor:pointer; background:#fff; color:#6E6E73; box-shadow:0 1px 3px rgba(0,0,0,.08);
+      font-family:inherit; }
+    #tabRoster .ro-shift button.active{ background:#1C2430; color:#fff; }
+    #tabRoster .ro-manage{ background:#fff; border-radius:14px; padding:12px; margin:0 0 12px;
+      box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    #tabRoster .ro-manage h2{ margin:0 0 4px; font-size:13px; font-weight:800; }
+    #tabRoster .ro-manage .ro-manage-hint{ margin:0 0 10px; font-size:11px; color:#8E8E93; line-height:1.4; }
+    #tabRoster .ro-add{ display:flex; gap:6px; flex-wrap:wrap; }
+    #tabRoster .ro-add input, #tabRoster .ro-add select{ height:36px; border:1px solid #E5E5EA; border-radius:10px;
+      padding:0 10px; font-size:13px; font-family:inherit; background:#F9F9FB; }
+    #tabRoster .ro-add input{ flex:1; min-width:140px; }
+    #tabRoster .ro-add select{ min-width:120px; }
+    #tabRoster .ro-add button{ border:none; border-radius:10px; padding:0 14px; height:36px; font-size:12px;
+      font-weight:800; cursor:pointer; background:#1C2430; color:#fff; font-family:inherit; }
+    #tabRoster .ro-role-sel{ border:none; border-radius:8px; padding:4px 6px; font-size:10px; font-weight:700;
+      background:#F2F2F7; color:#1D1D1F; font-family:inherit; max-width:110px; }
+    #tabRoster .ro-del{ border:none; border-radius:8px; width:28px; height:28px; padding:0; cursor:pointer;
+      background:#FFF5F4; color:#FF3B30; font-size:14px; font-weight:800; font-family:inherit; line-height:1; }
+    #tabRoster .ro-del:hover{ background:#FF3B30; color:#fff; }
+    #tabRoster .ro-att-lbl{ font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+      color:#8E8E93; margin:0 0 8px; }
     #tabRoster .ro-days{ display:flex; gap:6px; margin-bottom:12px; }
     #tabRoster .ro-day{ flex:1; border:none; border-radius:14px; background:#fff; padding:8px 4px;
       box-shadow:0 1px 3px rgba(0,0,0,.08); cursor:pointer; text-align:center; }
@@ -933,11 +956,32 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       #tabRoster .ro-sum{ grid-template-columns:1fr; }
       #tabRoster .ro-stats{ grid-template-columns:repeat(2,1fr); }
       #tabRoster .ro-btn{ padding:5px 6px; font-size:9px; }
+      #tabRoster .ro-row{ flex-wrap:wrap; }
+      #tabRoster .ro-btns{ width:100%; justify-content:flex-start; }
     }
   </style>
   <div class="ro-wrap">
     <h1 class="ro-title">Roster</h1>
-    <p class="ro-hint">Mark who’s here, late, absent, or on holiday. Starts fresh every Monday. Staff come from your Floor Plan roster.</p>
+    <p class="ro-hint">Day and afternoon each have their own people list. Add or remove staff and set roles here — Floor Plan and Breaks use this list. Mark attendance below; resets every Monday.</p>
+    <div class="ro-shift" id="roShift" role="group" aria-label="Shift">
+      <button type="button" data-shift="morning" class="active">Day</button>
+      <button type="button" data-shift="afternoon">Afternoon</button>
+    </div>
+    <div class="ro-manage">
+      <h2 id="roManageTitle">People · Day</h2>
+      <p class="ro-manage-hint">This is the only place you need to manage who works the shift.</p>
+      <div class="ro-add">
+        <input type="text" id="roNewName" placeholder="Add name" autocomplete="name">
+        <select id="roNewRole">
+          <option value="packer">Packer</option>
+          <option value="runner">Runner</option>
+          <option value="boxmaker">Box maker</option>
+          <option value="unassigned">No role yet</option>
+        </select>
+        <button type="button" id="roAddStaff">Add</button>
+      </div>
+    </div>
+    <div class="ro-att-lbl">Attendance</div>
     <div class="ro-top">
       <div class="ro-nav">
         <button type="button" id="roPrev" aria-label="Previous week">‹</button>
@@ -1478,7 +1522,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
   var staffRoster = [];
   var skuRoster = [];
-  var rosterCollapsed = false;
+  var rosterCollapsed = true; // SKU side panel — staff live on the Roster tab
   var breakTitle = 'Break Schedule';
   var breakRows = [];
   var breakScale = 1;
@@ -3612,9 +3656,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
   var toggleRosterBtn = document.getElementById('toggleRoster');
   function updateRosterToggle(){
-    toggleRosterBtn.textContent = 'Roster';
+    toggleRosterBtn.textContent = 'SKUs';
     toggleRosterBtn.classList.toggle('active', !rosterCollapsed);
-    toggleRosterBtn.title = rosterCollapsed ? 'Show staff roster' : 'Hide staff roster';
+    toggleRosterBtn.title = rosterCollapsed ? 'Show SKU list' : 'Hide SKU list';
   }
   toggleRosterBtn.addEventListener('click', function(){
     rosterCollapsed = !rosterCollapsed;
@@ -3658,7 +3702,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function updateShiftButtons(){
     document.getElementById('shiftMorning').classList.toggle('active', currentShift==='morning');
     document.getElementById('shiftAfternoon').classList.toggle('active', currentShift==='afternoon');
-    document.getElementById('printShiftLabel').textContent = (currentShift==='morning' ? 'Morning Shift' : 'Afternoon Shift');
+    document.getElementById('printShiftLabel').textContent = (currentShift==='morning' ? 'Day Shift' : 'Afternoon Shift');
     if(!clearArmed) clearBtn.textContent = clearLabel();
     updateNotesUI();
   }
@@ -3916,39 +3960,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     panel.innerHTML = '';
     var q = document.getElementById('rosterSearch').value.trim().toLowerCase();
 
+    // Staff are managed on the Roster tab (Day / Afternoon). Floor only needs SKUs here.
     var staffSection = document.createElement('div'); staffSection.className='roster-section';
     var staffHeader = document.createElement('h3');
-    staffHeader.textContent = 'Staff · '+(currentShift==='morning' ? 'Morning' : 'Afternoon');
+    staffHeader.textContent = 'Staff · '+(currentShift==='morning' ? 'Day' : 'Afternoon');
     staffSection.appendChild(staffHeader);
-
-    var sortedStaff = staffRoster.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
-    if(q) sortedStaff = sortedStaff.filter(function(s){ return s.name.toLowerCase().indexOf(q)>=0; });
-    if(sortedStaff.length===0){
-      var empty = document.createElement('div'); empty.className='roster-empty';
-      empty.textContent = q ? 'No staff match "'+q+'".' : 'No staff yet — add one below.';
-      staffSection.appendChild(empty);
-    } else {
-      var grp = document.createElement('div'); grp.className='roster-group';
-      sortedStaff.forEach(function(person){
-        grp.appendChild(makeRosterRow('staff', person, person.name));
-      });
-      staffSection.appendChild(grp);
-    }
-
-    var staffAdd = document.createElement('div'); staffAdd.className='roster-add';
-    var nameInput = document.createElement('input'); nameInput.type='text'; nameInput.placeholder='Name';
-    var roleSelect = document.createElement('select');
-    ROLE_OPTIONS.forEach(function(opt){
-      var o = document.createElement('option'); o.value = opt.key; o.textContent = opt.label;
-      if(opt.key==='packer') o.selected = true;
-      roleSelect.appendChild(o);
-    });
-    var addStaffBtn = document.createElement('button'); addStaffBtn.textContent='Add';
-    staffAdd.appendChild(nameInput); staffAdd.appendChild(roleSelect); staffAdd.appendChild(addStaffBtn);
-    staffSection.appendChild(staffAdd);
-    function commitAddStaff(){ addStaffToRoster(nameInput.value, roleSelect.value); nameInput.value=''; nameInput.focus(); }
-    addStaffBtn.addEventListener('click', commitAddStaff);
-    nameInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); commitAddStaff(); } });
+    var staffNote = document.createElement('div'); staffNote.className='roster-empty';
+    staffNote.textContent = staffRoster.length
+      ? (staffRoster.length+' people on this shift — manage on the Roster tab. Tap a Drop plate to assign.')
+      : 'No people on this shift yet — add them on the Roster tab (Day / Afternoon).';
+    staffSection.appendChild(staffNote);
     panel.appendChild(staffSection);
 
     var skuSection = document.createElement('div'); skuSection.className='roster-section';
@@ -6521,10 +6542,19 @@ init();
     {key:'holiday', label:'Holiday'}
   ];
   var DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri'];
+  var ROLE_OPTS = [
+    {key:'packer', label:'Packer'},
+    {key:'runner', label:'Runner'},
+    {key:'boxmaker', label:'Box maker'},
+    {key:'unassigned', label:'No role'}
+  ];
   var LEGACY = { in:'here', leave:'holiday', early:'late' };
-  var state = { weekStart: null, dayIdx: 0, byDate: {}, activeWeekKey: '', search: '' };
+  var state = { weekStart: null, dayIdx: 0, byDate: {}, activeWeekKey: '', search: '', rosterShift: 'morning' };
   var saveTimer = null;
 
+  function uid(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function normalizeStaffName(n){ return String(n||'').trim().toLowerCase().replace(/\s+/g,' '); }
+  function shiftLabel(shift){ return shift === 'afternoon' ? 'Afternoon' : 'Day'; }
   function pad(n){ return (n < 10 ? '0' : '') + n; }
   function ymd(d){
     return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
@@ -6610,12 +6640,21 @@ init();
     }, 200);
   }
   function rosterStaff(){ return window.__weekTrackerRoster || []; }
+  function ensurePlannerShift(latest, shift){
+    if (!latest.shiftData) latest.shiftData = {};
+    if (!latest.shiftData[shift]){
+      latest.shiftData[shift] = { cards:[], breakTitle:'Break Schedule', breakRows:[], staffRoster:[], notes:'' };
+    }
+    if (!latest.shiftData[shift].staffRoster) latest.shiftData[shift].staffRoster = [];
+    if (latest.morningRosterSeparated === undefined) latest.morningRosterSeparated = true;
+    return latest.shiftData[shift];
+  }
   async function refreshRoster(){
     var list = [];
     try{
       if (window.SharedSync && typeof window.SharedSync.readSharedState === 'function'){
         var data = await window.SharedSync.readSharedState('planner');
-        var shift = (data && data.currentShift) || 'afternoon';
+        var shift = state.rosterShift || 'morning';
         var sd = data && data.shiftData && data.shiftData[shift];
         var roster = (sd && sd.staffRoster) || [];
         list = roster.map(function(p){
@@ -6625,6 +6664,78 @@ init();
     }catch(e){}
     window.__weekTrackerRoster = list;
     return list;
+  }
+  async function writeRoster(mutator){
+    if (!(window.SharedSync && typeof window.SharedSync.writeSharedState === 'function')){
+      rosterToast('Sync isn’t available — try reloading');
+      return false;
+    }
+    try{
+      var res = await window.SharedSync.writeSharedState('planner', function(latest){
+        ensurePlannerShift(latest, state.rosterShift || 'morning');
+        return mutator(latest);
+      });
+      return !!(res && res.data);
+    }catch(e){
+      rosterToast('Could not save roster (' + (e && e.message ? e.message : 'error') + ')');
+      return false;
+    }
+  }
+  async function addStaffFromTab(){
+    var input = document.getElementById('roNewName');
+    var roleEl = document.getElementById('roNewRole');
+    var name = input ? String(input.value || '').trim().replace(/\s+/g, ' ') : '';
+    var role = roleEl ? roleEl.value : 'packer';
+    if (!name){ rosterToast('Enter a name'); return; }
+    var norm = normalizeStaffName(name);
+    if (rosterStaff().some(function(p){ return normalizeStaffName(p.name) === norm; })){
+      rosterToast(name + ' is already on this shift');
+      return;
+    }
+    var entry = { id: uid(), name: name, role: role || 'unassigned' };
+    var ok = await writeRoster(function(latest){
+      var roster = latest.shiftData[state.rosterShift].staffRoster;
+      if (roster.some(function(p){ return normalizeStaffName(p.name) === norm; })) return false;
+      roster.push(entry);
+      return latest;
+    });
+    if (!ok) return;
+    if (input){ input.value = ''; input.focus(); }
+    await refresh();
+    rosterToast('Added ' + name + ' to ' + shiftLabel(state.rosterShift));
+  }
+  async function setStaffRoleFromTab(id, role){
+    var ok = await writeRoster(function(latest){
+      var entry = latest.shiftData[state.rosterShift].staffRoster.filter(function(p){ return p.id === id; })[0];
+      if (!entry) return false;
+      entry.role = role || 'unassigned';
+      return latest;
+    });
+    if (ok) await refresh();
+  }
+  async function deleteStaffFromTab(id, name){
+    if (!confirm('Remove ' + (name || 'this person') + ' from the ' + shiftLabel(state.rosterShift) + ' roster?')) return;
+    var ok = await writeRoster(function(latest){
+      var before = latest.shiftData[state.rosterShift].staffRoster.length;
+      latest.shiftData[state.rosterShift].staffRoster =
+        latest.shiftData[state.rosterShift].staffRoster.filter(function(p){ return p.id !== id; });
+      if (latest.shiftData[state.rosterShift].staffRoster.length === before) return false;
+      return latest;
+    });
+    if (ok){
+      await refresh();
+      rosterToast('Removed from ' + shiftLabel(state.rosterShift) + ' roster');
+    }
+  }
+  function updateShiftButtons(){
+    var wrap = document.getElementById('roShift');
+    if (!wrap) return;
+    var buttons = wrap.querySelectorAll('button[data-shift]');
+    for (var i = 0; i < buttons.length; i++){
+      buttons[i].classList.toggle('active', buttons[i].getAttribute('data-shift') === state.rosterShift);
+    }
+    var title = document.getElementById('roManageTitle');
+    if (title) title.textContent = 'People · ' + shiftLabel(state.rosterShift);
   }
   function statusFor(dateKey, personId){
     var day = state.byDate[dateKey] || {};
@@ -6671,6 +6782,7 @@ init();
   }
   function render(){
     ensureCurrentWeekFresh();
+    updateShiftButtons();
     var daysEl = document.getElementById('roDays');
     var dailyEl = document.getElementById('roDailyStats');
     var weeklyEl = document.getElementById('roWeeklyStats');
@@ -6682,7 +6794,8 @@ init();
     var today = ymd(new Date());
     var ws = state.weekStart || startOfWeek(new Date());
     var isCurrentWeek = ymd(ws) === ymd(startOfWeek(new Date()));
-    labelEl.innerHTML = weekLabel(ws) + '<span>'+(isCurrentWeek ? 'This week · resets Monday' : 'Mon–Fri')+'</span>';
+    var shiftName = shiftLabel(state.rosterShift);
+    labelEl.innerHTML = weekLabel(ws) + '<span>'+shiftName+' · '+(isCurrentWeek ? 'resets Monday' : 'Mon–Fri')+'</span>';
     daysEl.innerHTML = '';
     for (var i = 0; i < 5; i++){
       var d = addDays(ws, i);
@@ -6703,7 +6816,7 @@ init();
     var daily = countDay(dateKey, allStaff);
     if (dailyTitle){
       var dayName = DAY_NAMES[state.dayIdx] || 'Day';
-      dailyTitle.textContent = 'Daily summary · ' + dayName;
+      dailyTitle.textContent = 'Daily · ' + dayName + ' · ' + shiftName;
     }
     dailyEl.innerHTML = statsHtml(daily, true);
     dailyEl.style.gridTemplateColumns = 'repeat(5,1fr)';
@@ -6718,15 +6831,17 @@ init();
     }
     weeklyEl.innerHTML = statsHtml(weekly, false);
     if (weeklyNote){
-      weeklyNote.textContent = marked + ' mark'+(marked===1?'':'s')+' this week across '
-        + allStaff.length + ' staff · fresh each Monday';
+      weeklyNote.textContent = marked + ' mark'+(marked===1?'':'s')+' this week · '
+        + allStaff.length + ' on ' + shiftName.toLowerCase() + ' · fresh each Monday';
     }
 
     rowsEl.innerHTML = '';
     if (!staff.length){
       var empty = document.createElement('div');
       empty.className = 'ro-empty';
-      empty.textContent = q ? 'No staff match that search.' : 'No staff on the Floor Plan roster yet — add people there first.';
+      empty.textContent = q
+        ? 'No staff match that search.'
+        : ('No people on the ' + shiftName + ' roster yet — add someone above.');
       rowsEl.appendChild(empty);
       return;
     }
@@ -6737,8 +6852,26 @@ init();
       var av = document.createElement('div'); av.className='ro-av'; av.textContent = initials(p.name);
       var nameWrap = document.createElement('div'); nameWrap.style.minWidth='0'; nameWrap.style.flex='1';
       var name = document.createElement('div'); name.className='ro-name'; name.textContent = p.name;
-      var role = document.createElement('span'); role.className='ro-role'; role.textContent = roleLabel(p.role);
-      nameWrap.appendChild(name); nameWrap.appendChild(role);
+      nameWrap.appendChild(name);
+      var roleSel = document.createElement('select');
+      roleSel.className = 'ro-role-sel';
+      roleSel.title = 'Set role';
+      ROLE_OPTS.forEach(function(opt){
+        var o = document.createElement('option');
+        o.value = opt.key; o.textContent = opt.label;
+        if ((p.role || 'unassigned') === opt.key) o.selected = true;
+        roleSel.appendChild(o);
+      });
+      roleSel.addEventListener('change', function(){
+        setStaffRoleFromTab(p.id, roleSel.value);
+      });
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'ro-del';
+      del.title = 'Remove from this shift';
+      del.setAttribute('aria-label', 'Remove ' + p.name);
+      del.textContent = '×';
+      del.addEventListener('click', function(){ deleteStaffFromTab(p.id, p.name); });
       var btns = document.createElement('div'); btns.className='ro-btns';
       STATUSES.forEach(function(st){
         var b = document.createElement('button');
@@ -6751,7 +6884,11 @@ init();
         });
         btns.appendChild(b);
       });
-      row.appendChild(av); row.appendChild(nameWrap); row.appendChild(btns);
+      row.appendChild(av);
+      row.appendChild(nameWrap);
+      row.appendChild(roleSel);
+      row.appendChild(del);
+      row.appendChild(btns);
       rowsEl.appendChild(row);
     });
   }
@@ -6785,6 +6922,26 @@ init();
     state.search = this.value || '';
     render();
   });
+  (function bindShiftToggle(){
+    var wrap = document.getElementById('roShift');
+    if (!wrap) return;
+    wrap.addEventListener('click', function(e){
+      var btn = e.target && e.target.closest ? e.target.closest('button[data-shift]') : null;
+      if (!btn) return;
+      var next = btn.getAttribute('data-shift');
+      if (!next || next === state.rosterShift) return;
+      state.rosterShift = next;
+      refresh();
+    });
+  })();
+  (function bindAddStaff(){
+    var addBtn = document.getElementById('roAddStaff');
+    var nameInput = document.getElementById('roNewName');
+    if (addBtn) addBtn.addEventListener('click', function(){ addStaffFromTab(); });
+    if (nameInput) nameInput.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); addStaffFromTab(); }
+    });
+  })();
 
   function namesForStatus(dateKey, staff, statusKey){
     return staff.filter(function(p){ return statusFor(dateKey, p.id) === statusKey; })
@@ -6799,7 +6956,7 @@ init();
     var dateKey = ymd(d);
     var staff = rosterStaff();
     var lines = [];
-    lines.push('Daily attendance — ' + formatDayLong(d));
+    lines.push('Daily attendance — ' + shiftLabel(state.rosterShift) + ' — ' + formatDayLong(d));
     lines.push('');
     STATUSES.forEach(function(st){
       var names = namesForStatus(dateKey, staff, st.key);
@@ -6808,14 +6965,14 @@ init();
     var unset = staff.filter(function(p){ return !statusFor(dateKey, p.id); }).map(function(p){ return p.name; });
     lines.push('Unset (' + unset.length + ')' + (unset.length ? ': ' + unset.join(', ') : ''));
     lines.push('');
-    lines.push('Total staff on roster: ' + staff.length);
+    lines.push('Total staff on ' + shiftLabel(state.rosterShift).toLowerCase() + ' roster: ' + staff.length);
     return lines.join('\n');
   }
   function buildWeeklyCopy(){
     var ws = state.weekStart || startOfWeek(new Date());
     var staff = rosterStaff();
     var lines = [];
-    lines.push('Weekly attendance — ' + weekLabel(ws) + ' (for pays)');
+    lines.push('Weekly attendance — ' + shiftLabel(state.rosterShift) + ' — ' + weekLabel(ws) + ' (for pays)');
     lines.push('');
     var weekTotals = emptyCounts();
     for (var i = 0; i < 5; i++){
@@ -6845,7 +7002,7 @@ init();
       }
       lines.push(p.name + ' (' + roleLabel(p.role) + '): ' + parts.join(', '));
     });
-    if (!staff.length) lines.push('(No staff on Floor Plan roster yet)');
+    if (!staff.length) lines.push('(No staff on ' + shiftLabel(state.rosterShift).toLowerCase() + ' roster yet)');
     return lines.join('\n');
   }
   function rosterToast(msg){
