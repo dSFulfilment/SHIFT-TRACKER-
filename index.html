@@ -601,8 +601,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   padding:3px 7px; font-family:inherit; width:140px; margin-left:8px; }
 .bp-source-note{ font-size:10.5px; color:#B9BEC7; margin:2px 0 8px; font-style:italic; }
 
-.bp-backup-group{ bottom:64px; }
-
 .bp-sync-note{ font-size:11px; color:var(--muted); margin-bottom:8px; }
 #tabTracker *, #tabTracker *::before, #tabTracker *::after, #tabPacker *, #tabPacker *::before, #tabPacker *::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -865,11 +863,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <button type="button" class="btn active" id="toggleSnap" title="Snap items to grid while dragging">Snap</button>
           <button type="button" class="btn" id="alignStations" title="Snap built-in plates back into place">Reset</button>
           <button type="button" class="btn" id="printBtn" title="Print this layout">Print</button>
-          <button type="button" class="btn" id="exportFloorBtn" title="Export this floor layout">Export</button>
-          <button type="button" class="btn" id="importFloorBtn" title="Import a floor layout JSON">Import</button>
           <button type="button" class="btn danger" id="clearAll" title="Clear this shift board and restore vacant plates">Clear</button>
         </div>
-        <input type="file" id="importFile" accept="application/json,.json" style="display:none" />
       </div>
     </div>
     <button type="button" class="ft-fab" id="floorToolsBtn" title="Open floor tools" aria-expanded="false" aria-controls="floorToolsModal">Tools</button>
@@ -944,12 +939,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     </div>
   </div>
 </div>
-
-<div class="bp-fab-group bp-backup-group" id="bpBackupGroup">
-  <button class="bp-fab-btn" id="globalExportBtn">&#8595; Export all</button>
-  <button class="bp-fab-btn" id="globalImportBtn">&#8593; Import all</button>
-</div>
-<input type="file" id="globalImportFile" accept="application/json,.json" style="display:none">
 
 <div class="bp-fab-group" id="bpFabGroup">
   <button class="bp-fab-btn active" data-tab="floor">Floor Plan</button>
@@ -3937,9 +3926,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var cancelChip = document.getElementById('floorToolCancel');
     var toolChip = document.getElementById('floorToolChip');
     var doneToolBtn = document.getElementById('floorToolDone');
-    var exportFloorBtn = document.getElementById('exportFloorBtn');
-    var importFloorBtn = document.getElementById('importFloorBtn');
-    var importFileInput = document.getElementById('importFile');
     syncDrawColorChrome();
     if(dock){
       function onToolColorPick(e){
@@ -3976,13 +3962,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       cancelChip.addEventListener('click', cancelArmedTool);
     }
     if(doneToolBtn) doneToolBtn.addEventListener('click', cancelArmedTool);
-    if(exportFloorBtn) exportFloorBtn.addEventListener('click', function(){
-      exportData();
-      closeFloorToolsModal();
-    });
-    if(importFloorBtn && importFileInput) importFloorBtn.addEventListener('click', function(){
-      importFileInput.click();
-    });
     document.addEventListener('keydown', function(e){
       if(e.key === 'Escape'){
         if(dock && dock.classList.contains('open')){
@@ -4166,87 +4145,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         onRetry();
       };
     }
-  }
-
-  function exportData(){
-    shiftData[currentShift] = { cards:cards, breakTitle:breakTitle, breakRows:breakRows, staffRoster:staffRoster, notes:notes };
-    var payload = {
-      zoom:zoom, skuRoster:skuRoster, rosterCollapsed:rosterCollapsed, breakScale:breakScale, snapEnabled:snapEnabled,
-      breakX:breakX, breakY:breakY,
-      currentShift:currentShift, shiftData:shiftData,
-      morningRosterSeparated:true, morningBreakTimesCleared:true
-    };
-    try{
-      var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = 'shift-planner-backup-'+new Date().toISOString().slice(0,10)+'.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-      flashStatus('Backup downloaded');
-    }catch(err){
-      flashStatus('Export failed');
-    }
-  }
-
-  function importData(file){
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var data;
-      try{ data = JSON.parse(e.target.result); }
-      catch(err){ flashStatus('Not a valid backup file'); return; }
-      if(!data || !data.shiftData || !(data.shiftData.morning || data.shiftData.afternoon)){
-        flashStatus('Not a valid backup file'); return;
-      }
-      skuRoster = (data.skuRoster && data.skuRoster.length) ? data.skuRoster : seedSkus();
-      rosterCollapsed = !!data.rosterCollapsed;
-      breakScale = data.breakScale || 1;
-      breakX = (typeof data.breakX==='number') ? data.breakX : null;
-      breakY = (typeof data.breakY==='number') ? data.breakY : null;
-      snapEnabled = (data.snapEnabled !== undefined) ? !!data.snapEnabled : true;
-      shiftData = data.shiftData;
-      currentShift = (data.currentShift==='morning' || data.currentShift==='afternoon') ? data.currentShift : 'afternoon';
-      morningRosterSeparated = true;
-      morningBreakTimesCleared = true;
-      document.getElementById('rosterSearch').value = '';
-
-      els.forEach(function(ref){ ref.el.remove(); });
-      els.clear();
-      selectedId = null;
-      var sd = shiftData[currentShift] || {};
-      cards = sd.cards || [];
-      breakTitle = sd.breakTitle || 'Break Schedule';
-      breakRows = (sd.breakRows && sd.breakRows.length) ? sd.breakRows : seedBreakRows();
-      staffRoster = sd.staffRoster || [];
-      notes = sd.notes || '';
-      cards.forEach(function(c){ buildCardEl(c); });
-      ensureFloorStations();
-      ensureFloorSlots();
-      updateCounts();
-      checkStationDuplicates();
-      if(data.zoom) setZoom(data.zoom); else fitZoom();
-      updateShiftButtons();
-      updateSnapButton();
-      renderRoster();
-      renderBreakTable();
-      syncBreakPlannerPackersFromFloor({ delay: 400 });
-      saveDebounced();
-      flashStatus('Backup restored');
-    };
-    reader.onerror = function(){ flashStatus('Could not read that file'); };
-    reader.readAsText(file);
-  }
-
-  // Floor Export/Import removed from the tools bar — use Export all / Import all FABs.
-  var importFileInput = document.getElementById('importFile');
-  if(importFileInput){
-    importFileInput.addEventListener('change', function(){
-      if(importFileInput.files && importFileInput.files[0]) importData(importFileInput.files[0]);
-      importFileInput.value = '';
-    });
   }
 
   // ---------------- roster panel ----------------
@@ -7587,72 +7485,6 @@ init();
     btns[i].addEventListener('click', function(){ showTab(this.getAttribute('data-tab')); });
   }
   showTab('floor');
-
-  // ── GLOBAL BACKUP (covers Floor Planner + Break Planner + Packer CSV Data) ──
-  var STORAGE_KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
-  var toastEl = document.getElementById('bpToast');
-  function toast(msg){
-    if (!toastEl) return;
-    toastEl.textContent = msg;
-    toastEl.classList.add('show');
-    clearTimeout(toastEl._gt);
-    toastEl._gt = setTimeout(function(){ toastEl.classList.remove('show'); }, 3000);
-  }
-  function hasStorage(){ return typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function'; }
-
-  var exportBtn = document.getElementById('globalExportBtn');
-  var importBtn = document.getElementById('globalImportBtn');
-  var importFile = document.getElementById('globalImportFile');
-
-  if (exportBtn) exportBtn.addEventListener('click', async function(){
-    if (!hasStorage()){ toast('Storage unavailable'); return; }
-    try{
-      var bundle = { type:'shift-floor-planner-backup', version:1, exportedAt: new Date().toISOString() };
-      for (var i = 0; i < STORAGE_KEYS.length; i++){
-        var k = STORAGE_KEYS[i];
-        try{
-          var r = await window.storage.get(k, false);
-          bundle[k] = (r && r.value) ? JSON.parse(r.value) : null;
-        }catch(e){ bundle[k] = null; }
-      }
-      var blob = new Blob([JSON.stringify(bundle, null, 2)], {type:'application/json'});
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'shift-floor-planner-backup-' + new Date().toISOString().slice(0,10) + '.json';
-      a.click();
-      toast('Backup downloaded (Floor Plan, Roster, Breaks, Packer CSV)');
-    }catch(e){ toast('Export failed'); }
-  });
-
-  if (importBtn) importBtn.addEventListener('click', function(){ importFile.click(); });
-  if (importFile) importFile.addEventListener('change', function(e){
-    var f = e.target.files[0];
-    if (!f) return;
-    if (!hasStorage()){ toast('Storage unavailable'); importFile.value = ''; return; }
-    var reader = new FileReader();
-    reader.onload = async function(){
-      try{
-        var bundle = JSON.parse(reader.result);
-        if (!bundle || bundle.type !== 'shift-floor-planner-backup'){
-          toast('That file doesn\u2019t look like a backup from this tool');
-          return;
-        }
-        var wrote = 0;
-        for (var i = 0; i < STORAGE_KEYS.length; i++){
-          var k = STORAGE_KEYS[i];
-          if (bundle[k] !== undefined && bundle[k] !== null){
-            await window.storage.set(k, JSON.stringify(bundle[k]), false);
-            wrote++;
-          }
-        }
-        if (!wrote){ toast('Backup file had nothing to restore'); return; }
-        toast('Restored \u2014 reloading\u2026');
-        setTimeout(function(){ window.location.reload(); }, 900);
-      }catch(err){ toast('Could not read that backup file'); }
-    };
-    reader.readAsText(f);
-    importFile.value = '';
-  });
 })();
 </script>
 </body>
