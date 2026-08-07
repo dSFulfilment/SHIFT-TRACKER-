@@ -446,12 +446,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 @media (max-width:640px){
   #floorToolsDock{ bottom:72px; }
 }
-#app #floorToolChip{ display:none; position:absolute; top:12px; left:12px; z-index:21; align-items:center; gap:8px;
+#app #floorToolChip{ display:none; position:fixed; top:56px; left:12px; z-index:10050; align-items:center; gap:8px;
   background:rgba(28,36,48,.92); color:#fff; border-radius:999px; padding:7px 8px 7px 12px; font-size:12px;
-  font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.2); }
+  font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,.2); pointer-events:auto; }
 #app #floorToolChip.show{ display:flex; }
 #app #floorToolChip button{ border:none; border-radius:999px; background:rgba(255,255,255,.18); color:#fff;
-  font:inherit; font-size:11px; font-weight:800; padding:5px 10px; cursor:pointer; }
+  font:inherit; font-size:11px; font-weight:800; padding:5px 10px; cursor:pointer; touch-action:manipulation; }
+#app #floorToolChip button:hover{ background:rgba(255,255,255,.28); }
+#floorToolsDock .ft-done{ display:none; width:100%; justify-content:center; background:var(--ink); color:#fff; border-color:var(--ink); }
+#floorToolsDock .ft-done.show{ display:inline-flex; }
 #app .role-popover .assign-search-wrap{ position:sticky; top:0; z-index:2; background:#fff; padding:2px 0 6px; }
 #app .role-popover .assign-search{ width:100%; height:30px; border:1px solid var(--line); border-radius:7px;
   padding:0 8px; font-size:12px; font-family:inherit; box-sizing:border-box; }
@@ -830,6 +833,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="ft-grid ft-one">
           <button type="button" class="ft-tool move" id="toggleMove"><span class="swatch"></span><span>Move plates<span class="sub">Drag · double-click text</span></span></button>
         </div>
+        <div class="ft-actions" style="margin-top:8px">
+          <button type="button" class="btn ft-done" id="floorToolDone" title="Finish and leave the current tool">Done — cancel tool</button>
+        </div>
       </div>
       <div class="ft-sec">
         <div class="ft-sec-lbl">Add plate</div>
@@ -868,6 +874,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     </div>
     <button type="button" class="ft-fab" id="floorToolsBtn" title="Open floor tools" aria-expanded="false" aria-controls="floorToolsModal">Tools</button>
   </div>
+  <div id="floorToolChip"><span id="floorToolChipLabel">Tool armed</span><button type="button" id="floorToolCancel">Cancel</button></div>
   <div id="main">
     <aside id="rosterPanel">
       <div class="roster-search-wrap">
@@ -876,7 +883,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       <div id="rosterContent"></div>
     </aside>
     <div id="viewport">
-      <div id="floorToolChip"><span id="floorToolChipLabel">Tool armed</span><button type="button" id="floorToolCancel">Cancel</button></div>
       <div id="floorHint">Tap a plate to assign · Tools → Move to drag/resize · double-click writing to edit</div>
       <div id="printShiftLabel" class="print-shift-label"></div>
       <div id="canvas">
@@ -3508,6 +3514,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(toolsBtn) toolsBtn.classList.toggle('armed', !!armedTool);
     var chip = document.getElementById('floorToolChip');
     var chipLbl = document.getElementById('floorToolChipLabel');
+    var doneBtn = document.getElementById('floorToolDone');
     if(chip){
       if(armedTool){
         chip.classList.add('show');
@@ -3516,6 +3523,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         chip.classList.remove('show');
       }
     }
+    if(doneBtn) doneBtn.classList.toggle('show', !!armedTool);
   }
   function closeFloorToolsModal(){
     var dock = document.getElementById('floorToolsDock');
@@ -3775,6 +3783,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
 
   viewport.addEventListener('pointerdown', function(e){
+    // Cancel / tool chip sits over the map — never treat those taps as placements
+    if(e.target.closest('#floorToolChip')) return;
     if(armedTool){
       if(e.target.closest('.card')) return;
       // Move tool only repositions existing plates — empty canvas just clears selection
@@ -3925,6 +3935,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var scrim = document.getElementById('floorToolsScrim');
     var closeBtn = document.getElementById('floorToolsClose');
     var cancelChip = document.getElementById('floorToolCancel');
+    var toolChip = document.getElementById('floorToolChip');
+    var doneToolBtn = document.getElementById('floorToolDone');
     var exportFloorBtn = document.getElementById('exportFloorBtn');
     var importFloorBtn = document.getElementById('importFloorBtn');
     var importFileInput = document.getElementById('importFile');
@@ -3950,7 +3962,20 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     });
     if(closeBtn) closeBtn.addEventListener('click', closeFloorToolsModal);
     if(scrim) scrim.addEventListener('click', closeFloorToolsModal);
-    if(cancelChip) cancelChip.addEventListener('click', function(){ disarmTool(); });
+    function cancelArmedTool(e){
+      if(e){ e.preventDefault(); e.stopPropagation(); }
+      disarmTool();
+      closeFloorToolsModal();
+    }
+    // Stop map placement from eating Cancel taps; do not capture-stop click or the button never fires
+    if(toolChip){
+      toolChip.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    }
+    if(cancelChip){
+      cancelChip.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+      cancelChip.addEventListener('click', cancelArmedTool);
+    }
+    if(doneToolBtn) doneToolBtn.addEventListener('click', cancelArmedTool);
     if(exportFloorBtn) exportFloorBtn.addEventListener('click', function(){
       exportData();
       closeFloorToolsModal();
@@ -3960,8 +3985,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     });
     document.addEventListener('keydown', function(e){
       if(e.key === 'Escape'){
-        if(dock && dock.classList.contains('open')) closeFloorToolsModal();
-        else if(armedTool) disarmTool();
+        if(dock && dock.classList.contains('open')){
+          closeFloorToolsModal();
+          return;
+        }
+        if(armedTool) disarmTool();
       }
     });
   })();
