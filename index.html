@@ -390,7 +390,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #floorToolsDock .ft-fab:hover{ background:#F7F7F4; }
 #floorToolsDock .ft-fab.armed, #floorToolsDock.open .ft-fab{ background:var(--ink); color:#fff; border-color:var(--ink); }
 #floorToolsDock .ft-fab:active{ transform:scale(.96); }
-#floorToolsDock .ft-panel{ width:min(340px, calc(100vw - 32px)); max-height:min(70vh, 560px); overflow:auto;
+#floorToolsDock .ft-panel{ width:min(340px, calc(100vw - 32px)); max-height:min(78vh, 640px); overflow:auto;
   background:#fff; border:1px solid var(--line); border-radius:18px;
   box-shadow:0 18px 48px rgba(0,0,0,.22); padding:12px 12px 14px;
   transform-origin:left bottom; opacity:0; visibility:hidden; pointer-events:none;
@@ -410,30 +410,35 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   border-radius:12px; background:#FAFAF8; padding:10px 11px; cursor:pointer; font:inherit; font-size:12.5px;
   font-weight:700; color:var(--ink); text-align:left; }
 #floorToolsDock .ft-tool:hover{ background:#F1F1EE; }
-#floorToolsDock .ft-tool .swatch{ width:10px; height:10px; border-radius:50%; flex:0 0 auto; }
+#floorToolsDock .ft-tool .swatch{ width:12px; height:12px; border-radius:50%; flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.14); }
 #floorToolsDock .ft-tool.station .swatch{ background:var(--staff); }
 #floorToolsDock .ft-tool.sku .swatch{ background:var(--sku); }
 #floorToolsDock .ft-tool.boxmaker .swatch{ background:var(--boxmaker); }
 #floorToolsDock .ft-tool.runner .swatch{ background:var(--runner); }
-#floorToolsDock .ft-tool.annot .swatch{ background:var(--annot); }
 #floorToolsDock .ft-tool.move .swatch{ background:var(--ink); }
+#floorToolsDock .ft-tool.annot .swatch,
+#floorToolsDock .ft-tool .swatch.ft-color{
+  width:18px; height:18px; background:var(--draw-color, var(--annot));
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.18), 0 0 0 2px #fff;
+  border:1px solid rgba(0,0,0,.08); cursor:pointer;
+}
+#floorToolsDock .ft-tool.drawing .swatch.ft-color{
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 2px rgba(255,255,255,.55);
+}
 #floorToolsDock .ft-tool .sub{ display:block; font-size:10px; font-weight:600; color:var(--muted); margin-top:2px; }
 #floorToolsDock .ft-tool.drawing{ color:#fff; border-color:transparent; }
 #floorToolsDock .ft-tool.station.drawing{ background:var(--staff); }
 #floorToolsDock .ft-tool.sku.drawing{ background:var(--sku); }
 #floorToolsDock .ft-tool.boxmaker.drawing{ background:var(--boxmaker); }
 #floorToolsDock .ft-tool.runner.drawing{ background:var(--runner); }
-#floorToolsDock .ft-tool.annot.drawing{ background:var(--annot); }
+#floorToolsDock .ft-tool.annot.drawing{ background:var(--draw-color, var(--annot)); }
 #floorToolsDock .ft-tool.move.drawing{ background:var(--ink); }
 #floorToolsDock .ft-tool.drawing .sub{ color:rgba(255,255,255,.85); }
 #floorToolsDock .ft-actions{ display:flex; flex-wrap:wrap; gap:7px; }
 #floorToolsDock .ft-actions .btn{ flex:1 1 96px; justify-content:center; }
 #floorToolsDock #toggleSnap:not(.active){ color:var(--muted); }
-#floorToolsDock .ft-colors{ display:grid; grid-template-columns:repeat(8,1fr); gap:6px; }
-#floorToolsDock .ft-colors .ft-swatch{ width:100%; aspect-ratio:1; border:none; border-radius:50%;
-  cursor:pointer; padding:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
-#floorToolsDock .ft-colors .ft-swatch.active{ box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--ink); }
-#floorToolsDock .ft-tool.annot .swatch{ background:var(--draw-color, var(--annot)); }
+#floorToolsDock .ft-grid.ft-one{ grid-template-columns:1fr; }
 #floorToolsScrim{ display:none; position:fixed; inset:0; z-index:9997; background:transparent; }
 #floorToolsScrim.open{ display:block; }
 @media (max-width:640px){
@@ -820,15 +825,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       </div>
       <div class="ft-sec">
         <div class="ft-sec-lbl">Move</div>
-        <p class="ft-sec-hint">Off by default so taps assign people. Arm Move only when you need to drag plates.</p>
-        <div class="ft-grid">
-          <button type="button" class="ft-tool move" id="toggleMove"><span class="swatch"></span><span>Move plates<span class="sub">Drag to reposition</span></span></button>
-          <button type="button" class="ft-tool annot" id="dupSelected"><span class="swatch"></span><span>Duplicate<span class="sub">Copy selected</span></span></button>
+        <div class="ft-grid ft-one">
+          <button type="button" class="ft-tool move" id="toggleMove"><span class="swatch"></span><span>Move plates<span class="sub">Drag / resize / delete</span></span></button>
         </div>
       </div>
       <div class="ft-sec">
         <div class="ft-sec-lbl">Add plate</div>
-        <p class="ft-sec-hint">Pick a role, then tap the map to place it.</p>
         <div class="ft-grid">
           <button type="button" class="ft-tool station" id="addStation"><span class="swatch"></span><span>Packer<span class="sub">Station plate</span></span></button>
           <button type="button" class="ft-tool sku" id="addSkuSlot"><span class="swatch"></span><span>SKU<span class="sub">Current + next</span></span></button>
@@ -837,22 +839,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         </div>
       </div>
       <div class="ft-sec">
-        <div class="ft-sec-lbl">Mark up</div>
+        <div class="ft-sec-lbl">Mark up <span style="font-weight:600;letter-spacing:0;text-transform:none;color:#8E8E93">· tap circle for colour</span></div>
         <div class="ft-grid">
-          <button type="button" class="ft-tool annot" id="addText"><span class="swatch"></span><span>Text<span class="sub">Label on map</span></span></button>
-          <button type="button" class="ft-tool annot" id="addArrow"><span class="swatch"></span><span>Arrow<span class="sub">Draw direction</span></span></button>
-          <button type="button" class="ft-tool annot" id="addArrow2"><span class="swatch"></span><span>Double arrow<span class="sub">Both ways</span></span></button>
-          <button type="button" class="ft-tool annot" id="addLine"><span class="swatch"></span><span>Line<span class="sub">Straight mark</span></span></button>
-          <button type="button" class="ft-tool annot" id="addDraw"><span class="swatch"></span><span>Pen<span class="sub">Freehand</span></span></button>
-          <button type="button" class="ft-tool annot" id="addHighlight"><span class="swatch"></span><span>Zone<span class="sub">Highlight area</span></span></button>
-          <button type="button" class="ft-tool annot" id="addCircle"><span class="swatch"></span><span>Circle<span class="sub">Round outline</span></span></button>
-          <button type="button" class="ft-tool annot" id="addRect"><span class="swatch"></span><span>Box shape<span class="sub">Rectangle</span></span></button>
+          <button type="button" class="ft-tool annot" id="addText"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Text<span class="sub">Label on map</span></span></button>
+          <button type="button" class="ft-tool annot" id="addArrow"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Arrow<span class="sub">Draw direction</span></span></button>
+          <button type="button" class="ft-tool annot" id="addArrow2"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Double arrow<span class="sub">Both ways</span></span></button>
+          <button type="button" class="ft-tool annot" id="addLine"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Line<span class="sub">Straight mark</span></span></button>
+          <button type="button" class="ft-tool annot" id="addDraw"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Pen<span class="sub">Freehand</span></span></button>
+          <button type="button" class="ft-tool annot" id="addHighlight"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Zone<span class="sub">Highlight area</span></span></button>
+          <button type="button" class="ft-tool annot" id="addCircle"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Circle<span class="sub">Round outline</span></span></button>
+          <button type="button" class="ft-tool annot" id="addRect"><span class="swatch ft-color" title="Pick colour" role="button" tabindex="0"></span><span>Box shape<span class="sub">Rectangle</span></span></button>
         </div>
-      </div>
-      <div class="ft-sec">
-        <div class="ft-sec-lbl">Mark-up colour</div>
-        <p class="ft-sec-hint">Pick a colour for new text, arrows, pen, and shapes. Or select an existing mark-up and tap a swatch / the colour chip.</p>
-        <div class="ft-colors" id="ftColorPalette"></div>
       </div>
       <div class="ft-sec">
         <div class="ft-sec-lbl">Board</div>
@@ -1700,12 +1697,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     document.documentElement.style.setProperty('--draw-color', activeDrawColor);
     var dock = document.getElementById('floorToolsDock');
     if(dock) dock.style.setProperty('--draw-color', activeDrawColor);
-    var palette = document.getElementById('ftColorPalette');
-    if(palette){
-      Array.prototype.forEach.call(palette.children, function(sw){
-        sw.classList.toggle('active', (sw.dataset.color||'').toLowerCase() === String(activeDrawColor).toLowerCase());
-      });
-    }
   }
   function isShapeType(t){ return t==='arrow' || t==='arrow2' || t==='circle' || t==='line' || t==='rect' || t==='draw' || t==='highlight'; }
   function isColorable(t){ return isShapeType(t) || t==='text'; }
@@ -2802,13 +2793,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     colorPopover.appendChild(sw);
   });
   colorPopover.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-  function openColorPicker(id, anchorEl){
-    var card = cards.find(function(c){ return c.id===id; });
-    if(!card) return;
-    activeColorCardId = id;
-    var current = (card.color || defaultColorFor(card.type)).toLowerCase();
+  function placeColorPopover(anchorEl, currentColor){
+    var current = String(currentColor || activeDrawColor || DEFAULT_ANNOT_COLOR).toLowerCase();
     Array.prototype.forEach.call(colorPopover.children, function(sw){
-      sw.classList.toggle('active', sw.dataset.color.toLowerCase()===current);
+      sw.classList.toggle('active', (sw.dataset.color||'').toLowerCase()===current);
     });
     colorPopover.classList.add('open');
     var rect = anchorEl.getBoundingClientRect();
@@ -2819,6 +2807,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(top + popH > window.innerHeight - 4) top = Math.max(4, rect.top - popH - 6);
     colorPopover.style.left = left+'px';
     colorPopover.style.top = top+'px';
+  }
+  function openColorPicker(id, anchorEl){
+    var card = cards.find(function(c){ return c.id===id; });
+    if(!card) return;
+    activeColorCardId = id;
+    placeColorPopover(anchorEl, card.color || defaultColorFor(card.type));
+  }
+  function openDrawColorPicker(anchorEl){
+    var sel = selectedId ? cards.find(function(c){ return c.id===selectedId; }) : null;
+    activeColorCardId = (sel && isColorable(sel.type)) ? sel.id : null;
+    placeColorPopover(anchorEl, activeDrawColor);
   }
   function closeColorPopover(){
     colorPopover.classList.remove('open');
@@ -2849,7 +2848,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(applyToSelection && selectedId) applyColorToCard(selectedId, activeDrawColor);
   }
   document.addEventListener('pointerdown', function(e){
-    if(colorPopover.classList.contains('open') && !e.target.closest('#colorPopover') && !e.target.closest('.ctrl.color')){
+    if(colorPopover.classList.contains('open') && !e.target.closest('#colorPopover') && !e.target.closest('.ctrl.color') && !e.target.closest('.ft-color')){
       closeColorPopover();
     }
     if(rolePopover.classList.contains('open') && !e.target.closest('#rolePopover') && !e.target.closest('.ctrl.role') && !e.target.closest('.role-chip')){
@@ -3857,7 +3856,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
   function bindToolBtn(id, type){
     var el = document.getElementById(id);
-    if(el) el.addEventListener('click', function(){ armTool(type); });
+    if(el) el.addEventListener('click', function(e){
+      if(e.target && e.target.closest && e.target.closest('.ft-color')) return;
+      armTool(type);
+    });
   }
   bindToolBtn('toggleMove', 'move');
   bindToolBtn('addStation', 'station');
@@ -3878,28 +3880,24 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var scrim = document.getElementById('floorToolsScrim');
     var closeBtn = document.getElementById('floorToolsClose');
     var cancelChip = document.getElementById('floorToolCancel');
-    var dupBtn = document.getElementById('dupSelected');
     var exportFloorBtn = document.getElementById('exportFloorBtn');
     var importFloorBtn = document.getElementById('importFloorBtn');
     var importFileInput = document.getElementById('importFile');
-    var palette = document.getElementById('ftColorPalette');
-    if(palette && !palette.childElementCount){
-      COLOR_PRESETS.forEach(function(c){
-        var sw = document.createElement('button');
-        sw.type = 'button';
-        sw.className = 'ft-swatch';
-        sw.style.background = c;
-        sw.dataset.color = c;
-        sw.title = 'Mark-up colour '+c;
-        sw.addEventListener('click', function(e){
-          e.stopPropagation();
-          setActiveDrawColor(c, true);
-          flashStatus('Colour set');
-        });
-        palette.appendChild(sw);
-      });
-    }
     syncDrawColorChrome();
+    if(dock){
+      function onToolColorPick(e){
+        var sw = e.target.closest('.ft-color');
+        if(!sw || !dock.contains(sw)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openDrawColorPicker(sw);
+      }
+      dock.addEventListener('click', onToolColorPick, true);
+      dock.addEventListener('keydown', function(e){
+        if(e.key !== 'Enter' && e.key !== ' ') return;
+        onToolColorPick(e);
+      }, true);
+    }
     if(toolsBtn) toolsBtn.addEventListener('click', function(e){
       e.stopPropagation();
       if(dock && dock.classList.contains('open')) closeFloorToolsModal();
@@ -3908,12 +3906,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(closeBtn) closeBtn.addEventListener('click', closeFloorToolsModal);
     if(scrim) scrim.addEventListener('click', closeFloorToolsModal);
     if(cancelChip) cancelChip.addEventListener('click', function(){ disarmTool(); });
-    if(dupBtn) dupBtn.addEventListener('click', function(){
-      if(!selectedId){ flashStatus('Select a plate or mark-up first'); return; }
-      duplicateCard(selectedId);
-      closeFloorToolsModal();
-      flashStatus('Duplicated');
-    });
     if(exportFloorBtn) exportFloorBtn.addEventListener('click', function(){
       exportData();
       closeFloorToolsModal();
