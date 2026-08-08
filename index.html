@@ -503,19 +503,19 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 .bp-fab-btn .fab-full{ display:none; }
 .bp-fab-btn .fab-short{ display:inline; }
 
-/* Desktop-only layout: left nav rail + full-width work areas */
+/* Desktop-only layout: slim left nav + full-width work areas */
 @media (min-width:1101px){
-  :root{ --desk-nav:172px; }
+  :root{ --desk-nav:64px; }
 
-  /* Left rail nav (replaces bottom pill on desktop) */
+  /* Slim rail — short labels only so content keeps the width */
   .bp-fab-group{
     top:0; bottom:0; left:0; right:auto;
     width:var(--desk-nav);
     flex-direction:column;
     justify-content:flex-start;
     align-items:stretch;
-    gap:4px;
-    padding:14px 10px;
+    gap:2px;
+    padding:10px 6px;
     border-radius:0;
     border:none;
     border-right:1px solid #E1E4EA;
@@ -525,14 +525,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
   .bp-fab-btn{
     width:100%;
-    border-radius:10px;
-    text-align:left;
-    padding:11px 12px;
-    font-size:13px;
+    border-radius:8px;
+    text-align:center;
+    padding:8px 2px;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.01em;
+    line-height:1.15;
     flex:0 0 auto;
   }
-  .bp-fab-btn .fab-short{ display:none; }
-  .bp-fab-btn .fab-full{ display:inline; }
+  .bp-fab-btn .fab-short{ display:inline; }
+  .bp-fab-btn .fab-full{ display:none; }
 
   /* Shift every surface right of the rail */
   #app{
@@ -689,7 +692,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
 @media (min-width:1101px) and (pointer:fine){
   .bp-fab-btn:hover{ background:#EEF1F6; color:var(--ink); }
-  .bp-fab-btn.active{ box-shadow:inset 3px 0 0 #2554C7; }
+  .bp-fab-btn.active{ box-shadow:inset 2px 0 0 #2554C7; }
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
   #tabSettings .stn-actions button:hover{ background:#F5F6FA; }
   #tabSettings .stn-actions button.primary:hover{ background:#2A3444; }
@@ -698,7 +701,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
 /* Very wide desktops: give Tracker / Breaks more room */
 @media (min-width:1440px){
-  :root{ --desk-nav:188px; }
   #tabTracker .st-body{ grid-template-columns:minmax(340px,440px) minmax(0,1fr); }
   #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,360px) minmax(0,1fr); }
 }
@@ -1376,12 +1378,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 </div>
 
 <div class="bp-fab-group" id="bpFabGroup">
-  <button class="bp-fab-btn active" data-tab="floor"><span class="fab-short">Floor</span><span class="fab-full">Floor Plan</span></button>
-  <button class="bp-fab-btn" data-tab="breaks"><span class="fab-short">Breaks</span><span class="fab-full">Breaks</span></button>
-  <button class="bp-fab-btn" data-tab="tracker"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
-  <button class="bp-fab-btn" data-tab="packer"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
-  <button class="bp-fab-btn" data-tab="roster"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
-  <button class="bp-fab-btn" data-tab="settings"><span class="fab-short">Settings</span><span class="fab-full">Settings</span></button>
+  <button class="bp-fab-btn active" data-tab="floor" title="Floor Plan"><span class="fab-short">Floor</span><span class="fab-full">Floor Plan</span></button>
+  <button class="bp-fab-btn" data-tab="breaks" title="Breaks"><span class="fab-short">Breaks</span><span class="fab-full">Breaks</span></button>
+  <button class="bp-fab-btn" data-tab="tracker" title="Shift Tracker"><span class="fab-short">Track</span><span class="fab-full">Shift Tracker</span></button>
+  <button class="bp-fab-btn" data-tab="packer" title="Packer"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
+  <button class="bp-fab-btn" data-tab="roster" title="Roster"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
+  <button class="bp-fab-btn" data-tab="settings" title="Settings"><span class="fab-short">Set</span><span class="fab-full">Settings</span></button>
 </div>
 <div class="bp-toast" id="bpToast"></div>
 
