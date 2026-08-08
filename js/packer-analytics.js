@@ -363,15 +363,14 @@
   }
 
   /**
-   * One row per packer (duplicate names merged). Includes SKUs worked and
-   * whether each / overall hit the BPH target from the warehouse board.
-   * Uses Boxes Packed by Worker rows (packing time). Hourly-only rows are ignored here.
+   * One row per packer (duplicate names merged).
+   * Per SKU: boxes vs need (target BPH × hours on that SKU).
+   * Hours = packing time on that SKU; person shiftHours prefer Intra Hour count.
    */
   function aggregatePeopleRows(records) {
     var by = {};
     (records || []).forEach(function (r) {
       if (!r.workerKey) return;
-      if (r.packingHours == null || r.packingHours <= 0) return;
       if (!by[r.workerKey]) {
         by[r.workerKey] = {
           workerKey: r.workerKey,
@@ -379,10 +378,13 @@
           boxes: 0,
           packingHours: 0,
           skus: {},
-          stations: {}
+          stations: {},
+          hourKeys: {}
         };
       }
       var g = by[r.workerKey];
+      if (r.hour != null && isFinite(r.hour)) g.hourKeys[r.hour] = true;
+      if (r.packingHours == null || r.packingHours <= 0) return;
       g.boxes += r.boxes || 0;
       g.packingHours += r.packingHours || 0;
       if (r.station) g.stations[r.station] = true;
@@ -395,42 +397,50 @@
     return Object.keys(by)
       .map(function (wk) {
         var g = by[wk];
-        var hours = g.packingHours > 0 ? g.packingHours : null;
-        var overallBph = boxesPerHour(g.boxes, hours);
+        if (!(g.packingHours > 0) && !Object.keys(g.skus).length) return null;
+        var packingHours = g.packingHours > 0 ? g.packingHours : null;
+        var intraHours = Object.keys(g.hourKeys).length;
+        var shiftHours = intraHours > 0 ? intraHours : packingHours;
+        var overallBph = boxesPerHour(g.boxes, packingHours);
         var skuRows = Object.keys(g.skus)
           .filter(function (s) { return s; })
           .sort(function (a, b) { return Number(a) - Number(b); })
           .map(function (s) {
             var sg = g.skus[s];
-            var sh = sg.packingHours > 0 ? sg.packingHours : null;
-            var bph = boxesPerHour(sg.boxes, sh);
+            var skuHours = sg.packingHours > 0 ? sg.packingHours : null;
+            // If Intra Hour shift length exists, share it across SKUs by packing-time weight
+            var hoursForTarget = skuHours;
+            if (intraHours > 0 && packingHours > 0 && skuHours != null) {
+              hoursForTarget = intraHours * (skuHours / packingHours);
+            }
+            var bph = boxesPerHour(sg.boxes, hoursForTarget);
+            var t = SKU_TARGETS[s] || null;
+            var needBoxes = t && hoursForTarget != null ? t.target * hoursForTarget : null;
             var st = strikeStatus(bph, s);
+            var hitTarget = needBoxes != null ? sg.boxes + 1e-9 >= needBoxes : st.key === 'on';
+            if (needBoxes != null) {
+              if (hitTarget) st = { key: 'on', label: 'Hit target', rank: 0, target: t.target, strike: t.strike };
+              else if (t && sg.boxes >= t.strike * hoursForTarget) {
+                st = { key: 'below', label: 'Below target', rank: 1, target: t.target, strike: t.strike };
+              } else if (t) {
+                st = { key: 'strike', label: 'Below strike line', rank: 2, target: t.target, strike: t.strike };
+              }
+            }
             return {
               sku: s,
               boxes: sg.boxes,
-              packingHours: sh,
+              packingHours: skuHours,
+              hoursForTarget: hoursForTarget,
               boxesPerHour: bph,
-              target: st.target,
-              strike: st.strike,
+              needBoxes: needBoxes,
+              target: t ? t.target : null,
+              strike: t ? t.strike : null,
               strikeStatus: st,
-              hitTarget: st.key === 'on'
+              hitTarget: hitTarget
             };
           });
-        var blankSku = g.skus[''];
-        if (blankSku && !skuRows.length) {
-          var st0 = strikeStatus(overallBph, '');
-          skuRows.push({
-            sku: '',
-            boxes: blankSku.boxes,
-            packingHours: hours,
-            boxesPerHour: overallBph,
-            target: null,
-            strike: null,
-            strikeStatus: st0,
-            hitTarget: false
-          });
-        }
-        var ranked = skuRows.filter(function (s) { return s.strikeStatus && s.strikeStatus.rank < 99; });
+        if (!skuRows.length) return null;
+        var ranked = skuRows.filter(function (s) { return s.target != null; });
         var overallStatus;
         if (!ranked.length) {
           overallStatus = { key: 'none', label: 'No target set', rank: 99 };
@@ -444,7 +454,9 @@
           workerKey: g.workerKey,
           workerName: g.workerName,
           boxes: g.boxes,
-          packingHours: hours,
+          packingHours: packingHours,
+          shiftHours: shiftHours,
+          intraHours: intraHours,
           boxesPerHour: overallBph,
           stations: Object.keys(g.stations).sort(),
           skus: skuRows,
@@ -455,6 +467,7 @@
           strikeStatus: overallStatus
         };
       })
+      .filter(Boolean)
       .sort(function (a, b) {
         if (a.strikeStatus.rank !== b.strikeStatus.rank) return a.strikeStatus.rank - b.strikeStatus.rank;
         return (a.boxesPerHour != null ? a.boxesPerHour : -1) - (b.boxesPerHour != null ? b.boxesPerHour : -1);

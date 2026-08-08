@@ -20,6 +20,10 @@ PR: https://github.com/dSFulfilment/SHIFT-TRACKER-/pull/1
 - People view merges duplicate names, lists SKUs, shows BPH target hit
 - CSV rows route by report date and Day/Afternoon (hour ≥14 → Afternoon)
 
+## App file
+
+**Use only `index.html`.** Open it in a browser — Floor Plan, Breaks, Shift Tracker, Packer, and Roster are all inside that one file. No server and no other app files needed.
+
 ## Optional developer tests
 
 ```bash
@@ -27,4 +31,4 @@ npm test
 npm run verify:csv
 ```
 
-`js/packer-analytics.js` is only for Node tests; the browser uses the copy inlined in `index.html`.
+`js/` is for Node tests only. The live app is the inlined copy inside `index.html`.

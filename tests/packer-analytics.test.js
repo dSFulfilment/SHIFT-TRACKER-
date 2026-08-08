@@ -188,7 +188,17 @@ console.log('\nPeople merge + BPH target (Boxes Packed by Worker)');
   assert(!!avalon, 'Avalon merged into one person');
   assert(avalon.skus.length >= 3, 'Avalon keeps multiple SKUs');
   assert(avalon.skus.every(function (s) { return s.strikeStatus && s.strikeStatus.key; }), 'each SKU has target status');
+  assert(avalon.skus.every(function (s) { return s.needBoxes != null && s.needBoxes > 0; }), 'each SKU has need boxes (target × hours)');
   assert(typeof avalon.hitTarget === 'boolean', 'hitTarget flag present');
+  // With Intra Hour hours, need uses shift-hour share
+  var merged = PA.mergeRecords(res.records.filter(function (r) { return r.shiftKey === 'afternoon_shift'; }),
+    PA.processCsvText(readFixture('intra-hour-3pm.csv')).records.concat(
+      PA.processCsvText(readFixture('intra-hour-2pm.csv')).records
+    )).records;
+  var people2 = PA.aggregatePeopleRows(merged);
+  var a2 = people2.filter(function (p) { return /avalon/i.test(p.workerName); })[0];
+  assert(!!a2 && a2.intraHours >= 2, 'Avalon gets Intra Hour shift hours');
+  assert(a2.skus.every(function (s) { return s.hoursForTarget != null; }), 'SKU hours for target set');
   // Intra hour alone should not create people BPH rows
   var hour = PA.processCsvText(readFixture('intra-hour-3pm.csv'), { sourceFile: 'hour.csv' });
   assert(hour.ok && hour.format === 'hourly', 'intra hour format');
