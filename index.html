@@ -827,6 +827,52 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabTracker .hbar-lbl, #tabPacker .hbar-lbl{flex:1;text-align:center;font-size:.55rem;color:var(--fnt);font-family:monospace;white-space:nowrap}
 #tabTracker .sku-block, #tabPacker .sku-block{margin-bottom:.8rem}
 #tabTracker .sku-block-hdr, #tabPacker .sku-block-hdr{font-size:.68rem;font-weight:700;color:var(--mut);margin-bottom:.35rem}
+#tabTracker{display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0}
+#tabTracker .st-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1100px;width:100%;margin:0 auto}
+#tabTracker .st-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px 8px;z-index:5}
+#tabTracker .st-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+#tabTracker .st-title{margin:0;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--txt)}
+#tabTracker .st-sub{font-size:11px;color:var(--mut);margin-top:2px}
+#tabTracker .st-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+#tabTracker .st-actions .btn{padding:.32rem .7rem;font-size:.72rem}
+#tabTracker .st-setup{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(120px,1.2fr) minmax(140px,1.4fr);gap:6px;align-items:end}
+#tabTracker .st-field label{display:block;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-bottom:3px}
+#tabTracker .st-field input{width:100%;height:32px;border:1px solid var(--bdr2);border-radius:7px;padding:0 8px;background:var(--sur);color:var(--txt);font-family:inherit;font-size:13px;font-weight:600;box-sizing:border-box}
+#tabTracker .st-field input[type=time],#tabTracker .st-field input[type=number]{font-variant-numeric:tabular-nums}
+#tabTracker .st-field input[readonly]{background:var(--bg);color:var(--mut)}
+#tabTracker .st-field-wide input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;font-weight:800}
+#tabTracker .st-rate{display:flex;align-items:center;gap:8px;min-width:0;background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:4px 8px;min-height:32px}
+#tabTracker .st-rate .rate-chip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.05rem;font-weight:800;color:var(--blu);background:var(--bbg);border:1px solid var(--bbd);border-radius:6px;padding:.1rem .55rem;min-width:64px;text-align:center;line-height:1.2}
+#tabTracker .st-rate .rate-desc{font-size:11px;color:var(--mut);line-height:1.3;min-width:0}
+#tabTracker .st-breakline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;font-size:11px;color:var(--mut);line-height:1.35}
+#tabTracker .st-body{flex:1;min-height:0;overflow:auto;padding:10px 12px calc(76px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
+#tabTracker .st-live{margin-bottom:.55rem}
+#tabTracker .st-live .sbar{margin-bottom:.55rem;padding:.45rem .7rem;border-radius:8px}
+#tabTracker .st-live .sbadge{font-size:.74rem;padding:.22rem .65rem}
+#tabTracker .st-live .elapsed{font-size:.72rem}
+#tabTracker .st-live .finish-hero{gap:.5rem;margin-bottom:.55rem}
+#tabTracker .st-live .fhc{padding:.65rem .75rem;border-radius:8px}
+#tabTracker .st-live .fh-lbl{font-size:.55rem;margin-bottom:.1rem}
+#tabTracker .st-live .fh-val{font-size:1.55rem}
+#tabTracker .st-live .fh-sub{font-size:.6rem}
+#tabTracker .st-target{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:7px 9px;margin-bottom:.55rem}
+#tabTracker .st-target .st-field{flex:0 0 auto}
+#tabTracker .st-target input[type=time]{width:118px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800}
+#tabTracker .st-target-result{flex:1;min-width:180px;font-size:12px;line-height:1.35}
+#tabTracker .st-muted{font-size:11px;color:var(--fnt)}
+#tabTracker .st-body .kgrid{margin-bottom:.7rem;gap:.45rem}
+#tabTracker .st-body .kc{padding:.55rem .65rem;border-radius:8px}
+#tabTracker .st-body .kc-l{font-size:.52rem}
+#tabTracker .st-body .kc-v{font-size:1.15rem}
+#tabTracker .st-body .kc-s{font-size:.58rem}
+#tabTracker .st-body .sec{margin:.85rem 0 .4rem}
+#tabTracker .st-body .tw{border-radius:8px}
+#tabTracker .st-body thead th{padding:.4rem .55rem;font-size:.55rem}
+#tabTracker .st-body tbody td{padding:.42rem .55rem;font-size:.74rem}
+@media(max-width:900px){
+  #tabTracker .st-setup{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tabTracker .st-field-wide,#tabTracker .st-rate{grid-column:1 / -1}
+}
 #tabPacker{display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0}
 #tabPacker .pk-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1100px;width:100%;margin:0 auto}
 #tabPacker .pk-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px 6px;z-index:5}
@@ -1227,139 +1273,119 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 </div>
 
 <div id="tabTracker" style="display:none">
+  <div class="st-shell">
+    <div class="st-chrome">
+      <div class="st-bar">
+        <div>
+          <h1 class="st-title">Shift Tracker</h1>
+          <div class="st-sub">Plan vs actual · packing pace</div>
+        </div>
+        <div class="st-actions">
+          <button class="btn" onclick="loadExample()">Example</button>
+          <button class="btn" onclick="clearActuals()">Clear actuals</button>
+          <button class="btn" onclick="exportCSV()">CSV</button>
+          <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Toggle dark">Dark</button>
+        </div>
+      </div>
 
+      <div class="st-setup">
+        <div class="st-field"><label>Start</label><input type="time" id="shiftStart" value="14:00" oninput="onInput(); loadBreakPlannerData();"></div>
+        <div class="st-field"><label>End</label><input type="time" id="shiftEnd" value="22:00" oninput="onInput()"></div>
+        <div class="st-field"><label>Packers</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="From packers on Floor Plan stations"></div>
+        <div class="st-field"><label>Box / person / hr</label><input type="number" id="bpph" value="15" min="0.5" step="0.5" oninput="onInput()"></div>
+        <div class="st-field st-field-wide"><label>Starting boxes left</label><input type="number" id="startBoxes" placeholder="e.g. 2400" min="0" oninput="onInput()"></div>
+        <div class="st-rate">
+          <div class="rate-chip" id="rateChip">&#8212;</div>
+          <div class="rate-desc" id="rateDesc">Loading packers&hellip;</div>
+        </div>
+      </div>
 
-<header class="hdr">
-  <div class="hdr-l">
-    <span style="font-size:1.5rem;line-height:1">&#128230;</span>
-    <div>
-      <div class="hdr-title">Shift Tracker</div>
-      <div class="hdr-sub">Warehouse packing &#8212; plan vs actual</div>
-    </div>
-  </div>
-  <div class="hdr-r">
-    <button class="btn" onclick="loadExample()">Example</button>
-    <button class="btn" onclick="clearActuals()">Clear actuals</button>
-    <button class="btn" onclick="exportCSV()">&#8595; CSV</button>
-    <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()">&#127769;</button>
-  </div>
-</header>
-
-<div class="wrap">
-
-  <div class="sec">Shift Setup</div>
-  <div class="card">
-    <div class="g4">
-      <div class="fl"><label>Shift Start</label><input type="time" id="shiftStart" value="14:00" oninput="onInput(); loadBreakPlannerData();"></div>
-      <div class="fl"><label>Shift End</label><input type="time" id="shiftEnd" value="22:00" oninput="onInput()"></div>
-      <div class="fl"><label>Packers on Shift</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="Set automatically from packers assigned to station plates on the Floor Plan"></div>
-      <div class="fl"><label>Boxes / Person / hr</label><input type="number" id="bpph" value="15" min="0.5" step="0.5" oninput="onInput()"></div>
-    </div>
-    <div style="margin-top:.8rem">
-      <div class="fl">
-        <label>Starting Boxes Left (at shift start)</label>
-        <input type="number" id="startBoxes" placeholder="e.g. 2400" min="0"
-          style="font-size:1.5rem;font-weight:700;font-family:monospace;padding:.52rem .72rem;border-width:2px"
-          oninput="onInput()">
+      <div class="st-breakline">
+        <span id="breakStatusLine">Loading break data&hellip;</span>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="document.querySelector('[data-tab=breaks]') &amp;&amp; document.querySelector('[data-tab=breaks]').click()">Breaks &#8594;</button>
       </div>
     </div>
-    <div class="rate-row">
-      <div>
-        <div style="font-size:.67rem;color:var(--mut);margin-bottom:.08rem">Packer rate</div>
-        <div class="rate-chip" id="rateChip">&#8212;</div>
+
+    <div class="st-body">
+      <div class="st-live">
+        <div class="sbar">
+          <span class="sbadge sb-w" id="statusBadge">
+            <span class="dot dw" id="statusDot"></span>
+            <span id="statusTxt">Waiting for actuals</span>
+          </span>
+          <span class="elapsed" id="elapsedEl">&#8212;</span>
+        </div>
+
+        <div class="finish-hero">
+          <div class="fhc cb">
+            <div class="fh-lbl">Est. finish · planned</div>
+            <div class="fh-val vb" id="fhPlanVal">&#8212;</div>
+            <div class="fh-sub" id="fhPlanSub">enter setup to calculate</div>
+          </div>
+          <div class="fhc cb" id="fhActCard">
+            <div class="fh-lbl">Est. finish · actual</div>
+            <div class="fh-val vb" id="fhActVal">&#8212;</div>
+            <div class="fh-sub" id="fhActSub">enter actuals to calculate</div>
+          </div>
+        </div>
+
+        <div class="st-target">
+          <div class="st-field">
+            <label>Target finish</label>
+            <input type="time" id="targetFinish" oninput="updateTarget()">
+          </div>
+          <div id="targetResult" class="st-target-result">
+            <div class="st-muted">Set a target time to check if you can make it</div>
+          </div>
+        </div>
+
+        <div class="kgrid">
+          <div class="kc cb">
+            <div class="kc-l">Planned rate / hr</div>
+            <div class="kc-v" id="kcRate">&#8212;</div>
+            <div class="kc-s">boxes / hr</div>
+          </div>
+          <div class="kc" id="kcActCard">
+            <div class="kc-l">Boxes left</div>
+            <div class="kc-v" id="kcAct">&#8212;</div>
+            <div class="kc-s" id="kcActSub">no actuals yet</div>
+          </div>
+          <div class="kc" id="kcARCard">
+            <div class="kc-l">Actual rate / hr</div>
+            <div class="kc-v" id="kcAR">&#8212;</div>
+            <div class="kc-s" id="kcARSub">boxes packed / hr</div>
+          </div>
+          <div class="kc" id="kcVarCard">
+            <div class="kc-l">Variance</div>
+            <div class="kc-v" id="kcVar">&#8212;</div>
+            <div class="kc-s" id="kcVarSub">actual vs plan</div>
+          </div>
+        </div>
       </div>
-      <div class="rate-desc" id="rateDesc">Loading packers from the Floor Plan&hellip;</div>
-    </div>
-  </div>
 
-  <div class="sec">Breaks</div>
-  <div class="card">
-    <div id="breakStatusLine" style="font-size:.8rem;color:var(--mut);line-height:1.6">Loading break data&hellip;</div>
-    <button class="btn" style="margin-top:.6rem" onclick="document.querySelector('[data-tab=breaks]') &amp;&amp; document.querySelector('[data-tab=breaks]').click()">Manage breaks &#8594;</button>
-  </div>
-
-  <div class="sec">Live Status</div>
-  <div class="sbar">
-    <span class="sbadge sb-w" id="statusBadge">
-      <span class="dot dw" id="statusDot"></span>
-      <span id="statusTxt">Waiting for actuals</span>
-    </span>
-    <span class="elapsed" id="elapsedEl">&#8212;</span>
-  </div>
-
-  <div class="finish-hero">
-    <div class="fhc cb">
-      <div class="fh-lbl">&#128203; Est. Finish &#8212; Planned Rate</div>
-      <div class="fh-val vb" id="fhPlanVal">&#8212;</div>
-      <div class="fh-sub" id="fhPlanSub">enter setup to calculate</div>
-    </div>
-    <div class="fhc cb" id="fhActCard">
-      <div class="fh-lbl">&#9201; Est. Finish &#8212; Actual Rate</div>
-      <div class="fh-val vb" id="fhActVal">&#8212;</div>
-      <div class="fh-sub" id="fhActSub">enter actuals to calculate</div>
-    </div>
-  </div>
-
-  <div class="sec">Target Finish</div>
-  <div class="card" style="margin-bottom:.7rem">
-    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-      <div class="fl" style="flex-shrink:0">
-        <label>&#127919; Target Time</label>
-        <input type="time" id="targetFinish" style="font-family:monospace;font-size:1rem;font-weight:700;padding:.48rem .68rem;width:130px" oninput="updateTarget()">
-      </div>
-      <div style="flex:1;min-width:200px" id="targetResult">
-        <div style="font-size:.72rem;color:var(--fnt)">Enter a target time to see if you can finish by then</div>
+      <div class="sec">Half-hourly plan vs actual</div>
+      <div class="tw">
+        <table>
+          <thead>
+            <tr>
+              <th>Checkpoint</th>
+              <th class="r">Prod. mins</th>
+              <th class="r">Planned done</th>
+              <th class="r">Planned left</th>
+              <th class="r">Actual left</th>
+              <th class="r">Actual done</th>
+              <th class="r">Variance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="planBody">
+            <tr><td colspan="8" class="empty-td">Enter starting boxes above to build the plan.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
-
-  <div class="kgrid" style="margin-bottom:1.4rem">
-    <div class="kc cb">
-      <div class="kc-l">Packer Rate / hr</div>
-      <div class="kc-v" id="kcRate">&#8212;</div>
-      <div class="kc-s">boxes / hr planned</div>
-    </div>
-    <div class="kc" id="kcActCard">
-      <div class="kc-l">Latest Boxes Left</div>
-      <div class="kc-v" id="kcAct">&#8212;</div>
-      <div class="kc-s" id="kcActSub">no actuals yet</div>
-    </div>
-    <div class="kc" id="kcARCard">
-      <div class="kc-l">Actual Rate / hr</div>
-      <div class="kc-v" id="kcAR">&#8212;</div>
-      <div class="kc-s" id="kcARSub">boxes packed / hr</div>
-    </div>
-    <div class="kc" id="kcVarCard">
-      <div class="kc-l">Variance</div>
-      <div class="kc-v" id="kcVar">&#8212;</div>
-      <div class="kc-s" id="kcVarSub">actual vs plan</div>
-    </div>
-  </div>
-
-  <div class="sec">Half-Hourly Plan vs Actual</div>
-  <div class="tw">
-    <table>
-      <thead>
-        <tr>
-          <th>Checkpoint</th>
-          <th class="r">Prod. Mins</th>
-          <th class="r">Planned Done</th>
-          <th class="r">Planned Left</th>
-          <th class="r">Actual Left</th>
-          <th class="r">Actual Done</th>
-          <th class="r">Variance</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="planBody">
-        <tr><td colspan="8" class="empty-td">Fill in shift setup above to build the plan.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-</div>
-<div class="toast" id="toast"></div>
-
+  <div class="toast" id="toast"></div>
 </div>
 
 <div id="tabPacker" style="display:none">
@@ -5672,7 +5698,7 @@ var lastPlan = null;
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
 window.onload = function() {
-  try { if (localStorage.getItem('dark') === '1') { darkMode = true; document.body.setAttribute('data-dark',''); document.getElementById('darkBtn').textContent = '\u2600\uFE0F'; } } catch(e) {}
+  try { if (localStorage.getItem('dark') === '1') { darkMode = true; document.body.setAttribute('data-dark',''); document.getElementById('darkBtn').textContent = 'Light'; } } catch(e) {}
   onInput();
   loadBreakPlannerData();
   setInterval(liveTick, 1000);
@@ -5682,7 +5708,7 @@ window.onload = function() {
 function toggleDark() {
   darkMode = !darkMode;
   darkMode ? document.body.setAttribute('data-dark','') : document.body.removeAttribute('data-dark');
-  document.getElementById('darkBtn').textContent = darkMode ? '\u2600\uFE0F' : '\uD83C\uDF19';
+  document.getElementById('darkBtn').textContent = darkMode ? 'Light' : 'Dark';
   try { localStorage.setItem('dark', darkMode ? '1' : '0'); } catch(e) {}
 }
 
