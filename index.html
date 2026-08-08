@@ -702,7 +702,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   --bbg:#0c1840;--bbd:#1e3580;
   --sh:0 1px 3px rgba(0,0,0,.3);
 }
-#tabTracker, #tabPacker{height:100vh;overflow-y:auto;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;min-height:100vh;padding-bottom:5rem;transition:background .25s,color .25s}
+#tabTracker{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;transition:background .25s,color .25s}
 #tabTracker .hdr, #tabPacker .hdr{background:var(--sur);border-bottom:1px solid var(--bdr);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:60;gap:.5rem;box-shadow:var(--sh)}
 #tabTracker .hdr-l, #tabPacker .hdr-l{display:flex;align-items:center;gap:9px}
 #tabTracker .hdr-title, #tabPacker .hdr-title{font-size:.95rem;font-weight:800;letter-spacing:-.02em}
@@ -839,7 +839,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabTracker .hbar-lbl, #tabPacker .hbar-lbl{flex:1;text-align:center;font-size:.55rem;color:var(--fnt);font-family:monospace;white-space:nowrap}
 #tabTracker .sku-block, #tabPacker .sku-block{margin-bottom:.8rem}
 #tabTracker .sku-block-hdr, #tabPacker .sku-block-hdr{font-size:.68rem;font-weight:700;color:var(--mut);margin-bottom:.35rem}
-#tabTracker{display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0}
+#tabTracker{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0;background:var(--bg)}
 #tabTracker .st-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1100px;width:100%;margin:0 auto}
 #tabTracker .st-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px 8px;z-index:5}
 #tabTracker .st-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
@@ -5851,6 +5851,11 @@ async function init(){
   await loadAll();
   renderAll();
 }
+window.__breakPlanner = {
+  refresh: function(){
+    loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
+  }
+};
 init();
 })();
 
@@ -6981,15 +6986,14 @@ function toast(msg, err) {
   }
 
   /**
-   * One row per packer (duplicate names merged). Includes SKUs worked and
-   * whether each / overall hit the BPH target from the warehouse board.
-   * Uses Boxes Packed by Worker rows (packing time). Hourly-only rows are ignored here.
+   * One row per packer (duplicate names merged).
+   * Per SKU: boxes vs need (target BPH × hours on that SKU).
+   * Hours = packing time on that SKU; person shiftHours prefer Intra Hour count.
    */
   function aggregatePeopleRows(records) {
     var by = {};
     (records || []).forEach(function (r) {
       if (!r.workerKey) return;
-      if (r.packingHours == null || r.packingHours <= 0) return;
       if (!by[r.workerKey]) {
         by[r.workerKey] = {
           workerKey: r.workerKey,
@@ -6997,10 +7001,13 @@ function toast(msg, err) {
           boxes: 0,
           packingHours: 0,
           skus: {},
-          stations: {}
+          stations: {},
+          hourKeys: {}
         };
       }
       var g = by[r.workerKey];
+      if (r.hour != null && isFinite(r.hour)) g.hourKeys[r.hour] = true;
+      if (r.packingHours == null || r.packingHours <= 0) return;
       g.boxes += r.boxes || 0;
       g.packingHours += r.packingHours || 0;
       if (r.station) g.stations[r.station] = true;
@@ -7013,42 +7020,50 @@ function toast(msg, err) {
     return Object.keys(by)
       .map(function (wk) {
         var g = by[wk];
-        var hours = g.packingHours > 0 ? g.packingHours : null;
-        var overallBph = boxesPerHour(g.boxes, hours);
+        if (!(g.packingHours > 0) && !Object.keys(g.skus).length) return null;
+        var packingHours = g.packingHours > 0 ? g.packingHours : null;
+        var intraHours = Object.keys(g.hourKeys).length;
+        var shiftHours = intraHours > 0 ? intraHours : packingHours;
+        var overallBph = boxesPerHour(g.boxes, packingHours);
         var skuRows = Object.keys(g.skus)
           .filter(function (s) { return s; })
           .sort(function (a, b) { return Number(a) - Number(b); })
           .map(function (s) {
             var sg = g.skus[s];
-            var sh = sg.packingHours > 0 ? sg.packingHours : null;
-            var bph = boxesPerHour(sg.boxes, sh);
+            var skuHours = sg.packingHours > 0 ? sg.packingHours : null;
+            // If Intra Hour shift length exists, share it across SKUs by packing-time weight
+            var hoursForTarget = skuHours;
+            if (intraHours > 0 && packingHours > 0 && skuHours != null) {
+              hoursForTarget = intraHours * (skuHours / packingHours);
+            }
+            var bph = boxesPerHour(sg.boxes, hoursForTarget);
+            var t = SKU_TARGETS[s] || null;
+            var needBoxes = t && hoursForTarget != null ? t.target * hoursForTarget : null;
             var st = strikeStatus(bph, s);
+            var hitTarget = needBoxes != null ? sg.boxes + 1e-9 >= needBoxes : st.key === 'on';
+            if (needBoxes != null) {
+              if (hitTarget) st = { key: 'on', label: 'Hit target', rank: 0, target: t.target, strike: t.strike };
+              else if (t && sg.boxes >= t.strike * hoursForTarget) {
+                st = { key: 'below', label: 'Below target', rank: 1, target: t.target, strike: t.strike };
+              } else if (t) {
+                st = { key: 'strike', label: 'Below strike line', rank: 2, target: t.target, strike: t.strike };
+              }
+            }
             return {
               sku: s,
               boxes: sg.boxes,
-              packingHours: sh,
+              packingHours: skuHours,
+              hoursForTarget: hoursForTarget,
               boxesPerHour: bph,
-              target: st.target,
-              strike: st.strike,
+              needBoxes: needBoxes,
+              target: t ? t.target : null,
+              strike: t ? t.strike : null,
               strikeStatus: st,
-              hitTarget: st.key === 'on'
+              hitTarget: hitTarget
             };
           });
-        var blankSku = g.skus[''];
-        if (blankSku && !skuRows.length) {
-          var st0 = strikeStatus(overallBph, '');
-          skuRows.push({
-            sku: '',
-            boxes: blankSku.boxes,
-            packingHours: hours,
-            boxesPerHour: overallBph,
-            target: null,
-            strike: null,
-            strikeStatus: st0,
-            hitTarget: false
-          });
-        }
-        var ranked = skuRows.filter(function (s) { return s.strikeStatus && s.strikeStatus.rank < 99; });
+        if (!skuRows.length) return null;
+        var ranked = skuRows.filter(function (s) { return s.target != null; });
         var overallStatus;
         if (!ranked.length) {
           overallStatus = { key: 'none', label: 'No target set', rank: 99 };
@@ -7062,7 +7077,9 @@ function toast(msg, err) {
           workerKey: g.workerKey,
           workerName: g.workerName,
           boxes: g.boxes,
-          packingHours: hours,
+          packingHours: packingHours,
+          shiftHours: shiftHours,
+          intraHours: intraHours,
           boxesPerHour: overallBph,
           stations: Object.keys(g.stations).sort(),
           skus: skuRows,
@@ -7073,6 +7090,7 @@ function toast(msg, err) {
           strikeStatus: overallStatus
         };
       })
+      .filter(Boolean)
       .sort(function (a, b) {
         if (a.strikeStatus.rank !== b.strikeStatus.rank) return a.strikeStatus.rank - b.strikeStatus.rank;
         return (a.boxesPerHour != null ? a.boxesPerHour : -1) - (b.boxesPerHour != null ? b.boxesPerHour : -1);
@@ -8584,11 +8602,14 @@ function toast(msg, err) {
     if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
     return skus.map(function (s) {
       var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = st.key === 'on' ? '✓' : (st.key === 'none' ? '·' : '✗');
-      var tip = (s.sku || '?') + ': ' + PA.formatRate(s.boxesPerHour) + ' BPH' +
-        (st.target != null ? ' (target ' + st.target + ')' : '') + ' — ' + st.label;
+      var mark = s.hitTarget ? '✓' : (st.key === 'none' ? '·' : '✗');
+      var got = PA.formatNumber(s.boxes);
+      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '—';
+      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '—';
+      var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
+        ' (' + (st.target != null ? st.target : '?') + ' BPH × ' + hrs + 'h) — ' + st.label;
       return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '—') + ' ' + mark + '</span>';
+        escapeHtml(s.sku || '—') + ' ' + got + '/' + need + ' ' + mark + '</span>';
     }).join('');
   }
 
@@ -8602,26 +8623,28 @@ function toast(msg, err) {
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
       var hitLbl = r.skuCount
-        ? (r.hitTarget ? 'Hit target' : (r.hitCount + '/' + r.skuCount + ' hit'))
+        ? (r.hitTarget ? 'All SKUs hit' : (r.hitCount + '/' + r.skuCount + ' SKUs hit'))
         : 'No target';
+      var hrsLbl = r.intraHours > 0
+        ? (PA.formatHours(r.shiftHours) + ' shift')
+        : PA.formatHours(r.packingHours);
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
         '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatHours(r.packingHours)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(hrsLbl) + '</td>' +
         '<td>' + strikePill(r.strikeStatus) +
         '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
-      '<div class="pk-table-meta">Duplicate names merged · SKU ✓ = hit BPH target · ✗ = below</div></div>' +
+      '<div class="pk-table-meta">Each SKU shows got/need boxes (target BPH × hours). ✓ = hit for that SKU. All SKUs must hit.</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
-      '<th class="r">BPH</th><th>Target</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs (got/need)</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th>All targets</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
+      (body || '<tr><td colspan="6" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -9897,9 +9920,16 @@ function toast(msg, err) {
     packer: document.getElementById('tabPacker')
   };
   function showTab(name){
+    var showDisplay = {
+      floor: '',
+      breaks: 'flex',
+      tracker: 'flex',
+      packer: 'flex',
+      roster: 'flex'
+    };
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;
-      panels[k].style.display = (k === name) ? '' : 'none';
+      panels[k].style.display = (k === name) ? (showDisplay[k] || '') : 'none';
     });
     var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
     for (var i = 0; i < btns.length; i++){
@@ -9917,6 +9947,9 @@ function toast(msg, err) {
         if(scrim){ scrim.classList.remove('open'); scrim.setAttribute('aria-hidden', 'true'); }
         if(toolsBtn) toolsBtn.setAttribute('aria-expanded', 'false');
       }
+    }
+    if (name === 'breaks' && window.__breakPlanner && typeof window.__breakPlanner.refresh === 'function'){
+      window.__breakPlanner.refresh();
     }
     if (name === 'roster' && window.__rosterTracker && typeof window.__rosterTracker.refresh === 'function'){
       window.__rosterTracker.refresh();

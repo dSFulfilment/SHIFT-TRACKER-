@@ -503,11 +503,14 @@
     if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
     return skus.map(function (s) {
       var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = st.key === 'on' ? '✓' : (st.key === 'none' ? '·' : '✗');
-      var tip = (s.sku || '?') + ': ' + PA.formatRate(s.boxesPerHour) + ' BPH' +
-        (st.target != null ? ' (target ' + st.target + ')' : '') + ' — ' + st.label;
+      var mark = s.hitTarget ? '✓' : (st.key === 'none' ? '·' : '✗');
+      var got = PA.formatNumber(s.boxes);
+      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '—';
+      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '—';
+      var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
+        ' (' + (st.target != null ? st.target : '?') + ' BPH × ' + hrs + 'h) — ' + st.label;
       return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '—') + ' ' + mark + '</span>';
+        escapeHtml(s.sku || '—') + ' ' + got + '/' + need + ' ' + mark + '</span>';
     }).join('');
   }
 
@@ -521,26 +524,28 @@
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
       var hitLbl = r.skuCount
-        ? (r.hitTarget ? 'Hit target' : (r.hitCount + '/' + r.skuCount + ' hit'))
+        ? (r.hitTarget ? 'All SKUs hit' : (r.hitCount + '/' + r.skuCount + ' SKUs hit'))
         : 'No target';
+      var hrsLbl = r.intraHours > 0
+        ? (PA.formatHours(r.shiftHours) + ' shift')
+        : PA.formatHours(r.packingHours);
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
         '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatHours(r.packingHours)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(hrsLbl) + '</td>' +
         '<td>' + strikePill(r.strikeStatus) +
         '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
-      '<div class="pk-table-meta">Duplicate names merged · SKU ✓ = hit BPH target · ✗ = below</div></div>' +
+      '<div class="pk-table-meta">Each SKU shows got/need boxes (target BPH × hours). ✓ = hit for that SKU. All SKUs must hit.</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
-      '<th class="r">BPH</th><th>Target</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs (got/need)</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th>All targets</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
+      (body || '<tr><td colspan="6" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
