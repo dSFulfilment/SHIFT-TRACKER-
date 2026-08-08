@@ -873,22 +873,89 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   #tabTracker .st-setup{grid-template-columns:repeat(2,minmax(0,1fr))}
   #tabTracker .st-field-wide,#tabTracker .st-rate{grid-column:1 / -1}
 }
-#tabPacker{display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0}
-#tabPacker .pk-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1100px;width:100%;margin:0 auto}
-#tabPacker .pk-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px 6px;z-index:5}
-#tabPacker .pk-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+#tabPacker{display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0;font-size:14px}
+#tabPacker .pk-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1280px;width:100%;margin:0 auto}
+#tabPacker .pk-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px;z-index:5}
+#tabPacker.dark .pk-chrome{background:rgba(13,17,23,.92)}
+#tabPacker .pk-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
 #tabPacker .pk-title{margin:0;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--txt)}
 #tabPacker .pk-sub{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.35}
 #tabPacker .pk-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 #tabPacker .pk-shift-select{height:32px;border:1px solid var(--bdr2);border-radius:var(--rs);padding:0 8px;background:var(--sur);color:var(--txt);font-family:inherit;font-size:.76rem;font-weight:600}
-#tabPacker .pk-tabs{display:flex;gap:4px;margin:.2rem 0 0;flex-wrap:wrap}
-#tabPacker .pk-tab-btn{padding:.35rem .75rem;border-radius:8px;border:1px solid var(--bdr2);background:var(--sur);color:var(--mut);font-size:.74rem;font-weight:700}
-#tabPacker .pk-tab-btn.active{background:var(--blu);border-color:var(--blu);color:#fff}
 #tabPacker .pk-body{flex:1;min-height:0;overflow:auto;padding:10px 12px calc(76px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
-#tabPacker .pk-body .kgrid{margin-bottom:.75rem}
-#tabPacker .pk-body .panel-hdr{margin-bottom:.65rem}
-#tabPacker .pk-date-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bbg);color:var(--blu);border:1px solid var(--bbd);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;margin-left:6px}
-#tabPacker .pk-merge-note{font-size:11px;color:var(--mut);margin:.35rem 0 .7rem}
+#tabPacker .pk-filter-bar{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:10px;box-shadow:var(--sh)}
+#tabPacker .pk-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#tabPacker .pk-fl{display:flex;flex-direction:column;gap:3px;min-width:0}
+#tabPacker .pk-fl-grow{grid-column:span 2}
+#tabPacker .pk-fl span{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+#tabPacker .pk-fl select,#tabPacker .pk-fl input{height:32px;border:1px solid var(--bdr2);border-radius:7px;padding:0 8px;background:var(--bg);color:var(--txt);font:inherit;font-size:13px;font-weight:600}
+#tabPacker .pk-fl select:focus,#tabPacker .pk-fl input:focus{outline:none;border-color:#7baaf7;box-shadow:0 0 0 2px rgba(123,170,247,.2)}
+#tabPacker .pk-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+#tabPacker .pk-kpi{background:var(--sur);border:1px solid var(--bdr);border-top:3px solid var(--bdr2);border-radius:8px;padding:10px 12px;box-shadow:var(--sh)}
+#tabPacker .pk-kpi.cb{border-top-color:var(--blu)}
+#tabPacker .pk-kpi.cg{border-top-color:var(--grn)}
+#tabPacker .pk-kpi.ca{border-top-color:var(--amb)}
+#tabPacker .pk-kpi-l{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--fnt);margin-bottom:2px}
+#tabPacker .pk-kpi-v{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.35rem;font-weight:800;color:var(--txt);line-height:1.15}
+#tabPacker .pk-kpi.cb .pk-kpi-v{color:var(--blu)}
+#tabPacker .pk-kpi.cg .pk-kpi-v{color:var(--grn)}
+#tabPacker .pk-kpi.ca .pk-kpi-v{color:var(--amb)}
+#tabPacker .pk-kpi-s{font-size:10px;color:var(--mut);margin-top:3px;line-height:1.35}
+#tabPacker .pk-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+#tabPacker .pk-chart-card,#tabPacker .pk-table-card,#tabPacker .pk-quality,#tabPacker .pk-detail-panel{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:12px;box-shadow:var(--sh);margin-bottom:10px}
+#tabPacker .pk-chart-title,#tabPacker .pk-section-title{margin:0 0 8px;font-size:13px;font-weight:800;color:var(--txt)}
+#tabPacker .pk-bars{display:flex;flex-direction:column;gap:5px}
+#tabPacker .pk-bar-row{display:grid;grid-template-columns:110px 1fr 52px;gap:6px;align-items:center}
+#tabPacker .pk-bar-lbl{font-size:11px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tabPacker .pk-bar-track{height:12px;background:var(--bg);border:1px solid var(--bdr);border-radius:4px;overflow:hidden}
+#tabPacker .pk-bar-fill{height:100%;background:var(--blu);border-radius:3px}
+#tabPacker .pk-bar-fill.tone-g{background:var(--grn)}
+#tabPacker .pk-bar-fill.tone-a{background:var(--amb)}
+#tabPacker .pk-bar-fill.tone-b{background:var(--blu)}
+#tabPacker .pk-bar-val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;text-align:right;color:var(--mut)}
+#tabPacker .pk-cols{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:4px}
+#tabPacker .pk-col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+#tabPacker .pk-col-bar{width:100%;max-width:28px;background:var(--blu);border-radius:3px 3px 0 0}
+#tabPacker .pk-col-lbl{font-size:9px;color:var(--fnt);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+#tabPacker .pk-empty-inline{font-size:12px;color:var(--fnt);padding:12px 0;text-align:center}
+#tabPacker .pk-banner{border-radius:8px;padding:14px 16px;margin-bottom:10px;font-size:13px;line-height:1.5}
+#tabPacker .pk-banner-empty{background:var(--sur);border:1px dashed var(--bdr2);color:var(--mut)}
+#tabPacker .pk-banner-err{background:var(--rbg);border:1px solid var(--rbd);color:var(--red)}
+#tabPacker .pk-banner-load{background:var(--bbg);border:1px solid var(--bbd);color:var(--blu)}
+#tabPacker .pk-table-hdr{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline;margin-bottom:8px}
+#tabPacker .pk-table-meta{font-size:11px;color:var(--mut)}
+#tabPacker .pk-tw{max-height:420px;overflow:auto}
+#tabPacker .pk-th{background:none;border:0;padding:0;font:inherit;font-size:inherit;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fnt);cursor:pointer}
+#tabPacker .pk-th:hover{color:var(--txt)}
+#tabPacker .pk-link{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--blu);cursor:pointer;text-align:left}
+#tabPacker .pk-link:hover,#tabPacker .pk-link:focus{text-decoration:underline}
+#tabPacker .pk-worker-row{cursor:pointer}
+#tabPacker .pk-pager{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:8px;font-size:12px;color:var(--mut)}
+#tabPacker .pk-status{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;border:1px solid transparent;white-space:nowrap}
+#tabPacker .pk-status-excellent{background:var(--gbg);color:var(--grn);border-color:var(--gbd)}
+#tabPacker .pk-status-excellent::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grn)}
+#tabPacker .pk-status-on{background:var(--bbg);color:var(--blu);border-color:var(--bbd)}
+#tabPacker .pk-status-on::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--blu)}
+#tabPacker .pk-status-attention{background:var(--rbg);color:var(--red);border-color:var(--rbd)}
+#tabPacker .pk-status-attention::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--red)}
+#tabPacker .pk-status-unknown{background:var(--bg);color:var(--mut);border-color:var(--bdr2)}
+#tabPacker .pk-status-unknown::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--fnt)}
+#tabPacker .pk-detail-hdr{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:10px}
+#tabPacker .pk-detail-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:10px}
+#tabPacker .pk-detail-metric{background:var(--bg);border:1px solid var(--bdr);border-radius:7px;padding:8px}
+#tabPacker .pk-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tabPacker .pk-quality-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+#tabPacker .pk-quality-item{background:var(--bg);border:1px solid var(--bdr);border-radius:7px;padding:8px}
+#tabPacker .pk-file-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+#tabPacker .pk-file-chip{font-size:11px;background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;color:var(--mut)}
+@media(max-width:960px){
+  #tabPacker .pk-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tabPacker .pk-fl-grow{grid-column:span 2}
+  #tabPacker .pk-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tabPacker .pk-chart-grid,#tabPacker .pk-detail-grid{grid-template-columns:1fr}
+  #tabPacker .pk-detail-kpis,#tabPacker .pk-quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tabPacker .pk-bar-row{grid-template-columns:90px 1fr 48px}
+}
 </style>
 </head>
 <body>
@@ -1048,7 +1115,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   <button class="bp-fab-btn active" data-tab="floor">Floor Plan</button>
   <button class="bp-fab-btn" data-tab="breaks">Breaks</button>
   <button class="bp-fab-btn" data-tab="tracker">Shift Tracker</button>
-  <button class="bp-fab-btn" data-tab="packer">Packer CSV</button>
+  <button class="bp-fab-btn" data-tab="packer">Packer</button>
   <button class="bp-fab-btn" data-tab="roster">Roster</button>
 </div>
 <div class="bp-toast" id="bpToast"></div>
@@ -1393,24 +1460,26 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <div class="pk-chrome">
       <div class="pk-bar">
         <div>
-          <h1 class="pk-title">Packer CSV</h1>
+          <h1 class="pk-title">Packer performance</h1>
           <div class="pk-sub" id="pkLastUpdated">No uploads yet</div>
         </div>
         <div class="pk-actions">
-          <select id="pkTagSelect" class="pk-shift-select" title="Shift for hourly / end-of-shift uploads"></select>
-          <button class="btn btn-ghost btn-sm" id="pkAddShiftBtn">+ Shift</button>
-          <button class="btn btn-primary" id="pkUploadBtn">Upload CSV</button>
-          <input type="file" id="pkFileInput" accept=".csv" multiple style="display:none">
+          <select id="pkTagSelect" class="pk-shift-select" title="Default shift when CSV has no Shift column" aria-label="Default shift tag"></select>
+          <button class="btn btn-ghost btn-sm" id="pkClearBtn" type="button">Clear data</button>
+          <button class="btn btn-primary" id="pkUploadBtn" type="button">Upload CSV</button>
+          <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
         </div>
       </div>
-      <div class="new-shift-row" id="pkNewShiftRow">
-        <input type="text" id="pkNewShiftInput" placeholder="e.g. Night shift">
-        <button class="btn btn-primary btn-sm" id="pkConfirmAddShift">Add</button>
-        <button class="btn btn-ghost btn-sm" id="pkCancelAddShift">Cancel</button>
-      </div>
-      <div class="pk-tabs" id="pkTabs"></div>
     </div>
-    <div class="pk-body" id="pkPanels"></div>
+    <div class="pk-body" id="pkPanels">
+      <div id="pkStatus"></div>
+      <div class="pk-filter-bar" id="pkFilters"></div>
+      <div id="pkKpis"></div>
+      <div id="pkCharts"></div>
+      <div id="pkTableWrap"></div>
+      <div id="pkDetail" hidden></div>
+      <div id="pkQuality"></div>
+    </div>
   </div>
   <div class="toast" id="packerToast"></div>
 </div>
@@ -6361,848 +6430,8 @@ function toast(msg, err) {
   setTimeout(function() { el.classList.remove('show'); }, 2400);
 }
 </script>
-<script>
-(function(){
-var STORAGE_KEY = 'packer-shift-data';
-var PRIORITY = ['morning_shift','afternoon_shift','evening_shift','night_shift'];
-var SKU_TARGETS = {
-  '125': {target:17, strike:15.7},
-  '150': {target:18, strike:16.3},
-  '200': {target:17, strike:15.3},
-  '250': {target:16, strike:14.6},
-  '300': {target:18, strike:16.0},
-  '400': {target:16, strike:14.6},
-  '500': {target:23, strike:20.6},
-  '600': {target:20, strike:17.8},
-  '700': {target:21, strike:19.0}
-};
-
-var shiftsData = {};
-var activeTab = null;
-var pendingResetTimers = {};
-
-var tabsEl = document.getElementById('pkTabs');
-var panelsEl = document.getElementById('pkPanels');
-var toastEl = document.getElementById('packerToast');
-var lastUpdatedEl = document.getElementById('pkLastUpdated');
-var fileInput = document.getElementById('pkFileInput');
-var uploadBtn = document.getElementById('pkUploadBtn');
-var tagSelect = document.getElementById('pkTagSelect');
-var addShiftBtn = document.getElementById('pkAddShiftBtn');
-var newShiftRow = document.getElementById('pkNewShiftRow');
-var newShiftInput = document.getElementById('pkNewShiftInput');
-var confirmAddShift = document.getElementById('pkConfirmAddShift');
-var cancelAddShift = document.getElementById('pkCancelAddShift');
-
-// ── UTIL ─────────────────────────────────────────────────────────────
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, function(c) {
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-  });
-}
-function shiftLabel(key) {
-  if (shiftsData[key] && shiftsData[key].customLabel) return shiftsData[key].customLabel;
-  var known = {morning_shift:'Morning', afternoon_shift:'Afternoon', evening_shift:'Evening', night_shift:'Night'};
-  if (known[key]) return known[key];
-  return key.replace(/_/g,' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-}
-function shortName(w) {
-  return String(w).replace(/\s+/g,' ').trim().split(' ').map(function(p) {
-    return p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p;
-  }).join(' ');
-}
-// Collapse case / spacing variants so "JANE  DOE" and "Jane Doe" become one packer.
-function normWorkerKey(w) {
-  return String(w || '').trim().replace(/\s+/g, ' ').toLowerCase();
-}
-function hourLabel(hk) {
-  var parts = String(hk || '').trim().split(/\s+/);
-  var timePart = parts.length > 1 ? parts[parts.length - 1] : parts[0];
-  var hh = parseInt(String(timePart).split(':')[0], 10);
-  if (isNaN(hh)) return hk;
-  var ap = hh >= 12 ? 'p' : 'a';
-  var h12 = hh % 12; if (h12 === 0) h12 = 12;
-  return h12 + ap + 'm';
-}
-function parseReportDateFromHourKey(hk) {
-  var s = String(hk || '').trim();
-  var iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
-  var us = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-  if (us) {
-    var a = parseInt(us[1], 10), b = parseInt(us[2], 10), y = parseInt(us[3], 10);
-    if (y < 100) y += 2000;
-    // Prefer YMD when first part looks like a year already handled; otherwise assume D/M/Y for AU/NZ style,
-    // falling back to M/D/Y only when day > 12.
-    var day, month;
-    if (a > 12) { day = a; month = b; }
-    else if (b > 12) { day = b; month = a; }
-    else { day = a; month = b; } // default D/M/Y
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return y + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
-    }
-  }
-  return null;
-}
-function formatReportDate(iso) {
-  if (!iso) return '';
-  var p = iso.split('-');
-  if (p.length !== 3) return iso;
-  var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-}
-function inferReportDate(s) {
-  if (s && s.reportDate) return s.reportDate;
-  var dates = {};
-  Object.keys((s && s.hourly) || {}).forEach(function(hk) {
-    var d = parseReportDateFromHourKey(hk);
-    if (d) dates[d] = (dates[d] || 0) + 1;
-  });
-  var best = null, bestN = 0;
-  Object.keys(dates).forEach(function(d) {
-    if (dates[d] > bestN) { best = d; bestN = dates[d]; }
-  });
-  return best;
-}
-function timeAgo(ts) {
-  var diff = Math.max(0, Date.now() - ts);
-  var m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return m + ' min ago';
-  var h = Math.floor(m / 60);
-  if (h < 24) return h + 'h ago';
-  return new Date(ts).toLocaleDateString();
-}
-function pkToast(msg, type) {
-  toastEl.textContent = msg;
-  toastEl.style.background = type === 'err' ? '#c01c14' : '#0d1117';
-  toastEl.style.color = '#fff';
-  toastEl.classList.add('show');
-  clearTimeout(toastEl._t);
-  toastEl._t = setTimeout(function(){ toastEl.classList.remove('show'); }, 2800);
-}
-
-// ── CSV PARSING ──────────────────────────────────────────────────────
-function parseCSV(text) {
-  var rows = [], field = '', row = [], inQuotes = false;
-  for (var i = 0; i < text.length; i++) {
-    var c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i+1] === '"') { field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else {
-      if (c === '"') inQuotes = true;
-      else if (c === ',') { row.push(field); field = ''; }
-      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-      else if (c === '\r') { /* skip */ }
-      else field += c;
-    }
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows.filter(function(r){ return r.length > 1 || (r.length === 1 && r[0] !== ''); });
-}
-
-function stripBOM(text) {
-  return (text.charCodeAt(0) === 0xFEFF) ? text.slice(1) : text;
-}
-
-// Every header name a supported column has actually been seen under, including the
-// exact strings the app already relied on (so nothing that worked before regresses)
-// plus the aliases requested for real-world PnP export variations. Matching is
-// case-insensitive and trims whitespace.
-var HEADER_ALIASES = {
-  workerName: ['pnp worker name','worker name','employee name','packer name'],
-  station:    ['station name','station','workstation'],
-  sku:        ['box sku sizes','sku','box sku','primary sku'],
-  boxes:      ['total boxes packed','boxes packed','total boxes'],
-  hours:      ['packing time hours','packing time (hours)','hours','packing hours'],
-  hourKey:    ['report date hour','hour','report hour'],
-  items:      ['items packed','items'],
-  pouches:    ['pouches packed','pouches'],
-  shift:      ['shift'],
-  timeSec:    ['packing time seconds']
-};
-function resolveHeaders(rawHeaders) {
-  var normalized = rawHeaders.map(function(h){ return String(h||'').trim(); });
-  var map = {};
-  Object.keys(HEADER_ALIASES).forEach(function(canon){
-    var aliases = HEADER_ALIASES[canon];
-    for (var i = 0; i < normalized.length; i++) {
-      if (aliases.indexOf(normalized[i].toLowerCase()) !== -1) { map[canon] = normalized[i]; break; }
-    }
-  });
-  return map;
-}
-
-// Distinguishes "blank" (no data given, legitimately 0) from "unreadable" (e.g. "N/A",
-// garbled text) so callers can quarantine/report the latter instead of silently
-// treating it as zero. Handles thousands separators and stray currency-ish symbols.
-function parseNum(raw) {
-  if (raw === undefined || raw === null) return {value:0, valid:true};
-  var s = String(raw).trim();
-  if (s === '') return {value:0, valid:true};
-  var cleaned = s.replace(/[,$%]/g, '').trim();
-  var n = Number(cleaned);
-  if (cleaned !== '' && isFinite(n)) return {value:n, valid:true};
-  return {value:0, valid:false};
-}
-
-function qualityMsg(base, quality, invalidNumericCount) {
-  var notes = [];
-  if (quality && quality.blankRowCount) notes.push(quality.blankRowCount + ' blank row(s) skipped');
-  if (quality && quality.missingWorkerCount) notes.push(quality.missingWorkerCount + ' row(s) missing a worker name skipped');
-  if (invalidNumericCount) notes.push(invalidNumericCount + ' value(s) couldn\u2019t be read as numbers and were treated as 0');
-  return notes.length ? base + ' \u2014 ' + notes.join('; ') + '.' : base;
-}
-
-function processFileText(text) {
-  text = stripBOM(text);
-  var rows = parseCSV(text);
-  if (rows.length < 2) return {ok:false, msg:'That file looks empty \u2014 no header row and data rows were found.'};
-  var rawHeaders = rows[0];
-  var fieldMap = resolveHeaders(rawHeaders);
-
-  var blankRowCount = 0, missingWorkerCount = 0;
-  var dataRows = [];
-  rows.slice(1).forEach(function(r) {
-    var isBlank = r.every(function(c){ return String(c||'').trim() === ''; });
-    if (isBlank) { blankRowCount++; return; }
-    var o = {};
-    rawHeaders.forEach(function(h,i){ o[String(h||'').trim()] = (r[i] !== undefined ? r[i] : '').trim(); });
-    Object.keys(fieldMap).forEach(function(canon){ o['__'+canon] = o[fieldMap[canon]]; });
-    if (!o['__workerName']) { missingWorkerCount++; return; }
-    dataRows.push(o);
-  });
-
-  if (!fieldMap.workerName) return {ok:false, msg:'Unrecognized CSV format \u2014 no worker-name column found (expected one of: Pnp Worker Name, Worker Name, Employee Name, Packer Name).'};
-  if (!dataRows.length) return {ok:false, msg:'No usable worker rows found' + (missingWorkerCount ? ' (' + missingWorkerCount + ' row(s) were missing a worker name)' : '') + '.'};
-
-  var quality = { blankRowCount: blankRowCount, missingWorkerCount: missingWorkerCount };
-
-  if (fieldMap.sku && fieldMap.boxes && fieldMap.hours) return importEndOfShift(dataRows, quality);
-  if (fieldMap.shift && fieldMap.station && fieldMap.boxes) return importSummary(dataRows, quality);
-  if (fieldMap.hourKey && fieldMap.boxes) return importHourly(dataRows, quality);
-  return {ok:false, msg:'Unrecognized CSV format \u2014 columns found don\u2019t match a shift summary, hourly, or end-of-shift export.'};
-}
-
-function importEndOfShift(dataRows, quality) {
-  var tag = tagSelect.value;
-  if (!tag) return {ok:false, msg:'Pick a shift to tag this upload'};
-  var s = ensureShift(tag);
-
-  var groups = {};
-  var mixedCount = 0, invalidNumericCount = 0, mergedRows = 0;
-  dataRows.forEach(function(r) {
-    var workerRaw = r['__workerName']; if (!workerRaw) return;
-    var workerKey = normWorkerKey(workerRaw); if (!workerKey) return;
-    var skuRaw = (r['__sku'] || '').trim();
-    if (!skuRaw || skuRaw.indexOf(',') !== -1) { mixedCount++; return; }
-    var sku = skuRaw.replace(/[^0-9]/g, '');
-    if (!sku) { mixedCount++; return; }
-    var boxesP = parseNum(r['__boxes']); if (!boxesP.valid) invalidNumericCount++;
-    var hoursP = parseNum(r['__hours']); if (!hoursP.valid) invalidNumericCount++;
-    var k = workerKey + '|' + sku;
-    if (!groups[k]) groups[k] = {worker:shortName(workerRaw), workerKey:workerKey, sku:sku, boxes:0, hours:0};
-    else mergedRows++;
-    groups[k].boxes += boxesP.value;
-    groups[k].hours += hoursP.value;
-  });
-
-  var results = Object.keys(groups).map(function(k) {
-    var g = groups[k];
-    var bph = g.hours > 0 ? g.boxes / g.hours : 0;
-    var t = SKU_TARGETS[g.sku];
-    var status = 'none';
-    if (t) {
-      if (bph >= t.target) status = 'on';
-      else if (bph >= t.strike) status = 'below';
-      else status = 'strike';
-    }
-    return {worker:g.worker, workerKey:g.workerKey, sku:g.sku, boxes:g.boxes, bph:bph, target: t ? t.target : null, strike: t ? t.strike : null, status:status};
-  });
-
-  if (!results.length && !mixedCount) return {ok:false, msg:'No single-SKU sessions found'};
-
-  // Also keep one row per packer with boxes summed across SKUs for the leaderboard.
-  var byPacker = {};
-  results.forEach(function(r) {
-    var k = r.workerKey || normWorkerKey(r.worker);
-    if (!byPacker[k]) byPacker[k] = {worker:r.worker, boxes:0, hours:0, skus:0};
-    byPacker[k].boxes += r.boxes;
-    byPacker[k].hours += (r.bph > 0 && r.boxes > 0 ? r.boxes / r.bph : 0);
-    byPacker[k].skus++;
-  });
-
-  s.endOfShift = {ts: Date.now(), results: results, byPacker: byPacker, mixedCount: mixedCount};
-  s.lastUpdated = Date.now();
-  var base = 'End-of-shift for ' + shiftLabel(tag) + ' \u2014 ' + Object.keys(byPacker).length + ' packer(s), ' + results.length + ' SKU row(s)';
-  if (mergedRows) base += ', merged ' + mergedRows + ' duplicate row(s)';
-  return {ok:true, msg: qualityMsg(base, quality, invalidNumericCount), touched:[tag]};
-}
-
-function ensureShift(key) {
-  if (!shiftsData[key]) {
-    shiftsData[key] = {summary:{}, hourly:{}, skuSnapshot:{}, skuLog:[], lastUpdated:null, reportDate:null};
-  } else {
-    var s = shiftsData[key];
-    if (!s.summary) s.summary = {};
-    if (!s.hourly) s.hourly = {};
-    if (!s.skuSnapshot) s.skuSnapshot = {};
-    if (!s.skuLog) s.skuLog = [];
-    if (s.reportDate === undefined) s.reportDate = null;
-    coalesceShiftWorkers(s);
-  }
-  return shiftsData[key];
-}
-
-// Merge any already-saved duplicate name keys (case / spacing) and sum their boxes.
-function coalesceShiftWorkers(s) {
-  if (!s) return;
-  var newSummary = {};
-  Object.keys(s.summary || {}).forEach(function(raw) {
-    var key = normWorkerKey(raw);
-    if (!key) return;
-    var row = s.summary[raw] || {};
-    if (!newSummary[key]) {
-      newSummary[key] = {
-        boxes:0, items:0, pouches:0, timeSec:0, stations:[],
-        name: shortName(row.name || raw)
-      };
-    }
-    var w = newSummary[key];
-    w.boxes += row.boxes || 0;
-    w.items += row.items || 0;
-    w.pouches += row.pouches || 0;
-    w.timeSec += row.timeSec || 0;
-    (row.stations || []).forEach(function(st) {
-      if (st && w.stations.indexOf(st) === -1) w.stations.push(st);
-    });
-  });
-  s.summary = newSummary;
-
-  var newHourly = {};
-  Object.keys(s.hourly || {}).forEach(function(hk) {
-    newHourly[hk] = {};
-    Object.keys(s.hourly[hk] || {}).forEach(function(raw) {
-      var key = normWorkerKey(raw);
-      if (!key) return;
-      newHourly[hk][key] = (newHourly[hk][key] || 0) + (s.hourly[hk][raw] || 0);
-    });
-  });
-  s.hourly = newHourly;
-
-  var newSnap = {};
-  Object.keys(s.skuSnapshot || {}).forEach(function(k) {
-    var cur = s.skuSnapshot[k];
-    if (!cur) return;
-    var workerKey = normWorkerKey(cur.worker || k.split('|')[0]);
-    var nk = workerKey + '|' + (cur.station || '') + '|' + (cur.sku || '');
-    if (!newSnap[nk]) newSnap[nk] = {worker:shortName(cur.worker || workerKey), station:cur.station || '', sku:cur.sku || '', boxes:0, items:0, pouches:0};
-    newSnap[nk].boxes += cur.boxes || 0;
-    newSnap[nk].items += cur.items || 0;
-    newSnap[nk].pouches += cur.pouches || 0;
-  });
-  s.skuSnapshot = newSnap;
-
-  if (s.endOfShift && s.endOfShift.results) {
-    var groups = {};
-    s.endOfShift.results.forEach(function(r) {
-      var workerKey = r.workerKey || normWorkerKey(r.worker);
-      var k = workerKey + '|' + r.sku;
-      if (!groups[k]) groups[k] = {worker:shortName(r.worker), workerKey:workerKey, sku:r.sku, boxes:0, hours:0, target:r.target, strike:r.strike};
-      groups[k].boxes += r.boxes || 0;
-      // Reconstruct hours from bph when present
-      if (r.bph > 0) groups[k].hours += (r.boxes || 0) / r.bph;
-      else groups[k].hours += 0;
-    });
-    var results = Object.keys(groups).map(function(k) {
-      var g = groups[k];
-      var bph = g.hours > 0 ? g.boxes / g.hours : 0;
-      var t = SKU_TARGETS[g.sku];
-      var status = 'none';
-      if (t) {
-        if (bph >= t.target) status = 'on';
-        else if (bph >= t.strike) status = 'below';
-        else status = 'strike';
-      }
-      return {worker:g.worker, workerKey:g.workerKey, sku:g.sku, boxes:g.boxes, bph:bph, target:t ? t.target : g.target, strike:t ? t.strike : g.strike, status:status};
-    });
-    var byPacker = {};
-    results.forEach(function(r) {
-      var k = r.workerKey;
-      if (!byPacker[k]) byPacker[k] = {worker:r.worker, boxes:0, skus:0};
-      byPacker[k].boxes += r.boxes;
-      byPacker[k].skus++;
-    });
-    s.endOfShift.results = results;
-    s.endOfShift.byPacker = byPacker;
-  }
-}
-
-function importSummary(dataRows, quality) {
-  var shiftsInFile = [];
-  dataRows.forEach(function(r){ if (r['__shift'] && shiftsInFile.indexOf(r['__shift']) === -1) shiftsInFile.push(r['__shift']); });
-  if (!shiftsInFile.length) return {ok:false, msg:'No shift column values found'};
-
-  var now = Date.now();
-  var invalidNumericCount = 0;
-  var mergedRows = 0;
-
-  shiftsInFile.forEach(function(shift) {
-    var s = ensureShift(shift);
-    var rowsForShift = dataRows.filter(function(r){ return r['__shift'] === shift; });
-
-    var newSummary = {};
-    rowsForShift.forEach(function(r) {
-      var workerRaw = r['__workerName']; if (!workerRaw) return;
-      var key = normWorkerKey(workerRaw); if (!key) return;
-      if (!newSummary[key]) newSummary[key] = {name:shortName(workerRaw), boxes:0, items:0, pouches:0, timeSec:0, stations:[]};
-      else mergedRows++;
-      var w = newSummary[key];
-      var bp = parseNum(r['__boxes']);   if (!bp.valid) invalidNumericCount++;
-      var ip = parseNum(r['__items']);   if (!ip.valid) invalidNumericCount++;
-      var pp = parseNum(r['__pouches']); if (!pp.valid) invalidNumericCount++;
-      var tp = parseNum(r['__timeSec']); if (!tp.valid) invalidNumericCount++;
-      w.boxes += bp.value;
-      w.items += ip.value;
-      w.pouches += pp.value;
-      w.timeSec += tp.value;
-      var st = r['__station'];
-      if (st && w.stations.indexOf(st) === -1) w.stations.push(st);
-    });
-    s.summary = newSummary;
-
-    var newSnap = {};
-    rowsForShift.forEach(function(r) {
-      var workerRaw = r['__workerName']; if (!workerRaw) return;
-      var workerKey = normWorkerKey(workerRaw); if (!workerKey) return;
-      var station = r['__station'] || '';
-      var sku = r['__sku'] || '';
-      var k = workerKey + '|' + station + '|' + sku;
-      if (!newSnap[k]) newSnap[k] = {worker:shortName(workerRaw), station:station, sku:sku, boxes:0, items:0, pouches:0};
-      newSnap[k].boxes += parseNum(r['__boxes']).value;
-      newSnap[k].items += parseNum(r['__items']).value;
-      newSnap[k].pouches += parseNum(r['__pouches']).value;
-    });
-    var deltaEntries = [];
-    Object.keys(newSnap).forEach(function(k) {
-      var cur = newSnap[k];
-      var prev = s.skuSnapshot[k] || {boxes:0, items:0, pouches:0};
-      var dB = cur.boxes - prev.boxes, dI = cur.items - prev.items, dP = cur.pouches - prev.pouches;
-      if (dB !== 0 || dI !== 0 || dP !== 0) {
-        deltaEntries.push({worker:cur.worker, station:cur.station, sku:cur.sku, boxes:dB, items:dI, pouches:dP});
-      }
-    });
-    if (deltaEntries.length) {
-      s.skuLog.push({ts: now, entries: deltaEntries});
-      if (s.skuLog.length > 60) s.skuLog = s.skuLog.slice(-60);
-    }
-    s.skuSnapshot = newSnap;
-    s.lastUpdated = now;
-  });
-
-  var base = 'Imported summary \u2014 ' + shiftsInFile.map(shiftLabel).join(', ');
-  if (mergedRows) base += ' (merged ' + mergedRows + ' duplicate name row(s))';
-  return {ok:true, msg: qualityMsg(base, quality, invalidNumericCount), touched: shiftsInFile};
-}
-
-function importHourly(dataRows, quality) {
-  var tag = tagSelect.value;
-  if (!tag) return {ok:false, msg:'Pick a shift to tag hourly data'};
-  var s = ensureShift(tag);
-  var hoursAdded = {};
-  var invalidNumericCount = 0;
-  var mergedRows = 0;
-  var dateVotes = {};
-  dataRows.forEach(function(r) {
-    var workerRaw = r['__workerName']; if (!workerRaw) return;
-    var key = normWorkerKey(workerRaw); if (!key) return;
-    var hourKey = r['__hourKey']; if (!hourKey) return;
-    if (!s.hourly[hourKey]) s.hourly[hourKey] = {};
-    var bp = parseNum(r['__boxes']); if (!bp.valid) invalidNumericCount++;
-    if (s.hourly[hourKey][key] != null) mergedRows++;
-    s.hourly[hourKey][key] = (s.hourly[hourKey][key] || 0) + bp.value;
-    hoursAdded[hourKey] = true;
-    var rd = parseReportDateFromHourKey(hourKey);
-    if (rd) dateVotes[rd] = (dateVotes[rd] || 0) + 1;
-  });
-  var bestDate = null, bestN = 0;
-  Object.keys(dateVotes).forEach(function(d) {
-    if (dateVotes[d] > bestN) { bestDate = d; bestN = dateVotes[d]; }
-  });
-  if (bestDate) s.reportDate = bestDate;
-  s.lastUpdated = Date.now();
-  var n = Object.keys(hoursAdded).length;
-  if (!n) return {ok:false, msg:'No hourly rows found'};
-  var base = 'Imported ' + n + ' hour(s) for ' + shiftLabel(tag);
-  if (bestDate) base += ' \u00b7 report date ' + formatReportDate(bestDate);
-  if (mergedRows) base += ' \u00b7 merged ' + mergedRows + ' duplicate row(s)';
-  return {ok:true, msg: qualityMsg(base, quality, invalidNumericCount), touched:[tag]};
-}
-
-// ── STORAGE ──────────────────────────────────────────────────────────
-async function saveData() {
-  try { await window.storage.set(STORAGE_KEY, JSON.stringify(shiftsData), false); return true; }
-  catch (e) {
-    console.error('save failed', e);
-    return false;
-  }
-}
-async function loadAll() {
-  try {
-    var r = await window.storage.get(STORAGE_KEY, false);
-    if (r && r.value) shiftsData = JSON.parse(r.value);
-  } catch (e) {
-    console.error('load failed', e);
-    pkToast('Could not read saved data (' + (e && e.message ? e.message : 'unknown error') + ') \u2014 showing a blank board so nothing gets overwritten', 'err');
-  }
-  Object.keys(shiftsData || {}).forEach(function(k){ ensureShift(k); });
-  ensureShift('morning_shift');
-  ensureShift('afternoon_shift');
-}
-
-// ── DATA HELPERS ─────────────────────────────────────────────────────
-function orderedShiftKeys() {
-  var keys = Object.keys(shiftsData);
-  return keys.sort(function(a,b) {
-    var ia = PRIORITY.indexOf(a), ib = PRIORITY.indexOf(b);
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return 1;
-    return shiftLabel(a).localeCompare(shiftLabel(b));
-  });
-}
-function workerDisplayName(s, key) {
-  if (s && s.summary && s.summary[key] && s.summary[key].name) return s.summary[key].name;
-  return shortName(key);
-}
-function shiftTotals(key) {
-  var s = shiftsData[key] || {summary:{}, hourly:{}};
-  var totals = {};
-  Object.keys(s.summary || {}).forEach(function(w){ totals[w] = s.summary[w].boxes || 0; });
-  var summaryWorkers = Object.keys(s.summary || {});
-  var hourlySums = {};
-  Object.keys(s.hourly || {}).forEach(function(hk) {
-    Object.keys(s.hourly[hk]).forEach(function(w) {
-      hourlySums[w] = (hourlySums[w] || 0) + (s.hourly[hk][w] || 0);
-    });
-  });
-  Object.keys(hourlySums).forEach(function(w) {
-    if (summaryWorkers.indexOf(w) === -1) totals[w] = hourlySums[w];
-  });
-  return totals;
-}
-function workerCount(key) { return Object.keys(shiftTotals(key)).length; }
-function renderPackerTotalsTable(s, totals) {
-  var workers = Object.keys(totals).sort(function(a,b){ return totals[b] - totals[a]; });
-  if (!workers.length) return '';
-  var rows = workers.map(function(w, i) {
-    var st = (s.summary[w] && s.summary[w].stations) ? s.summary[w].stations.join(', ') : '';
-    return '<tr><td class="r mn">' + (i + 1) + '</td><td>' + escapeHtml(workerDisplayName(s, w)) + '</td>' +
-      '<td class="r mn bold">' + totals[w].toLocaleString() + '</td>' +
-      '<td>' + escapeHtml(st || '\u2014') + '</td></tr>';
-  }).join('');
-  return '<div class="sec">1 · Raw totals</div>' +
-    '<div class="pk-merge-note">One row per packer. Duplicate names are merged and boxes are added up.</div>' +
-    '<div class="tw"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th>Stations</th></tr></thead><tbody>' +
-    rows + '</tbody></table></div>';
-}
-
-// ── RENDER ───────────────────────────────────────────────────────────
-function renderTabs() {
-  var keys = orderedShiftKeys();
-  tabsEl.innerHTML = keys.map(function(k) {
-    var cnt = workerCount(k);
-    return '<button class="pk-tab-btn ' + (k === activeTab ? 'active' : '') + '" data-key="' + escapeHtml(k) + '">' +
-      escapeHtml(shiftLabel(k)) + (cnt ? '<span class="cnt">' + cnt + '</span>' : '') + '</button>';
-  }).join('');
-  Array.prototype.forEach.call(tabsEl.querySelectorAll('.pk-tab-btn'), function(btn) {
-    btn.addEventListener('click', function() {
-      activeTab = btn.getAttribute('data-key');
-      renderTabs();
-      renderPanels();
-    });
-  });
-}
-function renderHourlySection(s, hourKeys) {
-  var hourTotals = hourKeys.map(function(hk) {
-    return Object.keys(s.hourly[hk]).reduce(function(a,w){ return a + (s.hourly[hk][w] || 0); }, 0);
-  });
-  var maxH = Math.max.apply(null, hourTotals.concat([1]));
-  var lastHour = hourKeys[hourKeys.length - 1];
-  var bars = hourKeys.map(function(hk, i) {
-    var h = Math.max(4, Math.round(hourTotals[i] / maxH * 90));
-    return '<div class="hbar ' + (hk === lastHour ? 'now' : '') + '" style="height:' + h + 'px" title="' +
-      escapeHtml(hourLabel(hk)) + ': ' + hourTotals[i] + ' boxes"></div>';
-  }).join('');
-  var lbls = hourKeys.map(function(hk){ return '<div class="hbar-lbl">' + escapeHtml(hourLabel(hk)) + '</div>'; }).join('');
-
-  var workerHourTotals = {};
-  hourKeys.forEach(function(hk) {
-    Object.keys(s.hourly[hk]).forEach(function(w) {
-      workerHourTotals[w] = (workerHourTotals[w] || 0) + (s.hourly[hk][w] || 0);
-    });
-  });
-  var sortedWorkers = Object.keys(workerHourTotals).sort(function(a,b){ return workerHourTotals[b] - workerHourTotals[a]; });
-
-  var rows = sortedWorkers.map(function(w) {
-    var cells = hourKeys.map(function(hk) {
-      var v = s.hourly[hk][w];
-      return '<td class="r mn">' + (v != null ? v : '\u2014') + '</td>';
-    }).join('');
-    return '<tr><td>' + escapeHtml(workerDisplayName(s, w)) + '</td>' + cells + '<td class="r mn bold">' + workerHourTotals[w] + '</td></tr>';
-  }).join('');
-  var headCells = hourKeys.map(function(hk){ return '<th class="r">' + escapeHtml(hourLabel(hk)) + '</th>'; }).join('');
-  var reportDate = inferReportDate(s);
-  var dateNote = reportDate
-    ? '<span class="pk-date-pill">Report date ' + escapeHtml(formatReportDate(reportDate)) + '</span>'
-    : '';
-
-  return '<div class="sec">2 · Boxes / hour ' + dateNote + '</div>' +
-    '<div class="card"><div class="hbar-wrap">' + bars + '</div><div class="hbar-lbls">' + lbls + '</div></div>' +
-    '<div class="tw" style="margin-top:.65rem"><table><thead><tr><th>Packer</th>' + headCells + '<th class="r">Total</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-}
-function renderSkuLogSection(s) {
-  var log = s.skuLog || [];
-  if (!log.length) return '';
-  var sorted = log.slice().sort(function(a,b){ return b.ts - a.ts; });
-  var blocks = sorted.map(function(entry) {
-    var rows = entry.entries.map(function(en) {
-      return '<tr><td>' + escapeHtml(shortName(en.worker)) + '</td><td>' + escapeHtml(en.station) + '</td><td>' + escapeHtml(en.sku) + '</td>' +
-        '<td class="r mn bold">' + (en.boxes >= 0 ? '+' : '') + en.boxes + '</td><td class="r mn">' + (en.items >= 0 ? '+' : '') + en.items + '</td></tr>';
-    }).join('');
-    return '<div class="sku-block"><div class="sku-block-hdr">' +
-      escapeHtml(new Date(entry.ts).toLocaleString([], {hour:'2-digit', minute:'2-digit', month:'short', day:'numeric'})) +
-      '</div><div class="tw"><table><thead><tr><th>Packer</th><th>Station</th><th>SKU</th><th class="r">Boxes</th><th class="r">Items</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
-  }).join('');
-  return '<div class="sec">SKU activity by upload</div>' + blocks;
-}
-function renderEndOfShiftSection(s) {
-  var eos = s.endOfShift;
-  if (!eos) return '';
-  var byPacker = eos.byPacker || {};
-  if (!Object.keys(byPacker).length && eos.results) {
-    eos.results.forEach(function(r) {
-      var k = r.workerKey || normWorkerKey(r.worker);
-      if (!byPacker[k]) byPacker[k] = {worker:shortName(r.worker), boxes:0, skus:0};
-      byPacker[k].boxes += r.boxes || 0;
-      byPacker[k].skus++;
-    });
-  }
-  var packerRows = Object.keys(byPacker).sort(function(a,b){ return byPacker[b].boxes - byPacker[a].boxes; }).map(function(k, i) {
-    var p = byPacker[k];
-    return '<tr><td class="r mn">' + (i + 1) + '</td><td>' + escapeHtml(shortName(p.worker)) + '</td>' +
-      '<td class="r mn bold">' + p.boxes.toLocaleString() + '</td><td class="r mn">' + (p.skus || 1) + '</td></tr>';
-  }).join('');
-
-  var results = eos.results.slice().sort(function(a,b) {
-    var ga = a.target != null ? a.bph - a.target : 999;
-    var gb = b.target != null ? b.bph - b.target : 999;
-    return ga - gb;
-  });
-  var counts = {on:0, below:0, strike:0, none:0};
-  results.forEach(function(r){ counts[r.status]++; });
-  var rows = results.map(function(r) {
-    var pill;
-    if (r.status === 'on') pill = '<span class="pill pg">On target</span>';
-    else if (r.status === 'below') pill = '<span class="pill pa">Below target</span>';
-    else if (r.status === 'strike') pill = '<span class="pill pr">Below strike line</span>';
-    else pill = '<span class="pill pf">No target set</span>';
-    return '<tr><td>' + escapeHtml(shortName(r.worker)) + '</td><td>' + escapeHtml(r.sku) + '</td>' +
-      '<td class="r mn">' + r.boxes.toLocaleString() + '</td><td class="r mn bold">' + r.bph.toFixed(1) + '</td>' +
-      '<td class="r mn">' + (r.target != null ? r.target : '\u2014') + '</td>' +
-      '<td class="r mn">' + (r.strike != null ? r.strike : '\u2014') + '</td>' +
-      '<td class="r">' + pill + '</td></tr>';
-  }).join('');
-  var mixedNote = eos.mixedCount
-    ? '<div class="panel-sub" style="margin:.5rem 0 0">' + eos.mixedCount + ' session(s) packed a mixed batch of SKU sizes and are left out of this comparison.</div>'
-    : '';
-  return '<div class="sec">3 · Strike check (boxes / hour vs target)</div>' +
-    '<div class="kgrid" style="margin-bottom:.7rem">' +
-    '<div class="kc cg"><div class="kc-l">On target</div><div class="kc-v">' + counts.on + '</div></div>' +
-    '<div class="kc ca"><div class="kc-l">Below target</div><div class="kc-v">' + counts.below + '</div></div>' +
-    '<div class="kc cr"><div class="kc-l">Below strike</div><div class="kc-v">' + counts.strike + '</div></div>' +
-    '</div>' +
-    '<div class="tw" style="margin-bottom:.75rem"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th class="r">SKUs</th></tr></thead><tbody>' +
-    packerRows + '</tbody></table></div>' +
-    '<div class="sec">By SKU</div>' +
-    '<div class="tw"><table><thead><tr><th>Packer</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
-    '<th class="r">Target</th><th class="r">Strike</th><th class="r">Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    mixedNote;
-}
-function renderPanels() {
-  var key = activeTab;
-  ensureShift(key);
-  var s = shiftsData[key];
-  var totals = shiftTotals(key);
-  var workers = Object.keys(totals);
-  var totalBoxes = workers.reduce(function(a,w){ return a + totals[w]; }, 0);
-  var active = workers.length;
-  var avg = active ? Math.round(totalBoxes / active) : 0;
-  var top = null;
-  workers.forEach(function(w){ if (top === null || totals[w] > totals[top]) top = w; });
-  var reportDate = inferReportDate(s);
-  var subParts = [];
-  if (reportDate) subParts.push('Report date ' + formatReportDate(reportDate));
-  if (s.lastUpdated) subParts.push('Imported ' + timeAgo(s.lastUpdated));
-  if (!subParts.length) subParts.push('No CSV uploads yet');
-
-  var html = '<div class="panel-hdr"><div>' +
-    '<div class="panel-title">' + escapeHtml(shiftLabel(key)) +
-    (reportDate ? ' <span class="pk-date-pill">' + escapeHtml(formatReportDate(reportDate)) + '</span>' : '') +
-    '</div>' +
-    '<div class="panel-sub">' + escapeHtml(subParts.join(' · ')) + '</div>' +
-    '</div><button class="btn btn-ghost btn-sm" id="pkResetBtn" data-key="' + escapeHtml(key) + '" data-pending="0">Reset</button></div>';
-
-  if (active === 0 && !(s.endOfShift && s.endOfShift.results && s.endOfShift.results.length)) {
-    html += '<div class="empty-state">Upload CSV to build:<br><b>1. Raw totals</b> → <b>2. Boxes / hour</b> → <b>3. Strike check</b></div>';
-  } else {
-    if (active) {
-      html += '<div class="kgrid">' +
-        '<div class="kc cb"><div class="kc-l">Total boxes</div><div class="kc-v">' + totalBoxes.toLocaleString() + '</div></div>' +
-        '<div class="kc cg"><div class="kc-l">Packers</div><div class="kc-v">' + active + '</div></div>' +
-        '<div class="kc ca"><div class="kc-l">Avg / packer</div><div class="kc-v">' + avg.toLocaleString() + '</div></div>' +
-        '<div class="kc"><div class="kc-l">Top packer</div><div class="kc-v" style="font-size:1rem">' + (top ? escapeHtml(workerDisplayName(s, top)) : '\u2014') + '</div>' +
-        '<div class="kc-s">' + (top ? totals[top].toLocaleString() + ' boxes' : '') + '</div></div>' +
-        '</div>';
-      html += renderPackerTotalsTable(s, totals);
-    }
-
-    var hourKeys = Object.keys(s.hourly || {}).sort();
-    if (hourKeys.length) html += renderHourlySection(s, hourKeys);
-    else if (active) html += '<div class="sec">2 · Boxes / hour</div><div class="empty-state" style="padding:1.2rem">Upload an hourly CSV to fill this.</div>';
-    var eosHtml = renderEndOfShiftSection(s);
-    html += eosHtml || '<div class="sec">3 · Strike check</div><div class="empty-state" style="padding:1.2rem">Upload an end-of-shift CSV to compare BPH vs target / strike.</div>';
-  }
-
-  panelsEl.innerHTML = html;
-  var rb = document.getElementById('pkResetBtn');
-  if (rb) rb.addEventListener('click', function(){ handleReset(rb); });
-}
-function updateLastUpdatedLabel() {
-  var latest = null;
-  var latestDate = null;
-  Object.keys(shiftsData).forEach(function(k) {
-    var s = shiftsData[k];
-    if (s.lastUpdated && (!latest || s.lastUpdated > latest)) latest = s.lastUpdated;
-    var rd = inferReportDate(s);
-    if (rd && (!latestDate || rd > latestDate)) latestDate = rd;
-  });
-  var parts = [];
-  if (latestDate) parts.push('Report date ' + formatReportDate(latestDate));
-  if (latest) parts.push('Last import ' + timeAgo(latest));
-  lastUpdatedEl.textContent = parts.length ? parts.join(' · ') : 'Upload a CSV to get started';
-}
-function refreshTagSelect() {
-  var keys = orderedShiftKeys();
-  var cur = tagSelect.value;
-  tagSelect.innerHTML = keys.map(function(k) {
-    return '<option value="' + escapeHtml(k) + '">' + escapeHtml(shiftLabel(k)) + '</option>';
-  }).join('');
-  if (keys.indexOf(cur) !== -1) tagSelect.value = cur;
-  else if (activeTab && keys.indexOf(activeTab) !== -1) tagSelect.value = activeTab;
-}
-function handleReset(btn) {
-  var key = btn.getAttribute('data-key');
-  if (btn.getAttribute('data-pending') === '1') {
-    delete shiftsData[key];
-    ensureShift(key);
-    renderTabs();
-    renderPanels();
-    updateLastUpdatedLabel();
-    saveData().then(function(saved){
-      pkToast(shiftLabel(key) + ' shift reset' + (saved ? '' : ' \u2014 but could not save to storage; it may not survive a refresh'), saved ? undefined : 'err');
-    });
-  } else {
-    btn.setAttribute('data-pending', '1');
-    btn.textContent = 'Click to confirm';
-    btn.classList.add('btn-danger-pending');
-    clearTimeout(pendingResetTimers[key]);
-    pendingResetTimers[key] = setTimeout(function() {
-      btn.setAttribute('data-pending', '0');
-      btn.textContent = 'Reset shift';
-      btn.classList.remove('btn-danger-pending');
-    }, 4000);
-  }
-}
-
-// ── EVENTS ───────────────────────────────────────────────────────────
-uploadBtn.addEventListener('click', function(){ fileInput.click(); });
-
-fileInput.addEventListener('change', async function(e) {
-  var files = Array.prototype.slice.call(e.target.files || []);
-  if (!files.length) return;
-  var messages = [];
-  var anyOk = false;
-  for (var i = 0; i < files.length; i++) {
-    try {
-      var text = await files[i].text();
-      var res = processFileText(text);
-      messages.push(res.msg);
-      if (res.ok) anyOk = true;
-    } catch (err) {
-      messages.push('Failed to read ' + files[i].name);
-    }
-  }
-  fileInput.value = '';
-  var saved = true;
-  if (anyOk) {
-    saved = await saveData();
-    refreshTagSelect();
-    var keys = orderedShiftKeys();
-    if (!activeTab || keys.indexOf(activeTab) === -1) activeTab = keys[0];
-    renderTabs();
-    renderPanels();
-    updateLastUpdatedLabel();
-    if (!saved) messages.push('Could not save this to storage \u2014 it will be lost on refresh until storage is back');
-  }
-  pkToast(messages.join(' \u2022 '), (anyOk && saved) ? undefined : 'err');
-});
-
-addShiftBtn.addEventListener('click', function() {
-  newShiftRow.classList.toggle('show');
-  if (newShiftRow.classList.contains('show')) newShiftInput.focus();
-});
-cancelAddShift.addEventListener('click', function() {
-  newShiftRow.classList.remove('show');
-  newShiftInput.value = '';
-});
-function addNewShift() {
-  var raw = newShiftInput.value.trim();
-  if (!raw) return;
-  var key = raw.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-  if (!key) key = 'shift_' + Date.now();
-  ensureShift(key);
-  shiftsData[key].customLabel = raw;
-  refreshTagSelect();
-  tagSelect.value = key;
-  activeTab = key;
-  renderTabs();
-  renderPanels();
-  newShiftRow.classList.remove('show');
-  newShiftInput.value = '';
-  saveData().then(function(saved){
-    pkToast('Added ' + raw + ' shift' + (saved ? '' : ' \u2014 but could not save to storage; it may not survive a refresh'), saved ? undefined : 'err');
-  });
-}
-confirmAddShift.addEventListener('click', addNewShift);
-newShiftInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addNewShift(); });
-
-// ── INIT ─────────────────────────────────────────────────────────────
-async function init() {
-  await loadAll();
-  activeTab = orderedShiftKeys()[0];
-  refreshTagSelect();
-  renderTabs();
-  renderPanels();
-  updateLastUpdatedLabel();
-}
-init();
-})();
-</script>
+<script src="js/packer-analytics.js"></script>
+<script src="js/packer-dashboard.js"></script>
 
 <script>
 (function(){
