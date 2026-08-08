@@ -109,7 +109,6 @@
     fileInput: document.getElementById('pkFileInput'),
     uploadBtn: document.getElementById('pkUploadBtn'),
     clearBtn: document.getElementById('pkClearBtn'),
-    exportWeekBtn: document.getElementById('pkExportWeekBtn'),
     shiftToggle: document.getElementById('pkShift'),
     daysEl: document.getElementById('pkDays'),
     weekLabel: document.getElementById('pkWeekLabel'),
@@ -1145,9 +1144,6 @@
       toast('Cleared ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
     });
   }
-  if (els.exportWeekBtn) {
-    els.exportWeekBtn.addEventListener('click', function () { exportActiveWeek(true); });
-  }
   if (els.shiftToggle) {
     els.shiftToggle.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-shift]') : null;
@@ -1211,6 +1207,7 @@
   window.__packerDashboard = {
     refresh: renderAll,
     exportWeek: exportActiveWeek,
+    exportShiftPackers: exportCurrentShiftPackers,
     buildWeeklySkuReview: buildWeeklySkuReview,
     downloadWeeklySkuReview: downloadWeeklySkuReview,
     getByDate: function () { return state.byDate; },

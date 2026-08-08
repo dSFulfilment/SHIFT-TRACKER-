@@ -91,7 +91,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       linear-gradient(45deg,transparent 75%,#EEEEEA 75%),
       linear-gradient(-45deg,transparent 75%,#EEEEEA 75%);
     background-size:16px 16px; background-position:0 0,0 8px,8px -8px,-8px 0;
-    background-color:#F7F7F4; padding:24px; }
+    background-color:#F7F7F4; padding:24px 24px 88px; }
 #app #viewport.draw-armed{ cursor:crosshair; }
 #app #viewport.move-armed,
 #app #viewport.is-dragging{ cursor:grab; touch-action:none; }
@@ -333,7 +333,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .roster-row .role-chip.unassigned{ background:#F3F4F6; color:#9CA3AF; }
 #app .roster-add select{ font-size:11px; border:1px solid var(--line); border-radius:6px; padding:5px 6px; background:#fff; max-width:96px; }
 /* Dock must not steal map clicks — closed panel used to cover Boxes 1 / left strip */
-#floorToolsDock{ position:fixed; left:16px; bottom:16px; z-index:9998; display:none;
+#floorToolsDock{ position:fixed; left:16px; bottom:84px; z-index:9998; display:none;
   flex-direction:column; align-items:flex-start; gap:10px; max-width:min(360px, calc(100vw - 32px));
   pointer-events:none; }
 #floorToolsDock.floor-visible{ display:flex; }
@@ -382,7 +382,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #floorToolsScrim{ display:none; position:fixed; inset:0; z-index:9997; background:transparent; }
 #floorToolsScrim.open{ display:block; }
 @media (max-width:640px){
-  #floorToolsDock{ bottom:72px; }
+  #floorToolsDock{ bottom:84px; }
 }
 /* Tablet / touch: full-bleed floor, bigger taps, SKU rail stays out of the way */
 @media (max-width:1100px), (pointer:coarse){
@@ -425,7 +425,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   #app #floorToolChip{ top:auto; bottom:84px; left:76px; padding:8px 8px 8px 12px; }
   #app #floorToolChip button{ width:36px; height:36px; }
   .bp-fab-group{ bottom:12px; right:12px; left:12px; justify-content:stretch; border-radius:16px; }
-  .bp-fab-btn{ flex:1; padding:12px 6px; font-size:11.5px; min-height:48px; }
+  .bp-fab-btn{ flex:1; padding:10px 4px; font-size:10.5px; min-height:46px; }
 }
 #app #floorToolChip{ display:none; position:fixed; top:56px; left:12px; z-index:10050; align-items:center; gap:6px;
   background:rgba(28,36,48,.92); color:#fff; border-radius:999px; padding:6px 6px 6px 10px;
@@ -457,7 +457,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app #viewport.move-armed .card.floorslot.selected .ctrl.del,
 #app #viewport.move-armed .card.station.selected .ctrl.resize,
 #app #viewport.move-armed .card.floorslot.selected .ctrl.resize{ width:22px; height:22px; }
-#app .role-popover{ display:none; position:fixed; z-index:300; background:#fff; border:1px solid var(--line);
+#app .role-popover{ display:none; position:fixed; z-index:10060; background:#fff; border:1px solid var(--line);
     border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:6px; flex-direction:column; gap:2px; min-width:132px; max-height:320px; overflow-y:auto; }
 #app .role-popover.open{ display:flex; }
 #app .role-popover .role-opt{ display:flex; align-items:center; gap:8px; padding:6px 8px; border:none; background:none;
@@ -467,7 +467,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .role-popover .role-opt.active{ background:#EDEDEA; }
 @media print{
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
-    header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel{ display:none !important; }
+    header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel,
+    #bpFabGroup, #bpToast, #toast, #packerToast{ display:none !important; }
     html, body{ height:auto !important; overflow:visible !important; background:#fff !important; margin:0 !important; }
     #app{ height:auto !important; }
     #main{ height:auto !important; }
@@ -652,13 +653,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #breakPlannerTab .bp-chip .x:hover{ opacity:1; }
 #breakPlannerTab .bp-empty-hint{ font-size:11px; color:#C7C7CC; }
 #breakPlannerTab .bp-sheet-scrim{
-  display:none; position:fixed; inset:0; background:rgba(15,23,42,.35); z-index:80;
+  display:none; position:fixed; inset:0; background:rgba(15,23,42,.35); z-index:10000;
 }
 #breakPlannerTab .bp-sheet-scrim.open{ display:block; }
 #breakPlannerTab .bp-sheet{
   display:none; position:fixed; left:50%; bottom:0; transform:translateX(-50%);
-  width:min(520px, 100%); max-height:70dvh; overflow:auto; z-index:81;
-  background:#fff; border-radius:16px 16px 0 0; padding:12px 12px calc(18px + env(safe-area-inset-bottom,0px));
+  width:min(520px, 100%); max-height:70dvh; overflow:auto; z-index:10001;
+  background:#fff; border-radius:16px 16px 0 0;
+  padding:12px 12px calc(72px + env(safe-area-inset-bottom,0px));
   box-shadow:0 -8px 30px rgba(0,0,0,.18);
 }
 #breakPlannerTab .bp-sheet.open{ display:block; }
@@ -676,7 +678,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 }
 .bp-toast{ position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#1C2430; color:#fff;
   padding:.45rem 1rem; border-radius:100px; font-size:12px; font-weight:600; opacity:0; pointer-events:none;
-  transition:opacity .2s; z-index:9999; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:85vw;
+  transition:opacity .2s; z-index:10002; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:85vw;
   overflow:hidden; text-overflow:ellipsis; }
 .bp-toast.show{ opacity:1; }
 @media (max-width:720px){
@@ -807,7 +809,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabTracker .aip:focus, #tabPacker .aip:focus{outline:none;border-color:#7baaf7;box-shadow:0 0 0 2px rgba(123,170,247,.2)}
 #tabTracker .aip::placeholder, #tabPacker .aip::placeholder{color:var(--fnt);font-weight:400;font-size:.78rem}
 #tabTracker .empty-td, #tabPacker .empty-td{text-align:center;padding:2.5rem;color:var(--fnt);font-size:.82rem}
-#tabTracker .toast, #tabPacker .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--sur);padding:.5rem 1.2rem;border-radius:100px;font-size:.78rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:200;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+#tabTracker .toast, #tabPacker .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--sur);padding:.5rem 1.2rem;border-radius:100px;font-size:.78rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10002;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18);max-width:85vw;overflow:hidden;text-overflow:ellipsis}
 #tabTracker .toast.show, #tabPacker .toast.show{opacity:1}#tabTracker .top-tabs, #tabPacker .top-tabs{display:flex;gap:.5rem;padding:.75rem 1rem 0;max-width:960px;margin:0 auto}
 #tabTracker .top-tab, #tabPacker .top-tab{padding:.5rem 1.1rem;border-radius:100px;border:1px solid var(--bdr2);background:var(--sur);color:var(--mut);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
 #tabTracker .top-tab.active, #tabPacker .top-tab.active{background:var(--txt);border-color:var(--txt);color:var(--sur)}
@@ -1065,9 +1067,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <button class="btn active" id="toggleRoster" title="Show or hide SKUs">SKUs</button>
     <span class="counts" id="importStatus"></span>
     <button class="btn" id="retryLoadBtn" style="display:none">Retry loading</button>
-    <button class="btn" id="appBackupBtn" type="button" title="Download a JSON backup of all tabs">Backup</button>
-    <button class="btn" id="appRestoreBtn" type="button" title="Restore from a JSON backup">Restore</button>
-    <input type="file" id="appRestoreFile" accept="application/json,.json" style="display:none">
     <span class="counts" id="counts">0 on plates</span>
     <div class="zoomgroup">
       <button class="btn" id="zoomOut" title="Zoom out">–</button>
@@ -1172,9 +1171,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 </div>
 
 <div class="bp-fab-group" id="bpFabGroup">
-  <button class="bp-fab-btn active" data-tab="floor">Floor Plan</button>
+  <button class="bp-fab-btn active" data-tab="floor">Floor</button>
   <button class="bp-fab-btn" data-tab="breaks">Breaks</button>
-  <button class="bp-fab-btn" data-tab="tracker">Shift Tracker</button>
+  <button class="bp-fab-btn" data-tab="tracker">Tracker</button>
   <button class="bp-fab-btn" data-tab="packer">Packer</button>
   <button class="bp-fab-btn" data-tab="roster">Roster</button>
   <button class="bp-fab-btn" data-tab="settings">Settings</button>
@@ -1203,6 +1202,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       flex:1; min-height:0; overflow:auto; padding:10px 12px calc(80px + env(safe-area-inset-bottom,0px));
       -webkit-overflow-scrolling:touch;
     }
+    #tabSettings .stn-sec{
+      font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+      color:#8E8E93; margin:12px 2px 6px;
+    }
+    #tabSettings .stn-sec:first-child{ margin-top:2px; }
     #tabSettings .stn-card{
       background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:10px 12px; margin-bottom:8px;
     }
@@ -1217,30 +1221,48 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     #tabSettings .stn-actions button.danger{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
     #tabSettings .stn-actions button.btn-danger-pending{ background:#FEE2E2; color:#B8251C; border-color:#F1A8A4; }
     #tabSettings .stn-note{
-      font-size:11px; color:#8E8E93; line-height:1.45; padding:8px 2px 0;
+      font-size:11px; color:#8E8E93; line-height:1.45; padding:4px 2px 10px;
     }
   </style>
   <div class="stn-shell">
     <div class="stn-chrome">
       <h1 class="stn-title">Settings</h1>
-      <div class="stn-sub">Export or wipe saved data per page. Use this to start fresh before Monday.</div>
+      <div class="stn-sub">All exports live here. Daily tabs stay for work only. Wipe asks Confirm? then reloads.</div>
     </div>
     <div class="stn-body" id="settingsBody">
+      <div class="stn-sec">CSV exports</div>
+      <div class="stn-card">
+        <h2>Packer shift list</h2>
+        <p>CSV of packers for the day/shift currently selected on Packer (SKUs, boxes, BPH, status).</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" id="stnExportPackerShift">Export CSV</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Week review</h2>
+        <p>SKU totals by date (+ by worker) from Packer, plus today’s Tracker plan vs actual CSV.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" id="stnExportWeekReview">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="stn-sec">Saved data</div>
       <div class="stn-card">
         <h2>Whole app</h2>
-        <p>Everything in one file — Floor, Breaks, Packer, Roster marks.</p>
+        <p>Floor, Breaks, Packer uploads, and Roster marks in one JSON backup.</p>
         <div class="stn-actions">
           <button type="button" class="primary" id="stnBackupAll">Export all</button>
           <button type="button" id="stnRestoreAll">Restore all</button>
-          <button type="button" class="danger" id="stnWipeAll" data-wipe="all">Wipe everything</button>
+          <button type="button" class="danger" id="stnWipeAll">Wipe everything</button>
         </div>
         <input type="file" id="stnRestoreFile" accept="application/json,.json" style="display:none">
       </div>
       <div class="stn-card">
         <h2>Floor Plan</h2>
-        <p>Stations, plates, and floor staff roster.</p>
+        <p>Stations, plates, SKUs, and staff name list.</p>
         <div class="stn-actions">
           <button type="button" class="primary" data-export="planner">Export</button>
+          <button type="button" data-restore="planner">Restore</button>
           <button type="button" class="danger" data-wipe="planner">Wipe</button>
         </div>
       </div>
@@ -1249,26 +1271,30 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <p>Break groups, times, and assignments.</p>
         <div class="stn-actions">
           <button type="button" class="primary" data-export="breakPlanner">Export</button>
+          <button type="button" data-restore="breakPlanner">Restore</button>
           <button type="button" class="danger" data-wipe="breakPlanner">Wipe</button>
         </div>
       </div>
       <div class="stn-card">
-        <h2>Packer</h2>
-        <p>Uploaded CSVs and packer results for the week.</p>
+        <h2>Packer data</h2>
+        <p>Uploaded CSVs and saved packer results (JSON backup of Packer storage).</p>
         <div class="stn-actions">
           <button type="button" class="primary" data-export="packer-shift-data">Export</button>
+          <button type="button" data-restore="packer-shift-data">Restore</button>
           <button type="button" class="danger" data-wipe="packer-shift-data">Wipe</button>
         </div>
       </div>
       <div class="stn-card">
         <h2>Roster marks</h2>
-        <p>On / Late / Left early / Absent / Leave marks (not the name list — names live on Floor Plan).</p>
+        <p>On / Late / Left early / Absent / Leave marks only. Names stay on Floor Plan.</p>
         <div class="stn-actions">
           <button type="button" class="primary" data-export="shiftWeekAttendance">Export</button>
+          <button type="button" data-restore="shiftWeekAttendance">Restore</button>
           <button type="button" class="danger" data-wipe="shiftWeekAttendance">Wipe</button>
         </div>
       </div>
-      <p class="stn-note">Wipe asks for Confirm? first. Export downloads a JSON you can Restore later. After a wipe the page reloads.</p>
+      <input type="file" id="stnRestorePageFile" accept="application/json,.json" style="display:none">
+      <p class="stn-note">Export downloads a JSON you can Restore later. After Wipe or Restore the page reloads. Clear day / Clear week on other tabs only clears that week’s work — they do not wipe saved backups.</p>
     </div>
   </div>
 </div>
@@ -1320,6 +1346,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       border:1px solid #D8DCE3; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:700;
       cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
     }
+    #tabRoster .ro-actions button.btn-danger-pending{ background:#FEE2E2; color:#B8251C; border-color:#F1A8A4; }
     #tabRoster .ro-actions #roCopyDaily,
     #tabRoster .ro-actions #roCopyWeekly{ background:#1C2430; color:#fff; border-color:#1C2430; }
     #tabRoster .ro-days{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; margin-bottom:5px; }
@@ -1504,7 +1531,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="st-actions">
           <button class="btn" id="loadExampleBtn" type="button">Example</button>
           <button class="btn" id="clearActualsBtn" type="button">Clear actuals</button>
-          <button class="btn" id="exportWeekBtn" type="button" title="Weekly review: dates + boxes per SKU">Week review</button>
           <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Dark mode for Shift Tracker and Packer tabs">Dark</button>
         </div>
       </div>
@@ -1626,8 +1652,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="pk-search"><input type="search" id="pkSearchInput" placeholder="Search…" aria-label="Search workers"></div>
         <div class="pk-actions">
           <button type="button" id="pkJumpToday">Today</button>
-          <button type="button" id="pkExportWeekBtn" title="Export this shift’s packer list">Export</button>
-          <button type="button" id="pkClearBtn">Clear</button>
+          <button type="button" id="pkClearBtn">Clear day</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
         </div>
@@ -4378,7 +4403,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!clearArmed){
       clearArmed = true;
       clearBtn.textContent = 'Confirm?';
-      clearTimer = setTimeout(function(){ clearArmed=false; clearBtn.textContent=clearLabel(); }, 3000);
+      clearBtn.classList.add('btn-danger-pending');
+      clearTimer = setTimeout(function(){
+        clearArmed=false;
+        clearBtn.textContent=clearLabel();
+        clearBtn.classList.remove('btn-danger-pending');
+      }, 4000);
     } else {
       clearTimeout(clearTimer);
       cards.slice().forEach(function(c){ deleteCard(c.id); });
@@ -4386,6 +4416,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       ensureFloorSlots();
       clearArmed = false;
       clearBtn.textContent = clearLabel();
+      clearBtn.classList.remove('btn-danger-pending');
       saveDebounced();
     }
   });
@@ -5556,6 +5587,8 @@ function freePeopleForShift(){
 function closeAssignSheet(){
   if (sheetEl){ sheetEl.classList.remove('open'); sheetEl.setAttribute('aria-hidden', 'true'); sheetEl.innerHTML = ''; }
   if (sheetScrimEl){ sheetScrimEl.classList.remove('open'); sheetScrimEl.setAttribute('aria-hidden', 'true'); }
+  var fab = document.getElementById('bpFabGroup');
+  if (fab) fab.style.visibility = '';
 }
 function openSheetShell(mode, title, sub, bodyHtml){
   sheetEl.setAttribute('data-mode', mode || '');
@@ -5567,6 +5600,8 @@ function openSheetShell(mode, title, sub, bodyHtml){
   sheetEl.setAttribute('aria-hidden', 'false');
   sheetScrimEl.classList.add('open');
   sheetScrimEl.setAttribute('aria-hidden', 'false');
+  var fab = document.getElementById('bpFabGroup');
+  if (fab) fab.style.visibility = 'hidden';
 }
 function openAssignSheet(groupId){
   var sd = ensureShiftData(currentShift);
@@ -5948,7 +5983,10 @@ async function init(){
 }
 window.__breakPlanner = {
   refresh: function(){
-    loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
+    // Full reload so Floor Plan sync is not overwritten by stale Breaks memory.
+    return loadAll().then(function(){ renderAll(); }).catch(function(){
+      return loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
+    });
   }
 };
 init();
@@ -5974,8 +6012,6 @@ window.onload = function() {
       }
     }
   } catch(e) {}
-  var exportBtn = document.getElementById('exportWeekBtn');
-  if (exportBtn) exportBtn.addEventListener('click', function(){ exportWeeklyReview(); });
   onInput();
   loadBreakPlannerData();
   setInterval(function(){ if (!document.hidden) liveTick(); }, 1000);
@@ -6129,7 +6165,7 @@ function updateBreakStatusLine(hadReadError) {
     el.textContent = 'No break data found yet \u2014 set up the Breaks tab, or capacity will assume nobody is on break.';
     return;
   }
-  var shiftLabel = breakPlannerData.shiftKey === 'morning' ? 'Morning' : 'Afternoon';
+  var shiftLabel = breakPlannerData.shiftKey === 'morning' ? 'Day' : 'Afternoon';
   el.textContent = 'Using breaks from the Breaks tab (' + shiftLabel + ', following the Floor Planner\u2019s active shift).';
 }
 if (hasSyncLayer()) {
@@ -6791,6 +6827,7 @@ function buildTrackerWeeklySkuCsv(byDateSnap, weekKey) {
 }
 
 function exportCSV() { exportWeeklyReview(); }
+window.exportWeeklyReview = exportWeeklyReview;
 
 
 // ── TARGET FINISH ─────────────────────────────────────────────────────────────
@@ -8439,7 +8476,6 @@ function toast(msg, err) {
     fileInput: document.getElementById('pkFileInput'),
     uploadBtn: document.getElementById('pkUploadBtn'),
     clearBtn: document.getElementById('pkClearBtn'),
-    exportWeekBtn: document.getElementById('pkExportWeekBtn'),
     shiftToggle: document.getElementById('pkShift'),
     daysEl: document.getElementById('pkDays'),
     weekLabel: document.getElementById('pkWeekLabel'),
@@ -9475,9 +9511,6 @@ function toast(msg, err) {
       toast('Cleared ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
     });
   }
-  if (els.exportWeekBtn) {
-    els.exportWeekBtn.addEventListener('click', function () { exportActiveWeek(true); });
-  }
   if (els.shiftToggle) {
     els.shiftToggle.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-shift]') : null;
@@ -9541,6 +9574,7 @@ function toast(msg, err) {
   window.__packerDashboard = {
     refresh: renderAll,
     exportWeek: exportActiveWeek,
+    exportShiftPackers: exportCurrentShiftPackers,
     buildWeeklySkuReview: buildWeeklySkuReview,
     downloadWeeklySkuReview: downloadWeeklySkuReview,
     getByDate: function () { return state.byDate; },
@@ -10027,14 +10061,35 @@ function toast(msg, err) {
   });
   document.getElementById('roLabel').addEventListener('click', jumpToday);
   document.getElementById('roJumpToday').addEventListener('click', jumpToday);
-  document.getElementById('roClearWeek').addEventListener('click', function(){
-    if (!confirm('Clear all On shift / Late / Left early / Absent / Leave marks for this week?')) return;
-    pruneToWeek(state.weekStart || startOfWeek(new Date()));
-    state.byDate = {};
-    state.activeWeekKey = ymd(state.weekStart || startOfWeek(new Date()));
-    saveState();
-    render();
-  });
+  (function bindClearWeek(){
+    var btn = document.getElementById('roClearWeek');
+    if (!btn) return;
+    var armed = false, timer = null;
+    btn.addEventListener('click', function(){
+      if (!armed){
+        armed = true;
+        btn.textContent = 'Confirm?';
+        btn.classList.add('btn-danger-pending');
+        clearTimeout(timer);
+        timer = setTimeout(function(){
+          armed = false;
+          btn.textContent = 'Clear week';
+          btn.classList.remove('btn-danger-pending');
+        }, 4000);
+        return;
+      }
+      clearTimeout(timer);
+      armed = false;
+      btn.textContent = 'Clear week';
+      btn.classList.remove('btn-danger-pending');
+      pruneToWeek(state.weekStart || startOfWeek(new Date()));
+      state.byDate = {};
+      state.activeWeekKey = ymd(state.weekStart || startOfWeek(new Date()));
+      saveState();
+      render();
+      rosterToast('Week marks cleared');
+    });
+  })();
   document.getElementById('roSearch').addEventListener('input', function(){
     state.search = this.value || '';
     render();
@@ -10293,7 +10348,7 @@ function toast(msg, err) {
 </script>
 
 <script>
-/* Backup / restore / Settings wipe — planner, breaks, packer, roster attendance */
+/* Settings: CSV exports + backup / restore / wipe */
 (function(){
   var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
   var KEY_LABELS = {
@@ -10302,21 +10357,21 @@ function toast(msg, err) {
     'packer-shift-data': 'Packer',
     shiftWeekAttendance: 'Roster marks'
   };
-  var backupBtn = document.getElementById('appBackupBtn');
-  var restoreBtn = document.getElementById('appRestoreBtn');
-  var restoreFile = document.getElementById('appRestoreFile');
   var stnBackupAll = document.getElementById('stnBackupAll');
   var stnRestoreAll = document.getElementById('stnRestoreAll');
   var stnRestoreFile = document.getElementById('stnRestoreFile');
+  var stnRestorePageFile = document.getElementById('stnRestorePageFile');
   var stnWipeAll = document.getElementById('stnWipeAll');
   var settingsBody = document.getElementById('settingsBody');
-  var restoreArmed = false, restoreTimer = null;
+  var stnExportPackerShift = document.getElementById('stnExportPackerShift');
+  var stnExportWeekReview = document.getElementById('stnExportWeekReview');
   var stnRestoreArmed = false, stnRestoreTimer = null;
+  var pendingRestoreKey = null;
   var wipeArmed = {};
   var wipeTimers = {};
 
-  function toast(msg, err){
-    var el = document.getElementById('bpToast') || document.getElementById('toast');
+  function toast(msg){
+    var el = document.getElementById('bpToast') || document.getElementById('toast') || document.getElementById('packerToast');
     if(!el){ try{ alert(msg); }catch(e){} return; }
     el.textContent = msg;
     el.classList.add('show');
@@ -10334,16 +10389,9 @@ function toast(msg, err) {
     var now = Date.now();
     if (key === 'planner') {
       return JSON.stringify({
-        zoom: 1,
-        skuRoster: [],
-        rosterCollapsed: false,
-        breakScale: 1,
-        snapEnabled: true,
-        breakX: 0,
-        breakY: 0,
-        currentShift: 'morning',
-        morningRosterSeparated: false,
-        morningBreakTimesCleared: false,
+        zoom: 1, skuRoster: [], rosterCollapsed: false, breakScale: 1, snapEnabled: true,
+        breakX: 0, breakY: 0, currentShift: 'morning',
+        morningRosterSeparated: false, morningBreakTimesCleared: false,
         shiftData: {
           morning: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' },
           afternoon: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' }
@@ -10355,15 +10403,9 @@ function toast(msg, err) {
     }
     if (key === 'packer-shift-data') {
       return JSON.stringify({
-        schemaVersion: 1,
-        revision: 0,
-        version: 3,
-        activeWeekKey: '',
-        byDate: {},
-        archives: {},
+        schemaVersion: 1, revision: 0, version: 3, activeWeekKey: '', byDate: {}, archives: {},
         legacy: {
-          records: [],
-          files: [],
+          records: [], files: [],
           quality: {
             validRows: 0, invalidRows: 0, blankRows: 0, missingWorkerNames: 0,
             missingDates: 0, missingPackingTime: 0, duplicateRows: 0, unknownShifts: 0,
@@ -10374,13 +10416,7 @@ function toast(msg, err) {
       });
     }
     if (key === 'shiftWeekAttendance') {
-      return JSON.stringify({
-        schemaVersion: 1,
-        revision: 0,
-        byDate: {},
-        activeWeekKey: '',
-        archives: {}
-      });
+      return JSON.stringify({ schemaVersion: 1, revision: 0, byDate: {}, activeWeekKey: '', archives: {} });
     }
     return JSON.stringify({});
   }
@@ -10388,66 +10424,95 @@ function toast(msg, err) {
     try{
       var r = await window.storage.get(key, false);
       return r && r.value != null ? r.value : null;
-    }catch(e){
-      return null;
-    }
+    }catch(e){ return null; }
+  }
+  function writeValue(key, value){
+    var str = typeof value === 'string' ? value : JSON.stringify(value);
+    return window.storage.set(key, str, false);
   }
   async function exportBackup(){
-    if(!window.storage){ toast('Storage unavailable', true); return; }
+    if(!window.storage){ toast('Storage unavailable'); return; }
     var data = { type:'shift-floor-planner-backup', schemaVersion:1, exportedAt:new Date().toISOString(), keys:{} };
-    for(var i=0;i<KEYS.length;i++){
-      data.keys[KEYS[i]] = await readKey(KEYS[i]);
-    }
+    for(var i=0;i<KEYS.length;i++) data.keys[KEYS[i]] = await readKey(KEYS[i]);
     downloadJson('shift-floor-backup-' + new Date().toISOString().slice(0,10) + '.json', data);
     toast('Backup downloaded');
   }
   async function exportOneKey(key){
-    if(!window.storage){ toast('Storage unavailable', true); return; }
-    if(KEYS.indexOf(key) < 0){ toast('Unknown page', true); return; }
+    if(!window.storage){ toast('Storage unavailable'); return; }
+    if(KEYS.indexOf(key) < 0){ toast('Unknown page'); return; }
     var value = await readKey(key);
-    var data = {
+    downloadJson('shift-' + key + '-' + new Date().toISOString().slice(0,10) + '.json', {
       type: 'shift-floor-planner-page',
       schemaVersion: 1,
       key: key,
       label: KEY_LABELS[key] || key,
       exportedAt: new Date().toISOString(),
       value: value
-    };
-    downloadJson('shift-' + key + '-' + new Date().toISOString().slice(0,10) + '.json', data);
+    });
     toast((KEY_LABELS[key] || key) + ' exported');
   }
-  async function importBackup(file){
+  async function importAny(file, expectedKey){
     try{
       var text = await file.text();
       var data = JSON.parse(text);
-      if(!data || data.type !== 'shift-floor-planner-backup' || !data.keys){
-        toast('Not a recognised backup file', true);
+      if(!data){ toast('Not a recognised backup file'); return; }
+
+      if(data.type === 'shift-floor-planner-backup' && data.keys){
+        if(expectedKey){
+          if(data.keys[expectedKey] == null){
+            toast('That backup has no ' + (KEY_LABELS[expectedKey] || expectedKey) + ' data');
+            return;
+          }
+          await writeValue(expectedKey, data.keys[expectedKey]);
+          toast((KEY_LABELS[expectedKey] || expectedKey) + ' restored — reloading…');
+          setTimeout(function(){ location.reload(); }, 600);
+          return;
+        }
+        for(var i=0;i<KEYS.length;i++){
+          var k = KEYS[i];
+          if(data.keys[k] == null) continue;
+          await writeValue(k, data.keys[k]);
+        }
+        toast('Backup restored — reloading…');
+        setTimeout(function(){ location.reload(); }, 600);
         return;
       }
-      for(var i=0;i<KEYS.length;i++){
-        var k = KEYS[i];
-        if(data.keys[k] == null) continue;
-        await window.storage.set(k, typeof data.keys[k] === 'string' ? data.keys[k] : JSON.stringify(data.keys[k]), false);
+
+      if(data.type === 'shift-floor-planner-page' && data.key){
+        var pageKey = data.key;
+        if(KEYS.indexOf(pageKey) < 0){ toast('Unknown page in file'); return; }
+        if(expectedKey && expectedKey !== pageKey){
+          toast('That file is for ' + (KEY_LABELS[pageKey] || pageKey) + ', not ' + (KEY_LABELS[expectedKey] || expectedKey));
+          return;
+        }
+        if(!expectedKey){
+          toast('Use Restore on that page card, or Export all / Restore all for full backups');
+          return;
+        }
+        if(data.value == null){ toast('File has no data'); return; }
+        await writeValue(pageKey, data.value);
+        toast((KEY_LABELS[pageKey] || pageKey) + ' restored — reloading…');
+        setTimeout(function(){ location.reload(); }, 600);
+        return;
       }
-      toast('Backup restored — reloading…');
-      setTimeout(function(){ location.reload(); }, 600);
+
+      toast('Not a recognised backup file');
     }catch(e){
       console.error(e);
-      toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'), true);
+      toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'));
     }
   }
   async function wipeKeys(keys){
-    if(!window.storage){ toast('Storage unavailable', true); return; }
-    for(var i=0;i<keys.length;i++){
-      await window.storage.set(keys[i], emptyPayload(keys[i]), false);
-    }
+    if(!window.storage){ toast('Storage unavailable'); return; }
+    for(var i=0;i<keys.length;i++) await writeValue(keys[i], emptyPayload(keys[i]));
     toast(keys.length > 1 ? 'Wiped everything — reloading…' : ((KEY_LABELS[keys[0]] || keys[0]) + ' wiped — reloading…'));
     setTimeout(function(){ location.reload(); }, 500);
   }
-  function armDanger(btn, armKey, armedLabel, idleLabel, onConfirm){
+  function armDanger(btn, armKey, idleLabel, onConfirm){
     if(!wipeArmed[armKey]){
       wipeArmed[armKey] = true;
-      btn.textContent = armedLabel || 'Confirm?';
+      btn.dataset.idleLabel = idleLabel;
+      btn.textContent = 'Confirm?';
       btn.classList.add('btn-danger-pending');
       clearTimeout(wipeTimers[armKey]);
       wipeTimers[armKey] = setTimeout(function(){
@@ -10463,61 +10528,53 @@ function toast(msg, err) {
     btn.classList.remove('btn-danger-pending');
     onConfirm();
   }
-  function wireRestore(btn, fileInput, armedRef){
-    if(!btn || !fileInput) return;
-    btn.addEventListener('click', function(){
-      if(armedRef === 'floor'){
-        if(!restoreArmed){
-          restoreArmed = true;
-          btn.textContent = 'Confirm?';
-          btn.classList.add('btn-danger-pending');
-          clearTimeout(restoreTimer);
-          restoreTimer = setTimeout(function(){
-            restoreArmed = false;
-            btn.textContent = 'Restore';
-            btn.classList.remove('btn-danger-pending');
-          }, 4000);
-          return;
-        }
-        clearTimeout(restoreTimer);
-        restoreArmed = false;
-        btn.textContent = 'Restore';
-        btn.classList.remove('btn-danger-pending');
-        fileInput.click();
-        return;
-      }
-      if(!stnRestoreArmed){
-        stnRestoreArmed = true;
-        btn.textContent = 'Confirm?';
-        btn.classList.add('btn-danger-pending');
-        clearTimeout(stnRestoreTimer);
-        stnRestoreTimer = setTimeout(function(){
-          stnRestoreArmed = false;
-          btn.textContent = 'Restore all';
-          btn.classList.remove('btn-danger-pending');
-        }, 4000);
-        return;
-      }
-      clearTimeout(stnRestoreTimer);
-      stnRestoreArmed = false;
-      btn.textContent = 'Restore all';
-      btn.classList.remove('btn-danger-pending');
-      fileInput.click();
+
+  if(stnBackupAll) stnBackupAll.addEventListener('click', exportBackup);
+  if(stnRestoreAll && stnRestoreFile){
+    stnRestoreAll.addEventListener('click', function(){
+      armDanger(stnRestoreAll, 'restore-all', 'Restore all', function(){ stnRestoreFile.click(); });
     });
-    fileInput.addEventListener('change', function(){
-      var f = fileInput.files && fileInput.files[0];
-      fileInput.value = '';
-      if(f) importBackup(f);
+    stnRestoreFile.addEventListener('change', function(){
+      var f = stnRestoreFile.files && stnRestoreFile.files[0];
+      stnRestoreFile.value = '';
+      if(f) importAny(f, null);
     });
   }
-
-  if(backupBtn) backupBtn.addEventListener('click', exportBackup);
-  if(stnBackupAll) stnBackupAll.addEventListener('click', exportBackup);
-  wireRestore(restoreBtn, restoreFile, 'floor');
-  wireRestore(stnRestoreAll, stnRestoreFile, 'settings');
+  if(stnRestorePageFile){
+    stnRestorePageFile.addEventListener('change', function(){
+      var f = stnRestorePageFile.files && stnRestorePageFile.files[0];
+      var key = pendingRestoreKey;
+      pendingRestoreKey = null;
+      stnRestorePageFile.value = '';
+      if(f) importAny(f, key);
+    });
+  }
   if(stnWipeAll){
     stnWipeAll.addEventListener('click', function(){
-      armDanger(stnWipeAll, 'all', 'Confirm?', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
+      armDanger(stnWipeAll, 'all', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
+    });
+  }
+  if(stnExportPackerShift){
+    stnExportPackerShift.addEventListener('click', function(){
+      var dash = window.__packerDashboard;
+      if(dash && typeof dash.exportShiftPackers === 'function'){
+        dash.exportShiftPackers();
+        return;
+      }
+      if(dash && typeof dash.exportWeek === 'function'){
+        dash.exportWeek(true);
+        return;
+      }
+      toast('Open Packer once, then try again');
+    });
+  }
+  if(stnExportWeekReview){
+    stnExportWeekReview.addEventListener('click', function(){
+      if(typeof window.exportWeeklyReview === 'function'){
+        window.exportWeeklyReview();
+        return;
+      }
+      toast('Week review unavailable');
     });
   }
   if(settingsBody){
@@ -10525,14 +10582,18 @@ function toast(msg, err) {
       var t = e.target;
       if(!t || !t.getAttribute) return;
       var exportKey = t.getAttribute('data-export');
-      if(exportKey){
-        exportOneKey(exportKey);
+      if(exportKey){ exportOneKey(exportKey); return; }
+      var restoreKey = t.getAttribute('data-restore');
+      if(restoreKey){
+        armDanger(t, 'restore:' + restoreKey, 'Restore', function(){
+          pendingRestoreKey = restoreKey;
+          if(stnRestorePageFile) stnRestorePageFile.click();
+        });
         return;
       }
       var wipeKey = t.getAttribute('data-wipe');
-      if(!wipeKey || wipeKey === 'all') return;
-      var idle = 'Wipe';
-      armDanger(t, wipeKey, 'Confirm?', idle, function(){ wipeKeys([wipeKey]); });
+      if(!wipeKey) return;
+      armDanger(t, 'wipe:' + wipeKey, 'Wipe', function(){ wipeKeys([wipeKey]); });
     });
   }
 })();
@@ -10578,6 +10639,14 @@ function toast(msg, err) {
         if(toolsBtn) toolsBtn.setAttribute('aria-expanded', 'false');
       }
     }
+    var fab = document.getElementById('bpFabGroup');
+    if (fab) fab.style.visibility = '';
+    if (name !== 'breaks'){
+      var sheet = document.getElementById('bpAssignSheet');
+      var bpScrim = document.getElementById('bpSheetScrim');
+      if (sheet){ sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true'); }
+      if (bpScrim){ bpScrim.classList.remove('open'); bpScrim.setAttribute('aria-hidden', 'true'); }
+    }
     if (name === 'breaks' && window.__breakPlanner && typeof window.__breakPlanner.refresh === 'function'){
       window.__breakPlanner.refresh();
     }
@@ -10586,6 +10655,10 @@ function toast(msg, err) {
     }
     if (name === 'packer' && window.__packerDashboard && typeof window.__packerDashboard.refresh === 'function'){
       window.__packerDashboard.refresh();
+    }
+    if (name === 'tracker'){
+      if (typeof loadBreakPlannerData === 'function') loadBreakPlannerData();
+      if (typeof onInput === 'function') onInput();
     }
   }
   var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
