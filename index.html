@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Shift Floor Planner</title>
 <style>:root{
@@ -1176,8 +1177,101 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   <button class="bp-fab-btn" data-tab="tracker">Shift Tracker</button>
   <button class="bp-fab-btn" data-tab="packer">Packer</button>
   <button class="bp-fab-btn" data-tab="roster">Roster</button>
+  <button class="bp-fab-btn" data-tab="settings">Settings</button>
 </div>
 <div class="bp-toast" id="bpToast"></div>
+
+<div id="tabSettings" style="display:none">
+  <style>
+    #tabSettings{
+      position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
+      overflow:hidden; background:#EEF0F3; color:#1D1D1F;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex; flex-direction:column;
+    }
+    #tabSettings .stn-shell{
+      flex:1; min-height:0; display:flex; flex-direction:column;
+      max-width:720px; width:100%; margin:0 auto;
+    }
+    #tabSettings .stn-chrome{
+      flex:0 0 auto; background:rgba(238,240,243,.97); backdrop-filter:blur(10px);
+      border-bottom:1px solid #E1E4EA; padding:10px 12px; z-index:5;
+    }
+    #tabSettings .stn-title{ margin:0; font-size:15px; font-weight:800; letter-spacing:-.02em; }
+    #tabSettings .stn-sub{ font-size:11px; color:#6E6E73; margin-top:3px; line-height:1.4; }
+    #tabSettings .stn-body{
+      flex:1; min-height:0; overflow:auto; padding:10px 12px calc(80px + env(safe-area-inset-bottom,0px));
+      -webkit-overflow-scrolling:touch;
+    }
+    #tabSettings .stn-card{
+      background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    }
+    #tabSettings .stn-card h2{ margin:0 0 2px; font-size:13px; font-weight:800; }
+    #tabSettings .stn-card p{ margin:0 0 8px; font-size:11px; color:#6E6E73; line-height:1.4; }
+    #tabSettings .stn-actions{ display:flex; flex-wrap:wrap; gap:6px; }
+    #tabSettings .stn-actions button{
+      border:1px solid #D8DCE3; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700;
+      cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
+    }
+    #tabSettings .stn-actions button.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
+    #tabSettings .stn-actions button.danger{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
+    #tabSettings .stn-actions button.btn-danger-pending{ background:#FEE2E2; color:#B8251C; border-color:#F1A8A4; }
+    #tabSettings .stn-note{
+      font-size:11px; color:#8E8E93; line-height:1.45; padding:8px 2px 0;
+    }
+  </style>
+  <div class="stn-shell">
+    <div class="stn-chrome">
+      <h1 class="stn-title">Settings</h1>
+      <div class="stn-sub">Export or wipe saved data per page. Use this to start fresh before Monday.</div>
+    </div>
+    <div class="stn-body" id="settingsBody">
+      <div class="stn-card">
+        <h2>Whole app</h2>
+        <p>Everything in one file — Floor, Breaks, Packer, Roster marks.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" id="stnBackupAll">Export all</button>
+          <button type="button" id="stnRestoreAll">Restore all</button>
+          <button type="button" class="danger" id="stnWipeAll" data-wipe="all">Wipe everything</button>
+        </div>
+        <input type="file" id="stnRestoreFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="stn-card">
+        <h2>Floor Plan</h2>
+        <p>Stations, plates, and floor staff roster.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="planner">Export</button>
+          <button type="button" class="danger" data-wipe="planner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Breaks</h2>
+        <p>Break groups, times, and assignments.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="breakPlanner">Export</button>
+          <button type="button" class="danger" data-wipe="breakPlanner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Packer</h2>
+        <p>Uploaded CSVs and packer results for the week.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="packer-shift-data">Export</button>
+          <button type="button" class="danger" data-wipe="packer-shift-data">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Roster marks</h2>
+        <p>On / Late / Left early / Absent / Leave marks (not the name list — names live on Floor Plan).</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="shiftWeekAttendance">Export</button>
+          <button type="button" class="danger" data-wipe="shiftWeekAttendance">Wipe</button>
+        </div>
+      </div>
+      <p class="stn-note">Wipe asks for Confirm? first. Export downloads a JSON you can Restore later. After a wipe the page reloads.</p>
+    </div>
+  </div>
+</div>
 
 <div id="tabRoster" style="display:none">
   <style>
@@ -1390,6 +1484,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <option value="unassigned">No role yet</option>
         </select>
         <button type="button" id="roAddStaff">Add</button>
+        <button type="button" id="roFromPacker" title="Add missing names from Packer CSV uploads for this week">From Packer</button>
       </div>
     </div>
     <div class="ro-list-wrap">
@@ -1409,7 +1504,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="st-actions">
           <button class="btn" id="loadExampleBtn" type="button">Example</button>
           <button class="btn" id="clearActualsBtn" type="button">Clear actuals</button>
-          <button class="btn" onclick="exportCSV()">CSV</button>
+          <button class="btn" id="exportWeekBtn" type="button" title="Weekly review: dates + boxes per SKU">Week review</button>
           <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Dark mode for Shift Tracker and Packer tabs">Dark</button>
         </div>
       </div>
@@ -1531,7 +1626,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="pk-search"><input type="search" id="pkSearchInput" placeholder="Search…" aria-label="Search workers"></div>
         <div class="pk-actions">
           <button type="button" id="pkJumpToday">Today</button>
-          <button type="button" id="pkExportWeekBtn">Export</button>
+          <button type="button" id="pkExportWeekBtn" title="Export this shift’s packer list">Export</button>
           <button type="button" id="pkClearBtn">Clear</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
@@ -1982,7 +2077,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(entry) nameField.textContent = entry.name;
       else nameField.textContent = card.floorPlate ? 'Tap' : 'Vacant';
       if(entry && breakHint){
-        nameField.title = entry.name+' · '+breakHint+' — double-click to clear';
+        nameField.title = entry.name+' · '+breakHint+' - double-click to clear';
       } else if(entry){
         nameField.title = 'Double-click to clear this assignment';
       } else {
@@ -2123,7 +2218,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(nameField){
       nameField.textContent = entry ? slotDisplayName(card) : 'Tap';
       nameField.title = entry
-        ? (slotDisplayName(card)+' — double-click to clear')
+        ? (slotDisplayName(card)+' - double-click to clear')
         : ('Tap to assign a '+(card.slotKind==='sku'?'SKU':card.slotKind==='boxmaker'?'box maker':'runner'));
     }
     if(card.slotKind==='sku'){
@@ -5879,6 +5974,8 @@ window.onload = function() {
       }
     }
   } catch(e) {}
+  var exportBtn = document.getElementById('exportWeekBtn');
+  if (exportBtn) exportBtn.addEventListener('click', function(){ exportWeeklyReview(); });
   onInput();
   loadBreakPlannerData();
   setInterval(function(){ if (!document.hidden) liveTick(); }, 1000);
@@ -6533,8 +6630,29 @@ function loadExample() {
   });
 })();
 
-function exportCSV() {
-  if (!lastPlan || !lastCfg) { toast('Set up the shift first', true); return; }
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function ymdLocal(d){
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function startOfWeekLocal(d){
+  var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var day = x.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  x.setDate(x.getDate() + diff);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function downloadCsvFile(filename, csv){
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = filename;
+  a.click();
+  setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+}
+
+/** Today's half-hourly plan vs actual (secondary download). */
+function exportTodayPlanActualCsv(){
+  if (!lastPlan || !lastCfg) return false;
   var hdr  = ['Checkpoint','Prod Mins','Planned Done','Planned Left','Actual Left','Actual Done','Variance','Status'];
   var rows = lastPlan.map(function(row) {
     var prev = null;
@@ -6550,12 +6668,129 @@ function exportCSV() {
   var csv = [hdr].concat(rows).map(function(r) {
     return r.map(function(c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(',');
   }).join('\n');
-  var a = document.createElement('a');
-  a.href     = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
-  a.download = 'shift-' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  toast('Exported');
+  downloadCsvFile('shift-plan-actual-' + ymdLocal(new Date()) + '.csv', csv);
+  return true;
 }
+
+/** Weekly review: dates + boxes packed on each SKU (from Packer uploads). */
+async function exportWeeklyReview() {
+  var weekStart = startOfWeekLocal(new Date());
+  var weekKey = ymdLocal(weekStart);
+  var dash = window.__packerDashboard;
+
+  // Prefer live Packer dashboard data when available
+  if (dash && typeof dash.downloadWeeklySkuReview === 'function' && typeof dash.getByDate === 'function') {
+    var byDate = dash.getByDate() || {};
+    if (dash.getWeekStart) {
+      var ws = dash.getWeekStart();
+      if (ws) weekKey = ymdLocal(ws);
+    }
+    var res = dash.downloadWeeklySkuReview(byDate, weekKey, false);
+    if (res && res.ok) {
+      exportTodayPlanActualCsv();
+      toast('Weekly SKU review exported');
+      return;
+    }
+  }
+
+  // Fallback: read Packer storage directly
+  if (!window.storage || typeof window.storage.get !== 'function') {
+    if (exportTodayPlanActualCsv()) toast('Exported today plan vs actual (no Packer storage)');
+    else toast('Upload Packer CSVs this week first', true);
+    return;
+  }
+  try {
+    var r = await window.storage.get('packer-shift-data', false);
+    if (!r || !r.value) {
+      if (exportTodayPlanActualCsv()) toast('Exported today plan vs actual (no Packer data yet)');
+      else toast('Upload Boxes Packed by Worker on Packer first', true);
+      return;
+    }
+    var data = JSON.parse(r.value);
+    var byDate2 = (data && data.byDate) || {};
+    if (data && data.activeWeekKey) weekKey = data.activeWeekKey;
+    if (dash && typeof dash.downloadWeeklySkuReview === 'function') {
+      var res2 = dash.downloadWeeklySkuReview(byDate2, weekKey, false);
+      if (res2 && res2.ok) {
+        exportTodayPlanActualCsv();
+        toast('Weekly SKU review exported');
+        return;
+      }
+    }
+    // Minimal inline builder if dashboard helper missing
+    if (window.PackerAnalytics && typeof buildTrackerWeeklySkuCsv === 'function') {
+      var built = buildTrackerWeeklySkuCsv(byDate2, weekKey);
+      if (built.hasData) {
+        downloadCsvFile('weekly-review-' + weekKey + '-skus.csv', built.summaryCsv);
+        downloadCsvFile('weekly-review-' + weekKey + '-by-worker.csv', built.detailCsv);
+        exportTodayPlanActualCsv();
+        toast('Weekly SKU review exported');
+        return;
+      }
+    }
+    if (exportTodayPlanActualCsv()) toast('Exported today plan vs actual (no SKU rows this week)');
+    else toast('No Packer SKU data this week yet', true);
+  } catch (e) {
+    console.error(e);
+    toast('Could not build weekly review', true);
+  }
+}
+
+function buildTrackerWeeklySkuCsv(byDateSnap, weekKey) {
+  var PA = window.PackerAnalytics;
+  var BOARD = ['125','150','200','250','300','400','500','600','700'];
+  function esc(r){ return r.map(function(c){ return '"' + String(c == null ? '' : c).replace(/"/g,'""') + '"'; }).join(','); }
+  function addDays(d,n){ var x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
+  var ws = startOfWeekLocal(new Date(weekKey + 'T00:00:00'));
+  var summary = [];
+  var detail = [];
+  var weekTot = {}; BOARD.forEach(function(s){ weekTot[s]=0; });
+  for (var i=0;i<5;i++){
+    var dk = ymdLocal(addDays(ws,i));
+    var day = (byDateSnap||{})[dk] || {};
+    ['morning','afternoon'].forEach(function(sk){
+      var b = day[sk]; if (!b || !b.records) return;
+      var skuTotals = {}, workerSku = {};
+      b.records.forEach(function(r){
+        if (!r || !r.sku || !r.boxes) return;
+        if (r.hour != null && (r.packingHours == null || r.packingHours <= 0)) return;
+        skuTotals[r.sku] = (skuTotals[r.sku]||0) + r.boxes;
+        weekTot[r.sku] = (weekTot[r.sku]||0) + r.boxes;
+        var wk = r.workerKey || r.workerName; if (!wk) return;
+        if (!workerSku[wk]) workerSku[wk] = { name: r.workerName || wk, skus: {} };
+        workerSku[wk].skus[r.sku] = (workerSku[wk].skus[r.sku]||0) + r.boxes;
+      });
+      var keys = Object.keys(skuTotals); if (!keys.length) return;
+      var total = keys.reduce(function(n,s){ return n+skuTotals[s]; },0);
+      var line = [PA ? PA.formatDateAU(dk) : dk, sk === 'afternoon' ? 'Afternoon' : 'Day'];
+      BOARD.forEach(function(s){ line.push(skuTotals[s]||''); });
+      line.push(total);
+      var other = keys.filter(function(s){ return BOARD.indexOf(s)<0; }).map(function(s){ return s+':'+skuTotals[s]; }).join('; ');
+      line.push(other);
+      summary.push(line);
+      Object.keys(workerSku).forEach(function(wk){
+        var w = workerSku[wk];
+        Object.keys(w.skus).sort(function(a,b){ return Number(a)-Number(b); }).forEach(function(sku){
+          detail.push([PA ? PA.formatDateAU(dk) : dk, sk === 'afternoon' ? 'Afternoon' : 'Day', w.name, sku, w.skus[sku]]);
+        });
+      });
+    });
+  }
+  if (summary.length){
+    var totLine = ['WEEK TOTAL','']; var all=0;
+    BOARD.forEach(function(s){ totLine.push(weekTot[s]||''); all += weekTot[s]||0; });
+    totLine.push(all); totLine.push('');
+    summary.push(totLine);
+  }
+  var hdr = ['Date','Shift'].concat(BOARD).concat(['Total','Other SKUs']);
+  return {
+    hasData: summary.length > 0,
+    summaryCsv: [hdr].concat(summary).map(esc).join('\n'),
+    detailCsv: [['Date','Shift','Worker','SKU','Boxes Packed']].concat(detail).map(esc).join('\n')
+  };
+}
+
+function exportCSV() { exportWeeklyReview(); }
 
 
 // ── TARGET FINISH ─────────────────────────────────────────────────────────────
@@ -6837,13 +7072,9 @@ function toast(msg, err) {
     var s = trimStr(raw).replace(/\s+/g, ' ');
     if (!s) return { key: '', display: '', isTotals: false };
     if (TOTALS_NAME_RE.test(s)) return { key: '', display: s, isTotals: true };
-    var display = s
-      .split(' ')
-      .map(function (p) {
-        return p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p;
-      })
-      .join(' ');
-    return { key: display.toLowerCase(), display: display, isTotals: false };
+    // Keep CSV/roster casing as-is (only collapse spaces). Forced Title Case was
+    // mangling hyphenated names, O'Brien-style names, and ALL-CAPS names.
+    return { key: s.toLowerCase(), display: s, isTotals: false };
   }
 
   function normalizeStation(raw) {
@@ -8433,21 +8664,144 @@ function toast(msg, err) {
     }).join('\n');
   }
 
-  function exportActiveWeek(force) {
-    var weekKey = state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date()));
-    var report = buildWeekReport(weekKey, state.byDate);
-    if (!report.days.length && !force) {
-      toast('No Packer data this week to export', 'err');
-      return false;
-    }
-    var ok = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-    if (ok && report.days.length) {
-      report.days.forEach(function (d) {
-        if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
-        if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
+  function csvEscapeRow(r) {
+    return r.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(',');
+  }
+
+  /** Weekly review: dates + boxes packed per SKU (and per worker). */
+  function buildWeeklySkuReview(byDateSnap, weekKey) {
+    var BOARD_SKUS = ['125', '150', '200', '250', '300', '400', '500', '600', '700'];
+    var ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
+    var summaryRows = [];
+    var detailRows = [];
+    var usedSkus = {};
+    var weekSkuTotals = {};
+    BOARD_SKUS.forEach(function (s) { weekSkuTotals[s] = 0; });
+
+    for (var i = 0; i < 5; i++) {
+      var dk = ymd(addDays(ws, i));
+      var day = byDateSnap[dk] || {};
+      ['morning', 'afternoon'].forEach(function (sk) {
+        var b = day[sk];
+        if (!b || !(b.records && b.records.length)) return;
+        var skuTotals = {};
+        var workerSku = {};
+        (b.records || []).forEach(function (r) {
+          if (!r || !r.sku || !r.boxes) return;
+          // Prefer Boxes Packed rows (have packing time). Skip pure Intra Hour.
+          if (r.hour != null && (r.packingHours == null || r.packingHours <= 0)) return;
+          skuTotals[r.sku] = (skuTotals[r.sku] || 0) + (r.boxes || 0);
+          usedSkus[r.sku] = true;
+          weekSkuTotals[r.sku] = (weekSkuTotals[r.sku] || 0) + (r.boxes || 0);
+          var wk = r.workerKey || r.workerName || '';
+          if (!wk) return;
+          if (!workerSku[wk]) workerSku[wk] = { name: r.workerName || wk, skus: {} };
+          workerSku[wk].skus[r.sku] = (workerSku[wk].skus[r.sku] || 0) + (r.boxes || 0);
+        });
+        var skuKeys = Object.keys(skuTotals);
+        if (!skuKeys.length) return;
+        var rowTotal = skuKeys.reduce(function (n, s) { return n + skuTotals[s]; }, 0);
+        var sumLine = [PA.formatDateAU(dk), shiftLabel(sk)];
+        BOARD_SKUS.forEach(function (s) { sumLine.push(skuTotals[s] || ''); });
+        sumLine.push(rowTotal);
+        var other = skuKeys.filter(function (s) { return BOARD_SKUS.indexOf(s) === -1; })
+          .sort(function (a, b) { return Number(a) - Number(b); })
+          .map(function (s) { return s + ':' + skuTotals[s]; }).join('; ');
+        sumLine.push(other);
+        summaryRows.push(sumLine);
+
+        Object.keys(workerSku).sort(function (a, b) {
+          return (workerSku[a].name || '').localeCompare(workerSku[b].name || '');
+        }).forEach(function (wk) {
+          var w = workerSku[wk];
+          Object.keys(w.skus).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (sku) {
+            detailRows.push([PA.formatDateAU(dk), shiftLabel(sk), w.name, sku, w.skus[sku]]);
+          });
+        });
       });
     }
+
+    var skuCols = BOARD_SKUS.slice();
+    var summaryHdr = ['Date', 'Shift'].concat(skuCols).concat(['Total', 'Other SKUs']);
+    var weekTotalLine = ['WEEK TOTAL', ''];
+    var weekAll = 0;
+    skuCols.forEach(function (s) {
+      weekTotalLine.push(weekSkuTotals[s] || '');
+      weekAll += weekSkuTotals[s] || 0;
+    });
+    weekTotalLine.push(weekAll);
+    weekTotalLine.push('');
+    if (summaryRows.length) summaryRows.push(weekTotalLine);
+
+    var summaryCsv = [summaryHdr].concat(summaryRows).map(csvEscapeRow).join('\n');
+    var detailCsv = [['Date', 'Shift', 'Worker', 'SKU', 'Boxes Packed']]
+      .concat(detailRows).map(csvEscapeRow).join('\n');
+
+    return {
+      weekKey: weekKey,
+      hasData: summaryRows.length > 0,
+      summaryCsv: summaryCsv,
+      detailCsv: detailCsv,
+      dayCount: summaryRows.length ? summaryRows.length - 1 : 0
+    };
+  }
+
+  function downloadWeeklySkuReview(byDateSnap, weekKey, force) {
+    var review = buildWeeklySkuReview(byDateSnap || {}, weekKey);
+    if (!review.hasData && !force) return { ok: false, review: review };
+    var ok1 = downloadTextFile(
+      'weekly-review-' + weekKey + '-skus.csv',
+      review.summaryCsv,
+      'text/csv'
+    );
+    var ok2 = true;
+    if (review.hasData) {
+      ok2 = downloadTextFile(
+        'weekly-review-' + weekKey + '-by-worker.csv',
+        review.detailCsv,
+        'text/csv'
+      );
+    }
+    return { ok: !!(ok1 && ok2), review: review };
+  }
+
+  /** Export the selected day/shift only: list of packers + SKUs + boxes. */
+  function exportCurrentShiftPackers() {
+    var dateKey = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    var rows = PA.aggregatePeopleRows(currentRecords());
+    if (!rows.length) {
+      toast('No packers for ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(sk), 'err');
+      return false;
+    }
+    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Status'];
+    var body = rows.map(function (r) {
+      var skus = (r.skus || []).map(function (s) { return s.sku; }).filter(Boolean).join(', ');
+      var hrs = r.intraHours > 0 ? r.shiftHours : r.packingHours;
+      return [
+        PA.formatDateAU(dateKey),
+        shiftLabel(sk),
+        r.workerName,
+        skus,
+        r.boxes,
+        hrs != null ? Number(hrs).toFixed(2) : '',
+        r.boxesPerHour != null ? Number(r.boxesPerHour).toFixed(1) : '',
+        r.strikeStatus ? r.strikeStatus.label : ''
+      ];
+    });
+    var csv = [hdr].concat(body).map(csvEscapeRow).join('\n');
+    var ok = downloadTextFile(
+      'packer-' + dateKey + '-' + sk + '.csv',
+      csv,
+      'text/csv'
+    );
+    if (ok) toast('Exported ' + rows.length + ' packers · ' + shiftLabel(sk));
     return ok;
+  }
+
+  function exportActiveWeek(force) {
+    // Packer Export = this day/shift packer list (not multi-file week dump).
+    return exportCurrentShiftPackers();
   }
 
   function ensureCurrentWeekFresh() {
@@ -8464,16 +8818,13 @@ function toast(msg, err) {
       });
       if (hasData) {
         var report = buildWeekReport(oldKey, snap);
+        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
         var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-        if (!ok) {
+        if (!ok && !(weekly && weekly.ok)) {
           state.error = 'Could not export last week’s Packer data — keeping it so nothing is cleared.';
           toast(state.error, 'err');
           return;
         }
-        report.days.forEach(function (d) {
-          if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
-          if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
-        });
         if (!state.archives) state.archives = {};
         state.archives[oldKey] = { weekKey: oldKey, byDate: snap, archivedAt: Date.now(), report: report };
         var aks = Object.keys(state.archives).sort();
@@ -8598,18 +8949,11 @@ function toast(msg, err) {
     if (els.charts) els.charts.innerHTML = '';
   }
 
-  function skuHitsHtml(skus) {
-    if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
+  function skuListHtml(skus) {
+    if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
-      var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = s.hitTarget ? '✓' : (st.key === 'none' ? '·' : '✗');
-      var got = PA.formatNumber(s.boxes);
-      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '—';
-      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '—';
-      var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
-        ' (' + (st.target != null ? st.target : '?') + ' BPH × ' + hrs + 'h) — ' + st.label;
-      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '—') + ' ' + got + '/' + need + ' ' + mark + '</span>';
+      var st = s.strikeStatus || { key: 'none' };
+      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '">' + escapeHtml(s.sku || '-') + '</span>';
     }).join('');
   }
 
@@ -8622,29 +8966,27 @@ function toast(msg, err) {
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
-      var hitLbl = r.skuCount
-        ? (r.hitTarget ? 'All SKUs hit' : (r.hitCount + '/' + r.skuCount + ' SKUs hit'))
-        : 'No target';
       var hrsLbl = r.intraHours > 0
-        ? (PA.formatHours(r.shiftHours) + ' shift')
+        ? PA.formatHours(r.shiftHours)
         : PA.formatHours(r.packingHours);
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
-        '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
+        '<td class="pk-sku-cell">' + skuListHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
         '<td class="r mn">' + escapeHtml(hrsLbl) + '</td>' +
-        '<td>' + strikePill(r.strikeStatus) +
-        '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
+        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
-      '<div class="pk-table-meta">Each SKU shows got/need boxes (target BPH × hours). ✓ = hit for that SKU. All SKUs must hit.</div></div>' +
+      '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
+      ' · names merged · SKUs listed</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKUs (got/need)</th><th class="r">Boxes</th><th class="r">Hours</th>' +
-      '<th>All targets</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th class="r">BPH</th><th>Status</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="6" class="empty-td">No people rows</td></tr>') +
+      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -8999,6 +9341,10 @@ function toast(msg, err) {
           state.legacy = data.legacy || { records: [], files: [], quality: PA.emptyQuality() };
           state.activeWeekKey = data.activeWeekKey || state.activeWeekKey;
           state.revision = data.revision || 0;
+          // Rebuild rows from raw CSV text so names keep original casing after parser fixes.
+          if (rebuildBucketsFromRawFiles(state.byDate)) {
+            await saveData();
+          }
         } else if (data && data.version === 2 && Array.isArray(data.records)) {
           var m = migrateV2ToV3(data);
           state.byDate = m.byDate;
@@ -9022,6 +9368,49 @@ function toast(msg, err) {
     state.loading = false;
     ensureCurrentWeekFresh();
     renderAll();
+  }
+
+  /** Re-parse preserved raw CSV files so worker names use current casing rules. */
+  function rebuildBucketsFromRawFiles(byDate) {
+    var changed = false;
+    Object.keys(byDate || {}).forEach(function (dk) {
+      Object.keys(byDate[dk] || {}).forEach(function (sk) {
+        var bucket = byDate[dk][sk];
+        if (!bucket || !bucket.files || !bucket.files.length) return;
+        var rebuilt = [];
+        var quality = PA.emptyQuality();
+        var anyRaw = false;
+        bucket.files.forEach(function (f) {
+          if (!f || !f.text) return;
+          anyRaw = true;
+          var res = PA.processCsvText(f.text, {
+            sourceFile: f.name || 'saved.csv',
+            defaultShift: sk === 'afternoon' ? 'afternoon_shift' : 'morning_shift'
+          });
+          if (!res.ok) return;
+          // Keep only rows that belong in this calendar slot
+          var kept = res.records.filter(function (rec) {
+            var date = rec.reportDate || dk;
+            var shift = rosterShiftFromRecord(rec, sk);
+            return date === dk && shift === sk;
+          });
+          var merged = PA.mergeRecords(rebuilt, kept);
+          rebuilt = merged.records;
+          quality = PA.mergeQuality(quality, res.quality);
+          f.rowCount = kept.length;
+          f.format = res.format;
+          f.quality = res.quality;
+        });
+        if (anyRaw) {
+          var before = JSON.stringify((bucket.records || []).map(function (r) { return r.workerName; }));
+          var after = JSON.stringify(rebuilt.map(function (r) { return r.workerName; }));
+          bucket.records = rebuilt;
+          bucket.quality = quality;
+          if (before !== after) changed = true;
+        }
+      });
+    });
+    return changed;
   }
 
   async function stageFiles(fileList) {
@@ -9149,10 +9538,16 @@ function toast(msg, err) {
     });
   }
 
-  window.__packerDashboard = { refresh: renderAll, exportWeek: exportActiveWeek };
+  window.__packerDashboard = {
+    refresh: renderAll,
+    exportWeek: exportActiveWeek,
+    buildWeeklySkuReview: buildWeeklySkuReview,
+    downloadWeeklySkuReview: downloadWeeklySkuReview,
+    getByDate: function () { return state.byDate; },
+    getWeekStart: function () { return state.weekStart || startOfWeek(new Date()); }
+  };
   loadAll();
 })();
-
 </script>
 
 <script>
@@ -9665,6 +10060,81 @@ function toast(msg, err) {
     });
   })();
 
+  /** Recover / fill roster names from Packer CSV uploads already saved this week. */
+  async function addStaffFromPackerUploads(){
+    if (!hasStorage()){ rosterToast('Storage unavailable'); return; }
+    var names = [];
+    var seen = {};
+    try{
+      var r = await window.storage.get('packer-shift-data', false);
+      if (!r || !r.value){ rosterToast('No Packer uploads found yet'); return; }
+      var data = JSON.parse(r.value);
+      var byDate = (data && data.byDate) || {};
+      var ws = state.weekStart || startOfWeek(new Date());
+      for (var i = 0; i < 5; i++){
+        var dk = ymd(addDays(ws, i));
+        var day = byDate[dk] || {};
+        var bucket = day[state.rosterShift === 'afternoon' ? 'afternoon' : 'morning'];
+        if (!bucket) continue;
+        (bucket.records || []).forEach(function(rec){
+          var name = String(rec && rec.workerName || '').trim().replace(/\s+/g, ' ');
+          if (!name) return;
+          var key = normalizeStaffName(name);
+          if (!key || seen[key]) return;
+          seen[key] = true;
+          names.push(name);
+        });
+        (bucket.files || []).forEach(function(f){
+          if (!f || !f.text || !window.PackerAnalytics) return;
+          var res = window.PackerAnalytics.processCsvText(f.text, { sourceFile: f.name || 'saved.csv' });
+          if (!res || !res.ok) return;
+          res.records.forEach(function(rec){
+            var name = String(rec && rec.workerName || '').trim().replace(/\s+/g, ' ');
+            if (!name) return;
+            var key = normalizeStaffName(name);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            names.push(name);
+          });
+        });
+      }
+    }catch(e){
+      console.error(e);
+      rosterToast('Could not read Packer data');
+      return;
+    }
+    if (!names.length){ rosterToast('No Packer names for this week / shift'); return; }
+    var existing = {};
+    rosterStaff().forEach(function(p){ existing[normalizeStaffName(p.name)] = true; });
+    var toAdd = names.filter(function(n){ return !existing[normalizeStaffName(n)]; });
+    if (!toAdd.length){
+      rosterToast('All Packer names are already on ' + shiftLabel(state.rosterShift));
+      return;
+    }
+    if (!confirm('Add ' + toAdd.length + ' missing name(s) from Packer to ' + shiftLabel(state.rosterShift) + '?')) return;
+    var ok = await writeRoster(function(latest){
+      ensurePlannerShift(latest, state.rosterShift);
+      var roster = latest.shiftData[state.rosterShift].staffRoster;
+      var have = {};
+      roster.forEach(function(p){ have[normalizeStaffName(p.name)] = true; });
+      toAdd.forEach(function(n){
+        var key = normalizeStaffName(n);
+        if (have[key]) return;
+        roster.push({ id: uid(), name: n, role: 'packer' });
+        have[key] = true;
+      });
+      return latest;
+    });
+    if (!ok){ rosterToast('Could not save roster'); return; }
+    await refresh();
+    rosterToast('Added ' + toAdd.length + ' from Packer');
+  }
+  (function bindFromPacker(){
+    var btn = document.getElementById('roFromPacker');
+    if (!btn) return;
+    btn.addEventListener('click', function(){ addStaffFromPackerUploads(); });
+  })();
+
   function peopleForStatus(dateKey, staff, statusKey){
     return staff.filter(function(p){ return statusFor(dateKey, p.id) === statusKey; });
   }
@@ -9823,13 +10293,27 @@ function toast(msg, err) {
 </script>
 
 <script>
-/* Whole-app backup / restore — planner, breaks, packer, roster attendance */
+/* Backup / restore / Settings wipe — planner, breaks, packer, roster attendance */
 (function(){
   var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
+  var KEY_LABELS = {
+    planner: 'Floor Plan',
+    breakPlanner: 'Breaks',
+    'packer-shift-data': 'Packer',
+    shiftWeekAttendance: 'Roster marks'
+  };
   var backupBtn = document.getElementById('appBackupBtn');
   var restoreBtn = document.getElementById('appRestoreBtn');
   var restoreFile = document.getElementById('appRestoreFile');
+  var stnBackupAll = document.getElementById('stnBackupAll');
+  var stnRestoreAll = document.getElementById('stnRestoreAll');
+  var stnRestoreFile = document.getElementById('stnRestoreFile');
+  var stnWipeAll = document.getElementById('stnWipeAll');
+  var settingsBody = document.getElementById('settingsBody');
   var restoreArmed = false, restoreTimer = null;
+  var stnRestoreArmed = false, stnRestoreTimer = null;
+  var wipeArmed = {};
+  var wipeTimers = {};
 
   function toast(msg, err){
     var el = document.getElementById('bpToast') || document.getElementById('toast');
@@ -9846,19 +10330,91 @@ function toast(msg, err) {
     a.click();
     setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
   }
+  function emptyPayload(key){
+    var now = Date.now();
+    if (key === 'planner') {
+      return JSON.stringify({
+        zoom: 1,
+        skuRoster: [],
+        rosterCollapsed: false,
+        breakScale: 1,
+        snapEnabled: true,
+        breakX: 0,
+        breakY: 0,
+        currentShift: 'morning',
+        morningRosterSeparated: false,
+        morningBreakTimesCleared: false,
+        shiftData: {
+          morning: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' },
+          afternoon: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' }
+        }
+      });
+    }
+    if (key === 'breakPlanner') {
+      return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] } });
+    }
+    if (key === 'packer-shift-data') {
+      return JSON.stringify({
+        schemaVersion: 1,
+        revision: 0,
+        version: 3,
+        activeWeekKey: '',
+        byDate: {},
+        archives: {},
+        legacy: {
+          records: [],
+          files: [],
+          quality: {
+            validRows: 0, invalidRows: 0, blankRows: 0, missingWorkerNames: 0,
+            missingDates: 0, missingPackingTime: 0, duplicateRows: 0, unknownShifts: 0,
+            totalsRowsSkipped: 0, invalidNumericValues: 0, failedCalculations: 0, mixedSkuRows: 0
+          }
+        },
+        updatedAt: now
+      });
+    }
+    if (key === 'shiftWeekAttendance') {
+      return JSON.stringify({
+        schemaVersion: 1,
+        revision: 0,
+        byDate: {},
+        activeWeekKey: '',
+        archives: {}
+      });
+    }
+    return JSON.stringify({});
+  }
+  async function readKey(key){
+    try{
+      var r = await window.storage.get(key, false);
+      return r && r.value != null ? r.value : null;
+    }catch(e){
+      return null;
+    }
+  }
   async function exportBackup(){
     if(!window.storage){ toast('Storage unavailable', true); return; }
     var data = { type:'shift-floor-planner-backup', schemaVersion:1, exportedAt:new Date().toISOString(), keys:{} };
     for(var i=0;i<KEYS.length;i++){
-      try{
-        var r = await window.storage.get(KEYS[i], false);
-        data.keys[KEYS[i]] = r && r.value != null ? r.value : null;
-      }catch(e){
-        data.keys[KEYS[i]] = null;
-      }
+      data.keys[KEYS[i]] = await readKey(KEYS[i]);
     }
     downloadJson('shift-floor-backup-' + new Date().toISOString().slice(0,10) + '.json', data);
     toast('Backup downloaded');
+  }
+  async function exportOneKey(key){
+    if(!window.storage){ toast('Storage unavailable', true); return; }
+    if(KEYS.indexOf(key) < 0){ toast('Unknown page', true); return; }
+    var value = await readKey(key);
+    var data = {
+      type: 'shift-floor-planner-page',
+      schemaVersion: 1,
+      key: key,
+      label: KEY_LABELS[key] || key,
+      exportedAt: new Date().toISOString(),
+      value: value
+    };
+    downloadJson('shift-' + key + '-' + new Date().toISOString().slice(0,10) + '.json', data);
+    toast((KEY_LABELS[key] || key) + ' exported');
   }
   async function importBackup(file){
     try{
@@ -9880,31 +10436,103 @@ function toast(msg, err) {
       toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'), true);
     }
   }
-  if(backupBtn) backupBtn.addEventListener('click', exportBackup);
-  if(restoreBtn && restoreFile){
-    restoreBtn.addEventListener('click', function(){
-      if(!restoreArmed){
-        restoreArmed = true;
-        restoreBtn.textContent = 'Confirm?';
-        restoreBtn.classList.add('btn-danger-pending');
+  async function wipeKeys(keys){
+    if(!window.storage){ toast('Storage unavailable', true); return; }
+    for(var i=0;i<keys.length;i++){
+      await window.storage.set(keys[i], emptyPayload(keys[i]), false);
+    }
+    toast(keys.length > 1 ? 'Wiped everything — reloading…' : ((KEY_LABELS[keys[0]] || keys[0]) + ' wiped — reloading…'));
+    setTimeout(function(){ location.reload(); }, 500);
+  }
+  function armDanger(btn, armKey, armedLabel, idleLabel, onConfirm){
+    if(!wipeArmed[armKey]){
+      wipeArmed[armKey] = true;
+      btn.textContent = armedLabel || 'Confirm?';
+      btn.classList.add('btn-danger-pending');
+      clearTimeout(wipeTimers[armKey]);
+      wipeTimers[armKey] = setTimeout(function(){
+        wipeArmed[armKey] = false;
+        btn.textContent = idleLabel;
+        btn.classList.remove('btn-danger-pending');
+      }, 4000);
+      return;
+    }
+    clearTimeout(wipeTimers[armKey]);
+    wipeArmed[armKey] = false;
+    btn.textContent = idleLabel;
+    btn.classList.remove('btn-danger-pending');
+    onConfirm();
+  }
+  function wireRestore(btn, fileInput, armedRef){
+    if(!btn || !fileInput) return;
+    btn.addEventListener('click', function(){
+      if(armedRef === 'floor'){
+        if(!restoreArmed){
+          restoreArmed = true;
+          btn.textContent = 'Confirm?';
+          btn.classList.add('btn-danger-pending');
+          clearTimeout(restoreTimer);
+          restoreTimer = setTimeout(function(){
+            restoreArmed = false;
+            btn.textContent = 'Restore';
+            btn.classList.remove('btn-danger-pending');
+          }, 4000);
+          return;
+        }
         clearTimeout(restoreTimer);
-        restoreTimer = setTimeout(function(){
-          restoreArmed = false;
-          restoreBtn.textContent = 'Restore';
-          restoreBtn.classList.remove('btn-danger-pending');
+        restoreArmed = false;
+        btn.textContent = 'Restore';
+        btn.classList.remove('btn-danger-pending');
+        fileInput.click();
+        return;
+      }
+      if(!stnRestoreArmed){
+        stnRestoreArmed = true;
+        btn.textContent = 'Confirm?';
+        btn.classList.add('btn-danger-pending');
+        clearTimeout(stnRestoreTimer);
+        stnRestoreTimer = setTimeout(function(){
+          stnRestoreArmed = false;
+          btn.textContent = 'Restore all';
+          btn.classList.remove('btn-danger-pending');
         }, 4000);
         return;
       }
-      clearTimeout(restoreTimer);
-      restoreArmed = false;
-      restoreBtn.textContent = 'Restore';
-      restoreBtn.classList.remove('btn-danger-pending');
-      restoreFile.click();
+      clearTimeout(stnRestoreTimer);
+      stnRestoreArmed = false;
+      btn.textContent = 'Restore all';
+      btn.classList.remove('btn-danger-pending');
+      fileInput.click();
     });
-    restoreFile.addEventListener('change', function(){
-      var f = restoreFile.files && restoreFile.files[0];
-      restoreFile.value = '';
+    fileInput.addEventListener('change', function(){
+      var f = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
       if(f) importBackup(f);
+    });
+  }
+
+  if(backupBtn) backupBtn.addEventListener('click', exportBackup);
+  if(stnBackupAll) stnBackupAll.addEventListener('click', exportBackup);
+  wireRestore(restoreBtn, restoreFile, 'floor');
+  wireRestore(stnRestoreAll, stnRestoreFile, 'settings');
+  if(stnWipeAll){
+    stnWipeAll.addEventListener('click', function(){
+      armDanger(stnWipeAll, 'all', 'Confirm?', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
+    });
+  }
+  if(settingsBody){
+    settingsBody.addEventListener('click', function(e){
+      var t = e.target;
+      if(!t || !t.getAttribute) return;
+      var exportKey = t.getAttribute('data-export');
+      if(exportKey){
+        exportOneKey(exportKey);
+        return;
+      }
+      var wipeKey = t.getAttribute('data-wipe');
+      if(!wipeKey || wipeKey === 'all') return;
+      var idle = 'Wipe';
+      armDanger(t, wipeKey, 'Confirm?', idle, function(){ wipeKeys([wipeKey]); });
     });
   }
 })();
@@ -9917,7 +10545,8 @@ function toast(msg, err) {
     roster: document.getElementById('tabRoster'),
     breaks: document.getElementById('breakPlannerTab'),
     tracker: document.getElementById('tabTracker'),
-    packer: document.getElementById('tabPacker')
+    packer: document.getElementById('tabPacker'),
+    settings: document.getElementById('tabSettings')
   };
   function showTab(name){
     var showDisplay = {
@@ -9925,7 +10554,8 @@ function toast(msg, err) {
       breaks: 'flex',
       tracker: 'flex',
       packer: 'flex',
-      roster: 'flex'
+      roster: 'flex',
+      settings: 'flex'
     };
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;

@@ -53,7 +53,10 @@ console.log('\nWhitespace cleaning & name standardisation');
     return r.workerKey === 'jane doe';
   });
   assert(janeRows.length >= 1, 'Jane Doe rows present');
-  assert(janeRows[0].workerName === 'Jane Doe', 'display name Title Case');
+  assert(janeRows[0].workerName === 'Jane Doe', 'display name keeps CSV casing');
+  assert(PA.normalizeWorkerName("Avalon-Ophelia Paese").display === 'Avalon-Ophelia Paese', 'keeps hyphen casing');
+  assert(PA.normalizeWorkerName("BREE POA").display === 'BREE POA', 'keeps ALL CAPS');
+  assert(PA.normalizeWorkerName("O'Brien").display === "O'Brien", "keeps O'Brien casing");
   assert(janeRows.every(function (r) {
     return r.station.indexOf('Station') === 0;
   }), 'station names trimmed/standardised');

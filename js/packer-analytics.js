@@ -214,13 +214,9 @@
     var s = trimStr(raw).replace(/\s+/g, ' ');
     if (!s) return { key: '', display: '', isTotals: false };
     if (TOTALS_NAME_RE.test(s)) return { key: '', display: s, isTotals: true };
-    var display = s
-      .split(' ')
-      .map(function (p) {
-        return p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p;
-      })
-      .join(' ');
-    return { key: display.toLowerCase(), display: display, isTotals: false };
+    // Keep CSV/roster casing as-is (only collapse spaces). Forced Title Case was
+    // mangling hyphenated names, O'Brien-style names, and ALL-CAPS names.
+    return { key: s.toLowerCase(), display: s, isTotals: false };
   }
 
   function normalizeStation(raw) {

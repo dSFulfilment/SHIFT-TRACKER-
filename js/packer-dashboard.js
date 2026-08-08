@@ -334,21 +334,144 @@
     }).join('\n');
   }
 
-  function exportActiveWeek(force) {
-    var weekKey = state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date()));
-    var report = buildWeekReport(weekKey, state.byDate);
-    if (!report.days.length && !force) {
-      toast('No Packer data this week to export', 'err');
-      return false;
-    }
-    var ok = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-    if (ok && report.days.length) {
-      report.days.forEach(function (d) {
-        if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
-        if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
+  function csvEscapeRow(r) {
+    return r.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(',');
+  }
+
+  /** Weekly review: dates + boxes packed per SKU (and per worker). */
+  function buildWeeklySkuReview(byDateSnap, weekKey) {
+    var BOARD_SKUS = ['125', '150', '200', '250', '300', '400', '500', '600', '700'];
+    var ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
+    var summaryRows = [];
+    var detailRows = [];
+    var usedSkus = {};
+    var weekSkuTotals = {};
+    BOARD_SKUS.forEach(function (s) { weekSkuTotals[s] = 0; });
+
+    for (var i = 0; i < 5; i++) {
+      var dk = ymd(addDays(ws, i));
+      var day = byDateSnap[dk] || {};
+      ['morning', 'afternoon'].forEach(function (sk) {
+        var b = day[sk];
+        if (!b || !(b.records && b.records.length)) return;
+        var skuTotals = {};
+        var workerSku = {};
+        (b.records || []).forEach(function (r) {
+          if (!r || !r.sku || !r.boxes) return;
+          // Prefer Boxes Packed rows (have packing time). Skip pure Intra Hour.
+          if (r.hour != null && (r.packingHours == null || r.packingHours <= 0)) return;
+          skuTotals[r.sku] = (skuTotals[r.sku] || 0) + (r.boxes || 0);
+          usedSkus[r.sku] = true;
+          weekSkuTotals[r.sku] = (weekSkuTotals[r.sku] || 0) + (r.boxes || 0);
+          var wk = r.workerKey || r.workerName || '';
+          if (!wk) return;
+          if (!workerSku[wk]) workerSku[wk] = { name: r.workerName || wk, skus: {} };
+          workerSku[wk].skus[r.sku] = (workerSku[wk].skus[r.sku] || 0) + (r.boxes || 0);
+        });
+        var skuKeys = Object.keys(skuTotals);
+        if (!skuKeys.length) return;
+        var rowTotal = skuKeys.reduce(function (n, s) { return n + skuTotals[s]; }, 0);
+        var sumLine = [PA.formatDateAU(dk), shiftLabel(sk)];
+        BOARD_SKUS.forEach(function (s) { sumLine.push(skuTotals[s] || ''); });
+        sumLine.push(rowTotal);
+        var other = skuKeys.filter(function (s) { return BOARD_SKUS.indexOf(s) === -1; })
+          .sort(function (a, b) { return Number(a) - Number(b); })
+          .map(function (s) { return s + ':' + skuTotals[s]; }).join('; ');
+        sumLine.push(other);
+        summaryRows.push(sumLine);
+
+        Object.keys(workerSku).sort(function (a, b) {
+          return (workerSku[a].name || '').localeCompare(workerSku[b].name || '');
+        }).forEach(function (wk) {
+          var w = workerSku[wk];
+          Object.keys(w.skus).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (sku) {
+            detailRows.push([PA.formatDateAU(dk), shiftLabel(sk), w.name, sku, w.skus[sku]]);
+          });
+        });
       });
     }
+
+    var skuCols = BOARD_SKUS.slice();
+    var summaryHdr = ['Date', 'Shift'].concat(skuCols).concat(['Total', 'Other SKUs']);
+    var weekTotalLine = ['WEEK TOTAL', ''];
+    var weekAll = 0;
+    skuCols.forEach(function (s) {
+      weekTotalLine.push(weekSkuTotals[s] || '');
+      weekAll += weekSkuTotals[s] || 0;
+    });
+    weekTotalLine.push(weekAll);
+    weekTotalLine.push('');
+    if (summaryRows.length) summaryRows.push(weekTotalLine);
+
+    var summaryCsv = [summaryHdr].concat(summaryRows).map(csvEscapeRow).join('\n');
+    var detailCsv = [['Date', 'Shift', 'Worker', 'SKU', 'Boxes Packed']]
+      .concat(detailRows).map(csvEscapeRow).join('\n');
+
+    return {
+      weekKey: weekKey,
+      hasData: summaryRows.length > 0,
+      summaryCsv: summaryCsv,
+      detailCsv: detailCsv,
+      dayCount: summaryRows.length ? summaryRows.length - 1 : 0
+    };
+  }
+
+  function downloadWeeklySkuReview(byDateSnap, weekKey, force) {
+    var review = buildWeeklySkuReview(byDateSnap || {}, weekKey);
+    if (!review.hasData && !force) return { ok: false, review: review };
+    var ok1 = downloadTextFile(
+      'weekly-review-' + weekKey + '-skus.csv',
+      review.summaryCsv,
+      'text/csv'
+    );
+    var ok2 = true;
+    if (review.hasData) {
+      ok2 = downloadTextFile(
+        'weekly-review-' + weekKey + '-by-worker.csv',
+        review.detailCsv,
+        'text/csv'
+      );
+    }
+    return { ok: !!(ok1 && ok2), review: review };
+  }
+
+  /** Export the selected day/shift only: list of packers + SKUs + boxes. */
+  function exportCurrentShiftPackers() {
+    var dateKey = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    var rows = PA.aggregatePeopleRows(currentRecords());
+    if (!rows.length) {
+      toast('No packers for ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(sk), 'err');
+      return false;
+    }
+    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Status'];
+    var body = rows.map(function (r) {
+      var skus = (r.skus || []).map(function (s) { return s.sku; }).filter(Boolean).join(', ');
+      var hrs = r.intraHours > 0 ? r.shiftHours : r.packingHours;
+      return [
+        PA.formatDateAU(dateKey),
+        shiftLabel(sk),
+        r.workerName,
+        skus,
+        r.boxes,
+        hrs != null ? Number(hrs).toFixed(2) : '',
+        r.boxesPerHour != null ? Number(r.boxesPerHour).toFixed(1) : '',
+        r.strikeStatus ? r.strikeStatus.label : ''
+      ];
+    });
+    var csv = [hdr].concat(body).map(csvEscapeRow).join('\n');
+    var ok = downloadTextFile(
+      'packer-' + dateKey + '-' + sk + '.csv',
+      csv,
+      'text/csv'
+    );
+    if (ok) toast('Exported ' + rows.length + ' packers · ' + shiftLabel(sk));
     return ok;
+  }
+
+  function exportActiveWeek(force) {
+    // Packer Export = this day/shift packer list (not multi-file week dump).
+    return exportCurrentShiftPackers();
   }
 
   function ensureCurrentWeekFresh() {
@@ -365,16 +488,13 @@
       });
       if (hasData) {
         var report = buildWeekReport(oldKey, snap);
+        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
         var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-        if (!ok) {
+        if (!ok && !(weekly && weekly.ok)) {
           state.error = 'Could not export last week’s Packer data — keeping it so nothing is cleared.';
           toast(state.error, 'err');
           return;
         }
-        report.days.forEach(function (d) {
-          if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
-          if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
-        });
         if (!state.archives) state.archives = {};
         state.archives[oldKey] = { weekKey: oldKey, byDate: snap, archivedAt: Date.now(), report: report };
         var aks = Object.keys(state.archives).sort();
@@ -499,18 +619,11 @@
     if (els.charts) els.charts.innerHTML = '';
   }
 
-  function skuHitsHtml(skus) {
-    if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
+  function skuListHtml(skus) {
+    if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
-      var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = s.hitTarget ? '✓' : (st.key === 'none' ? '·' : '✗');
-      var got = PA.formatNumber(s.boxes);
-      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '—';
-      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '—';
-      var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
-        ' (' + (st.target != null ? st.target : '?') + ' BPH × ' + hrs + 'h) — ' + st.label;
-      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '—') + ' ' + got + '/' + need + ' ' + mark + '</span>';
+      var st = s.strikeStatus || { key: 'none' };
+      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '">' + escapeHtml(s.sku || '-') + '</span>';
     }).join('');
   }
 
@@ -523,29 +636,27 @@
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
-      var hitLbl = r.skuCount
-        ? (r.hitTarget ? 'All SKUs hit' : (r.hitCount + '/' + r.skuCount + ' SKUs hit'))
-        : 'No target';
       var hrsLbl = r.intraHours > 0
-        ? (PA.formatHours(r.shiftHours) + ' shift')
+        ? PA.formatHours(r.shiftHours)
         : PA.formatHours(r.packingHours);
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
-        '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
+        '<td class="pk-sku-cell">' + skuListHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
         '<td class="r mn">' + escapeHtml(hrsLbl) + '</td>' +
-        '<td>' + strikePill(r.strikeStatus) +
-        '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
+        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
-      '<div class="pk-table-meta">Each SKU shows got/need boxes (target BPH × hours). ✓ = hit for that SKU. All SKUs must hit.</div></div>' +
+      '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
+      ' · names merged · SKUs listed</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKUs (got/need)</th><th class="r">Boxes</th><th class="r">Hours</th>' +
-      '<th>All targets</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th class="r">BPH</th><th>Status</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="6" class="empty-td">No people rows</td></tr>') +
+      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -900,6 +1011,10 @@
           state.legacy = data.legacy || { records: [], files: [], quality: PA.emptyQuality() };
           state.activeWeekKey = data.activeWeekKey || state.activeWeekKey;
           state.revision = data.revision || 0;
+          // Rebuild rows from raw CSV text so names keep original casing after parser fixes.
+          if (rebuildBucketsFromRawFiles(state.byDate)) {
+            await saveData();
+          }
         } else if (data && data.version === 2 && Array.isArray(data.records)) {
           var m = migrateV2ToV3(data);
           state.byDate = m.byDate;
@@ -923,6 +1038,49 @@
     state.loading = false;
     ensureCurrentWeekFresh();
     renderAll();
+  }
+
+  /** Re-parse preserved raw CSV files so worker names use current casing rules. */
+  function rebuildBucketsFromRawFiles(byDate) {
+    var changed = false;
+    Object.keys(byDate || {}).forEach(function (dk) {
+      Object.keys(byDate[dk] || {}).forEach(function (sk) {
+        var bucket = byDate[dk][sk];
+        if (!bucket || !bucket.files || !bucket.files.length) return;
+        var rebuilt = [];
+        var quality = PA.emptyQuality();
+        var anyRaw = false;
+        bucket.files.forEach(function (f) {
+          if (!f || !f.text) return;
+          anyRaw = true;
+          var res = PA.processCsvText(f.text, {
+            sourceFile: f.name || 'saved.csv',
+            defaultShift: sk === 'afternoon' ? 'afternoon_shift' : 'morning_shift'
+          });
+          if (!res.ok) return;
+          // Keep only rows that belong in this calendar slot
+          var kept = res.records.filter(function (rec) {
+            var date = rec.reportDate || dk;
+            var shift = rosterShiftFromRecord(rec, sk);
+            return date === dk && shift === sk;
+          });
+          var merged = PA.mergeRecords(rebuilt, kept);
+          rebuilt = merged.records;
+          quality = PA.mergeQuality(quality, res.quality);
+          f.rowCount = kept.length;
+          f.format = res.format;
+          f.quality = res.quality;
+        });
+        if (anyRaw) {
+          var before = JSON.stringify((bucket.records || []).map(function (r) { return r.workerName; }));
+          var after = JSON.stringify(rebuilt.map(function (r) { return r.workerName; }));
+          bucket.records = rebuilt;
+          bucket.quality = quality;
+          if (before !== after) changed = true;
+        }
+      });
+    });
+    return changed;
   }
 
   async function stageFiles(fileList) {
@@ -1050,6 +1208,13 @@
     });
   }
 
-  window.__packerDashboard = { refresh: renderAll, exportWeek: exportActiveWeek };
+  window.__packerDashboard = {
+    refresh: renderAll,
+    exportWeek: exportActiveWeek,
+    buildWeeklySkuReview: buildWeeklySkuReview,
+    downloadWeeklySkuReview: downloadWeeklySkuReview,
+    getByDate: function () { return state.byDate; },
+    getWeekStart: function () { return state.weekStart || startOfWeek(new Date()); }
+  };
   loadAll();
 })();
