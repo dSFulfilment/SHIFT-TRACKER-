@@ -175,31 +175,26 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot.slot-sku .field.slot-name{ display:none; }
 #app .card.floorslot .ctrl{ width:20px; height:20px; }
 #app .card.floorslot .ctrl svg{ width:11px; height:11px; }
-/* Packing plates: hide resize/delete/duplicate/edit chrome unless Move is armed */
-#app .card.station .ctrl,
-#app .card.floorslot .ctrl,
-#app .card.station .rotate-line,
-#app .card.floorslot .rotate-line{
+/* Resize / delete / duplicate / rotate / color — ONLY while Move tool is armed */
+#app .card .ctrl.del,
+#app .card .ctrl.dup,
+#app .card .ctrl.resize,
+#app .card .ctrl.rotate,
+#app .card .ctrl.color,
+#app .card .ctrl.role,
+#app .card .rotate-line{
   display:none !important;
 }
-#app #viewport.move-armed .card.station.selected .ctrl.resize,
-#app #viewport.move-armed .card.floorslot.selected .ctrl.resize,
-#app #viewport.move-armed .card.station.selected .ctrl.del,
-#app #viewport.move-armed .card.floorslot.selected .ctrl.del,
-#app #viewport.move-armed .card.station.selected .ctrl.dup,
-#app #viewport.move-armed .card.floorslot.selected .ctrl.dup{
+#app #viewport.move-armed .card.selected .ctrl.del,
+#app #viewport.move-armed .card.selected .ctrl.dup,
+#app #viewport.move-armed .card.selected .ctrl.resize,
+#app #viewport.move-armed .card.selected .ctrl.rotate,
+#app #viewport.move-armed .card.selected .ctrl.color,
+#app #viewport.move-armed .card.selected .ctrl.role{
   display:flex !important; width:26px; height:26px; z-index:9;
 }
-/* Mark-up color chip stays easy to hit when selected */
-#app .card.text.selected .ctrl.color,
-#app .card.arrow.selected .ctrl.color,
-#app .card.arrow2.selected .ctrl.color,
-#app .card.line.selected .ctrl.color,
-#app .card.circle.selected .ctrl.color,
-#app .card.rect.selected .ctrl.color,
-#app .card.draw.selected .ctrl.color,
-#app .card.highlight.selected .ctrl.color{
-  display:flex !important; width:26px; height:26px; z-index:9;
+#app #viewport.move-armed .card.selected .rotate-line{
+  display:block !important;
 }
 /* SKU under stations/box/runner so overlaps stay grabable without hit-test stealing */
 #app .card.floorslot.slot-sku{ z-index:4; border-color:var(--sku); background:#fff; color:var(--sku); }
@@ -283,7 +278,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .ctrl{ position:absolute; display:none; align-items:center; justify-content:center; width:23px; height:23px;
     border-radius:50%; background:#fff; border:1px solid var(--line); box-shadow:0 1px 3px rgba(0,0,0,.22);
     cursor:pointer; touch-action:none; }
-#app .card.selected .ctrl{ display:flex; }
+/* Selection alone must NOT reveal edit chrome — Move tool gates that (see rules above) */
 #app .ctrl.del{ top:-9px; right:-9px; color:#B91C1C; }
 #app .ctrl.dup{ top:-9px; right:15px; color:#1D4ED8; }
 #app .ctrl.rotate{ top:-32px; left:50%; margin-left:-10px; cursor:grab; color:var(--muted); }
@@ -297,7 +292,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .ctrl svg, #app .rm svg{ width:12px; height:12px; }
 #app .rotate-line{ position:absolute; display:none; top:-13px; left:50%; width:1px; height:13px;
     background:#CBCBC5; transform:translateX(-50%); }
-#app .card.selected .rotate-line{ display:block; }
 #app .print-shift-label{ display:none; }
 #app .notes-panel{ display:none; position:fixed; top:58px; right:16px; width:280px; background:#fff;
     border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18);
@@ -3182,7 +3176,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var ref = els.get(id);
     if(!card || !ref || !ref.el) return;
     if(card.type!=='station' && card.type!=='floorslot'){ selectCard(id); return; }
-    selectCard(id);
+    // Assign mode: do not select — selection chrome (resize/delete/dup) is Move-only
+    deselectAll();
     var assignEl = e && e.target ? e.target.closest('.station-name, .slot-name, .slot-sku-row') : null;
     var skuSlot = null;
     if(assignEl && assignEl.classList.contains('slot-sku-row')){
@@ -3575,6 +3570,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     });
     viewport.classList.remove('draw-armed');
     viewport.classList.remove('move-armed');
+    deselectAll();
+    closeColorPopover();
+    closeRolePopover();
     if(floorHintEl) floorHintEl.textContent = floorHintDefault;
     updateToolChrome();
   }
@@ -3998,6 +3996,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if((e.key==='Delete'||e.key==='Backspace') && selectedId){
       var active = document.activeElement;
       if(active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA' || active.isContentEditable)) return;
+      var sel = cards.find(function(c){ return c.id===selectedId; });
+      // Plates can only be deleted while Move tool is on
+      if(sel && (sel.type==='station' || sel.type==='floorslot') && armedTool !== 'move') return;
       e.preventDefault();
       deleteCard(selectedId);
     }
