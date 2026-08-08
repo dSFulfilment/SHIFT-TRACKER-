@@ -131,14 +131,18 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.floor-plate.vacant:hover,
 #app .card.station.floor-plate.drop-target{ background:var(--staff-bg); border-color:var(--staff); border-style:solid;
     box-shadow:0 0 0 3px rgba(37,84,199,.28); }
-#app .card.station.floor-plate.occupied{ background:#fff; border-color:var(--staff); border-style:solid;
+/* Occupied plates grow so longer names stay readable */
+#app .card.station.floor-plate.occupied{ width:58px; height:auto; min-height:44px; max-width:70px;
+    padding:2px 3px 4px; background:#fff; border-color:var(--staff); border-style:solid;
     box-shadow:0 1px 2px rgba(37,84,199,.2),0 2px 6px rgba(37,84,199,.14); }
-#app .card.station.floor-plate .field.station-letter{ font-size:15px; font-weight:800; line-height:1; color:var(--staff); }
+#app .card.station.floor-plate .field.station-letter{ font-size:15px; font-weight:800; line-height:1; color:var(--staff); flex:0 0 auto; }
 #app .card.station.floor-plate.vacant .field.station-letter{ color:var(--staff); }
 #app .card.station.floor-plate .field.station-name{ font-size:9px; font-weight:700; line-height:1.15; max-height:2.4em;
-    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:var(--staff); }
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:var(--staff);
+    word-break:break-word; overflow-wrap:anywhere; }
 #app .card.station.floor-plate.vacant .field.station-name{ font-size:9px; letter-spacing:0; text-transform:none; color:#60a5fa; }
-#app .card.station.floor-plate.occupied .field.station-name{ color:#1e3a8a; }
+#app .card.station.floor-plate.occupied .field.station-name{ color:#1e3a8a; max-height:3.6em; -webkit-line-clamp:3;
+    font-size:8.5px; line-height:1.12; }
 #app .card.station.floor-plate .ctrl{ width:18px; height:18px; }
 #app .card.station.floor-plate .ctrl svg{ width:10px; height:10px; }
 /* Role / SKU drop plates — same idea as packing stations, colour-matched */
@@ -151,7 +155,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     text-align:center; line-height:1.15; max-height:1.4em; overflow:hidden; opacity:1; cursor:pointer; }
 #app #viewport.move-armed .card.floorslot .field.slot-label{ cursor:grab; }
 #app .card.floorslot .field.slot-name{ font-size:11px; font-weight:700; text-align:center; line-height:1.2;
-    max-height:2.5em; overflow:hidden; word-break:break-word; cursor:pointer; }
+    max-height:3.6em; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+    word-break:break-word; overflow-wrap:anywhere; cursor:pointer; }
+#app .card.floorslot.occupied{ height:auto !important; min-height:34px; }
 #app .card.floorslot.vacant .field.slot-name{ letter-spacing:.02em; font-size:10px; text-transform:none; opacity:.8; }
 #app .card.floorslot.slot-sku{ overflow:visible; height:auto !important; }
 #app .card.floorslot.slot-sku .field.slot-label{ flex:0 0 auto; }
@@ -2334,6 +2340,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     }
     return ''; // all 26 taken — user can still rename any station's letter by double-clicking it
   }
+  function fitPlateNameFont(nameField, name, isFloorPlate){
+    if(!nameField) return;
+    nameField.style.fontSize = '';
+    if(!name) return;
+    var len = String(name).length;
+    if(isFloorPlate){
+      if(len > 20) nameField.style.fontSize = '7px';
+      else if(len > 14) nameField.style.fontSize = '7.5px';
+      else if(len > 9) nameField.style.fontSize = '8px';
+    } else if(len > 18){
+      nameField.style.fontSize = '9px';
+    } else if(len > 12){
+      nameField.style.fontSize = '10px';
+    }
+  }
   function updateStationCardVisual(card){
     var ref = els.get(card.id);
     if(!ref || !ref.el) return;
@@ -2346,17 +2367,20 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(nameField){
       if(entry) nameField.textContent = entry.name;
       else nameField.textContent = card.floorPlate ? 'Tap' : 'Vacant';
+      fitPlateNameFont(nameField, entry ? entry.name : '', !!(card.floorPlate || ref.el.classList.contains('floor-plate')));
       if(entry && breakHint){
-        nameField.title = entry.name+' · '+breakHint+' - double-click to clear';
+        nameField.title = entry.name+' · '+breakHint+' — double-click to clear';
       } else if(entry){
-        nameField.title = 'Double-click to clear this assignment';
+        nameField.title = entry.name+' — double-click to clear';
       } else {
         nameField.title = breakHint
           ? ('Tap to assign a packer · '+breakHint)
           : 'Tap to assign a packer';
       }
     }
-    ref.el.title = entry && breakHint ? (entry.name+' · '+breakHint) : (breakHint || '');
+    ref.el.title = entry
+      ? (entry.name + (breakHint ? (' · '+breakHint) : ''))
+      : (breakHint || '');
     ref.el.classList.toggle('occupied', !!entry);
     ref.el.classList.toggle('vacant', !entry);
     STATUS_OPTIONS.forEach(function(o){ ref.el.classList.remove('status-'+o.key); });
