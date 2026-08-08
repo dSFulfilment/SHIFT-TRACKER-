@@ -1177,8 +1177,101 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   <button class="bp-fab-btn" data-tab="tracker">Shift Tracker</button>
   <button class="bp-fab-btn" data-tab="packer">Packer</button>
   <button class="bp-fab-btn" data-tab="roster">Roster</button>
+  <button class="bp-fab-btn" data-tab="settings">Settings</button>
 </div>
 <div class="bp-toast" id="bpToast"></div>
+
+<div id="tabSettings" style="display:none">
+  <style>
+    #tabSettings{
+      position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
+      overflow:hidden; background:#EEF0F3; color:#1D1D1F;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex; flex-direction:column;
+    }
+    #tabSettings .stn-shell{
+      flex:1; min-height:0; display:flex; flex-direction:column;
+      max-width:720px; width:100%; margin:0 auto;
+    }
+    #tabSettings .stn-chrome{
+      flex:0 0 auto; background:rgba(238,240,243,.97); backdrop-filter:blur(10px);
+      border-bottom:1px solid #E1E4EA; padding:10px 12px; z-index:5;
+    }
+    #tabSettings .stn-title{ margin:0; font-size:15px; font-weight:800; letter-spacing:-.02em; }
+    #tabSettings .stn-sub{ font-size:11px; color:#6E6E73; margin-top:3px; line-height:1.4; }
+    #tabSettings .stn-body{
+      flex:1; min-height:0; overflow:auto; padding:10px 12px calc(80px + env(safe-area-inset-bottom,0px));
+      -webkit-overflow-scrolling:touch;
+    }
+    #tabSettings .stn-card{
+      background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    }
+    #tabSettings .stn-card h2{ margin:0 0 2px; font-size:13px; font-weight:800; }
+    #tabSettings .stn-card p{ margin:0 0 8px; font-size:11px; color:#6E6E73; line-height:1.4; }
+    #tabSettings .stn-actions{ display:flex; flex-wrap:wrap; gap:6px; }
+    #tabSettings .stn-actions button{
+      border:1px solid #D8DCE3; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700;
+      cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
+    }
+    #tabSettings .stn-actions button.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
+    #tabSettings .stn-actions button.danger{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
+    #tabSettings .stn-actions button.btn-danger-pending{ background:#FEE2E2; color:#B8251C; border-color:#F1A8A4; }
+    #tabSettings .stn-note{
+      font-size:11px; color:#8E8E93; line-height:1.45; padding:8px 2px 0;
+    }
+  </style>
+  <div class="stn-shell">
+    <div class="stn-chrome">
+      <h1 class="stn-title">Settings</h1>
+      <div class="stn-sub">Export or wipe saved data per page. Use this to start fresh before Monday.</div>
+    </div>
+    <div class="stn-body" id="settingsBody">
+      <div class="stn-card">
+        <h2>Whole app</h2>
+        <p>Everything in one file — Floor, Breaks, Packer, Roster marks.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" id="stnBackupAll">Export all</button>
+          <button type="button" id="stnRestoreAll">Restore all</button>
+          <button type="button" class="danger" id="stnWipeAll" data-wipe="all">Wipe everything</button>
+        </div>
+        <input type="file" id="stnRestoreFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="stn-card">
+        <h2>Floor Plan</h2>
+        <p>Stations, plates, and floor staff roster.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="planner">Export</button>
+          <button type="button" class="danger" data-wipe="planner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Breaks</h2>
+        <p>Break groups, times, and assignments.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="breakPlanner">Export</button>
+          <button type="button" class="danger" data-wipe="breakPlanner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Packer</h2>
+        <p>Uploaded CSVs and packer results for the week.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="packer-shift-data">Export</button>
+          <button type="button" class="danger" data-wipe="packer-shift-data">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Roster marks</h2>
+        <p>On / Late / Left early / Absent / Leave marks (not the name list — names live on Floor Plan).</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="shiftWeekAttendance">Export</button>
+          <button type="button" class="danger" data-wipe="shiftWeekAttendance">Wipe</button>
+        </div>
+      </div>
+      <p class="stn-note">Wipe asks for Confirm? first. Export downloads a JSON you can Restore later. After a wipe the page reloads.</p>
+    </div>
+  </div>
+</div>
 
 <div id="tabRoster" style="display:none">
   <style>
@@ -1533,7 +1626,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="pk-search"><input type="search" id="pkSearchInput" placeholder="Search…" aria-label="Search workers"></div>
         <div class="pk-actions">
           <button type="button" id="pkJumpToday">Today</button>
-          <button type="button" id="pkExportWeekBtn" title="Weekly review: dates + boxes per SKU">Week review</button>
+          <button type="button" id="pkExportWeekBtn" title="Export this shift’s packer list">Export</button>
           <button type="button" id="pkClearBtn">Clear</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
@@ -8672,18 +8765,43 @@ function toast(msg, err) {
     return { ok: !!(ok1 && ok2), review: review };
   }
 
-  function exportActiveWeek(force) {
-    var weekKey = state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date()));
-    var report = buildWeekReport(weekKey, state.byDate);
-    if (!report.days.length && !force) {
-      toast('No Packer data this week to export', 'err');
+  /** Export the selected day/shift only: list of packers + SKUs + boxes. */
+  function exportCurrentShiftPackers() {
+    var dateKey = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    var rows = PA.aggregatePeopleRows(currentRecords());
+    if (!rows.length) {
+      toast('No packers for ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(sk), 'err');
       return false;
     }
-    var weekly = downloadWeeklySkuReview(state.byDate, weekKey, force);
-    var okJson = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-    if (weekly.ok) toast('Weekly review exported (SKUs by date + by worker)');
-    else if (!report.days.length) toast('No Packer data this week to export', 'err');
-    return !!(weekly.ok || okJson);
+    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Status'];
+    var body = rows.map(function (r) {
+      var skus = (r.skus || []).map(function (s) { return s.sku; }).filter(Boolean).join(', ');
+      var hrs = r.intraHours > 0 ? r.shiftHours : r.packingHours;
+      return [
+        PA.formatDateAU(dateKey),
+        shiftLabel(sk),
+        r.workerName,
+        skus,
+        r.boxes,
+        hrs != null ? Number(hrs).toFixed(2) : '',
+        r.boxesPerHour != null ? Number(r.boxesPerHour).toFixed(1) : '',
+        r.strikeStatus ? r.strikeStatus.label : ''
+      ];
+    });
+    var csv = [hdr].concat(body).map(csvEscapeRow).join('\n');
+    var ok = downloadTextFile(
+      'packer-' + dateKey + '-' + sk + '.csv',
+      csv,
+      'text/csv'
+    );
+    if (ok) toast('Exported ' + rows.length + ' packers · ' + shiftLabel(sk));
+    return ok;
+  }
+
+  function exportActiveWeek(force) {
+    // Packer Export = this day/shift packer list (not multi-file week dump).
+    return exportCurrentShiftPackers();
   }
 
   function ensureCurrentWeekFresh() {
@@ -8831,18 +8949,11 @@ function toast(msg, err) {
     if (els.charts) els.charts.innerHTML = '';
   }
 
-  function skuHitsHtml(skus) {
+  function skuListHtml(skus) {
     if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
-      var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = s.hitTarget ? 'OK' : (st.key === 'none' ? '-' : 'NO');
-      var got = PA.formatNumber(s.boxes);
-      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '-';
-      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '-';
-      var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
-        ' (' + (st.target != null ? st.target : '?') + ' BPH x ' + hrs + 'h) - ' + st.label;
-      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '-') + ' ' + got + '/' + need + ' ' + mark + '</span>';
+      var st = s.strikeStatus || { key: 'none' };
+      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '">' + escapeHtml(s.sku || '-') + '</span>';
     }).join('');
   }
 
@@ -8855,29 +8966,27 @@ function toast(msg, err) {
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
-      var hitLbl = r.skuCount
-        ? (r.hitTarget ? 'All SKUs hit' : (r.hitCount + '/' + r.skuCount + ' SKUs hit'))
-        : 'No target';
       var hrsLbl = r.intraHours > 0
-        ? (PA.formatHours(r.shiftHours) + ' shift')
+        ? PA.formatHours(r.shiftHours)
         : PA.formatHours(r.packingHours);
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
-        '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
+        '<td class="pk-sku-cell">' + skuListHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
         '<td class="r mn">' + escapeHtml(hrsLbl) + '</td>' +
-        '<td>' + strikePill(r.strikeStatus) +
-        '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
+        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
-      '<div class="pk-table-meta">Each SKU shows got/need boxes (target BPH × hours). ✓ = hit for that SKU. All SKUs must hit.</div></div>' +
+      '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
+      ' · names merged · SKUs listed</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKUs (got/need)</th><th class="r">Boxes</th><th class="r">Hours</th>' +
-      '<th>All targets</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th class="r">BPH</th><th>Status</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="6" class="empty-td">No people rows</td></tr>') +
+      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -9439,7 +9548,6 @@ function toast(msg, err) {
   };
   loadAll();
 })();
-
 </script>
 
 <script>
@@ -10185,13 +10293,27 @@ function toast(msg, err) {
 </script>
 
 <script>
-/* Whole-app backup / restore — planner, breaks, packer, roster attendance */
+/* Backup / restore / Settings wipe — planner, breaks, packer, roster attendance */
 (function(){
   var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
+  var KEY_LABELS = {
+    planner: 'Floor Plan',
+    breakPlanner: 'Breaks',
+    'packer-shift-data': 'Packer',
+    shiftWeekAttendance: 'Roster marks'
+  };
   var backupBtn = document.getElementById('appBackupBtn');
   var restoreBtn = document.getElementById('appRestoreBtn');
   var restoreFile = document.getElementById('appRestoreFile');
+  var stnBackupAll = document.getElementById('stnBackupAll');
+  var stnRestoreAll = document.getElementById('stnRestoreAll');
+  var stnRestoreFile = document.getElementById('stnRestoreFile');
+  var stnWipeAll = document.getElementById('stnWipeAll');
+  var settingsBody = document.getElementById('settingsBody');
   var restoreArmed = false, restoreTimer = null;
+  var stnRestoreArmed = false, stnRestoreTimer = null;
+  var wipeArmed = {};
+  var wipeTimers = {};
 
   function toast(msg, err){
     var el = document.getElementById('bpToast') || document.getElementById('toast');
@@ -10208,19 +10330,83 @@ function toast(msg, err) {
     a.click();
     setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
   }
+  function emptyPayload(key){
+    var now = Date.now();
+    if (key === 'planner') {
+      return JSON.stringify({
+        zoom: 1,
+        skuRoster: [],
+        rosterCollapsed: false,
+        breakScale: 1,
+        snapEnabled: true,
+        breakX: 0,
+        breakY: 0,
+        currentShift: 'morning',
+        morningRosterSeparated: false,
+        morningBreakTimesCleared: false,
+        shiftData: {
+          morning: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' },
+          afternoon: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' }
+        }
+      });
+    }
+    if (key === 'breakPlanner') {
+      return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] } });
+    }
+    if (key === 'packer-shift-data') {
+      return JSON.stringify({
+        schemaVersion: 1,
+        revision: 0,
+        version: 3,
+        activeWeekKey: '',
+        byDate: {},
+        archives: {},
+        legacy: { records: [], files: [], quality: { issues: [], counts: {} } },
+        updatedAt: now
+      });
+    }
+    if (key === 'shiftWeekAttendance') {
+      return JSON.stringify({
+        schemaVersion: 1,
+        revision: 0,
+        byDate: {},
+        activeWeekKey: '',
+        archives: {}
+      });
+    }
+    return JSON.stringify({});
+  }
+  async function readKey(key){
+    try{
+      var r = await window.storage.get(key, false);
+      return r && r.value != null ? r.value : null;
+    }catch(e){
+      return null;
+    }
+  }
   async function exportBackup(){
     if(!window.storage){ toast('Storage unavailable', true); return; }
     var data = { type:'shift-floor-planner-backup', schemaVersion:1, exportedAt:new Date().toISOString(), keys:{} };
     for(var i=0;i<KEYS.length;i++){
-      try{
-        var r = await window.storage.get(KEYS[i], false);
-        data.keys[KEYS[i]] = r && r.value != null ? r.value : null;
-      }catch(e){
-        data.keys[KEYS[i]] = null;
-      }
+      data.keys[KEYS[i]] = await readKey(KEYS[i]);
     }
     downloadJson('shift-floor-backup-' + new Date().toISOString().slice(0,10) + '.json', data);
     toast('Backup downloaded');
+  }
+  async function exportOneKey(key){
+    if(!window.storage){ toast('Storage unavailable', true); return; }
+    if(KEYS.indexOf(key) < 0){ toast('Unknown page', true); return; }
+    var value = await readKey(key);
+    var data = {
+      type: 'shift-floor-planner-page',
+      schemaVersion: 1,
+      key: key,
+      label: KEY_LABELS[key] || key,
+      exportedAt: new Date().toISOString(),
+      value: value
+    };
+    downloadJson('shift-' + key + '-' + new Date().toISOString().slice(0,10) + '.json', data);
+    toast((KEY_LABELS[key] || key) + ' exported');
   }
   async function importBackup(file){
     try{
@@ -10242,31 +10428,103 @@ function toast(msg, err) {
       toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'), true);
     }
   }
-  if(backupBtn) backupBtn.addEventListener('click', exportBackup);
-  if(restoreBtn && restoreFile){
-    restoreBtn.addEventListener('click', function(){
-      if(!restoreArmed){
-        restoreArmed = true;
-        restoreBtn.textContent = 'Confirm?';
-        restoreBtn.classList.add('btn-danger-pending');
+  async function wipeKeys(keys){
+    if(!window.storage){ toast('Storage unavailable', true); return; }
+    for(var i=0;i<keys.length;i++){
+      await window.storage.set(keys[i], emptyPayload(keys[i]), false);
+    }
+    toast(keys.length > 1 ? 'Wiped everything — reloading…' : ((KEY_LABELS[keys[0]] || keys[0]) + ' wiped — reloading…'));
+    setTimeout(function(){ location.reload(); }, 500);
+  }
+  function armDanger(btn, armKey, armedLabel, idleLabel, onConfirm){
+    if(!wipeArmed[armKey]){
+      wipeArmed[armKey] = true;
+      btn.textContent = armedLabel || 'Confirm?';
+      btn.classList.add('btn-danger-pending');
+      clearTimeout(wipeTimers[armKey]);
+      wipeTimers[armKey] = setTimeout(function(){
+        wipeArmed[armKey] = false;
+        btn.textContent = idleLabel;
+        btn.classList.remove('btn-danger-pending');
+      }, 4000);
+      return;
+    }
+    clearTimeout(wipeTimers[armKey]);
+    wipeArmed[armKey] = false;
+    btn.textContent = idleLabel;
+    btn.classList.remove('btn-danger-pending');
+    onConfirm();
+  }
+  function wireRestore(btn, fileInput, armedRef){
+    if(!btn || !fileInput) return;
+    btn.addEventListener('click', function(){
+      if(armedRef === 'floor'){
+        if(!restoreArmed){
+          restoreArmed = true;
+          btn.textContent = 'Confirm?';
+          btn.classList.add('btn-danger-pending');
+          clearTimeout(restoreTimer);
+          restoreTimer = setTimeout(function(){
+            restoreArmed = false;
+            btn.textContent = 'Restore';
+            btn.classList.remove('btn-danger-pending');
+          }, 4000);
+          return;
+        }
         clearTimeout(restoreTimer);
-        restoreTimer = setTimeout(function(){
-          restoreArmed = false;
-          restoreBtn.textContent = 'Restore';
-          restoreBtn.classList.remove('btn-danger-pending');
+        restoreArmed = false;
+        btn.textContent = 'Restore';
+        btn.classList.remove('btn-danger-pending');
+        fileInput.click();
+        return;
+      }
+      if(!stnRestoreArmed){
+        stnRestoreArmed = true;
+        btn.textContent = 'Confirm?';
+        btn.classList.add('btn-danger-pending');
+        clearTimeout(stnRestoreTimer);
+        stnRestoreTimer = setTimeout(function(){
+          stnRestoreArmed = false;
+          btn.textContent = 'Restore all';
+          btn.classList.remove('btn-danger-pending');
         }, 4000);
         return;
       }
-      clearTimeout(restoreTimer);
-      restoreArmed = false;
-      restoreBtn.textContent = 'Restore';
-      restoreBtn.classList.remove('btn-danger-pending');
-      restoreFile.click();
+      clearTimeout(stnRestoreTimer);
+      stnRestoreArmed = false;
+      btn.textContent = 'Restore all';
+      btn.classList.remove('btn-danger-pending');
+      fileInput.click();
     });
-    restoreFile.addEventListener('change', function(){
-      var f = restoreFile.files && restoreFile.files[0];
-      restoreFile.value = '';
+    fileInput.addEventListener('change', function(){
+      var f = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
       if(f) importBackup(f);
+    });
+  }
+
+  if(backupBtn) backupBtn.addEventListener('click', exportBackup);
+  if(stnBackupAll) stnBackupAll.addEventListener('click', exportBackup);
+  wireRestore(restoreBtn, restoreFile, 'floor');
+  wireRestore(stnRestoreAll, stnRestoreFile, 'settings');
+  if(stnWipeAll){
+    stnWipeAll.addEventListener('click', function(){
+      armDanger(stnWipeAll, 'all', 'Confirm?', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
+    });
+  }
+  if(settingsBody){
+    settingsBody.addEventListener('click', function(e){
+      var t = e.target;
+      if(!t || !t.getAttribute) return;
+      var exportKey = t.getAttribute('data-export');
+      if(exportKey){
+        exportOneKey(exportKey);
+        return;
+      }
+      var wipeKey = t.getAttribute('data-wipe');
+      if(!wipeKey || wipeKey === 'all') return;
+      var idle = 'Wipe';
+      armDanger(t, wipeKey, 'Confirm?', idle, function(){ wipeKeys([wipeKey]); });
     });
   }
 })();
@@ -10279,7 +10537,8 @@ function toast(msg, err) {
     roster: document.getElementById('tabRoster'),
     breaks: document.getElementById('breakPlannerTab'),
     tracker: document.getElementById('tabTracker'),
-    packer: document.getElementById('tabPacker')
+    packer: document.getElementById('tabPacker'),
+    settings: document.getElementById('tabSettings')
   };
   function showTab(name){
     var showDisplay = {
@@ -10287,7 +10546,8 @@ function toast(msg, err) {
       breaks: 'flex',
       tracker: 'flex',
       packer: 'flex',
-      roster: 'flex'
+      roster: 'flex',
+      settings: 'flex'
     };
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;

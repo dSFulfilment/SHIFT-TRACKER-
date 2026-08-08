@@ -435,18 +435,43 @@
     return { ok: !!(ok1 && ok2), review: review };
   }
 
-  function exportActiveWeek(force) {
-    var weekKey = state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date()));
-    var report = buildWeekReport(weekKey, state.byDate);
-    if (!report.days.length && !force) {
-      toast('No Packer data this week to export', 'err');
+  /** Export the selected day/shift only: list of packers + SKUs + boxes. */
+  function exportCurrentShiftPackers() {
+    var dateKey = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    var rows = PA.aggregatePeopleRows(currentRecords());
+    if (!rows.length) {
+      toast('No packers for ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(sk), 'err');
       return false;
     }
-    var weekly = downloadWeeklySkuReview(state.byDate, weekKey, force);
-    var okJson = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-    if (weekly.ok) toast('Weekly review exported (SKUs by date + by worker)');
-    else if (!report.days.length) toast('No Packer data this week to export', 'err');
-    return !!(weekly.ok || okJson);
+    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Status'];
+    var body = rows.map(function (r) {
+      var skus = (r.skus || []).map(function (s) { return s.sku; }).filter(Boolean).join(', ');
+      var hrs = r.intraHours > 0 ? r.shiftHours : r.packingHours;
+      return [
+        PA.formatDateAU(dateKey),
+        shiftLabel(sk),
+        r.workerName,
+        skus,
+        r.boxes,
+        hrs != null ? Number(hrs).toFixed(2) : '',
+        r.boxesPerHour != null ? Number(r.boxesPerHour).toFixed(1) : '',
+        r.strikeStatus ? r.strikeStatus.label : ''
+      ];
+    });
+    var csv = [hdr].concat(body).map(csvEscapeRow).join('\n');
+    var ok = downloadTextFile(
+      'packer-' + dateKey + '-' + sk + '.csv',
+      csv,
+      'text/csv'
+    );
+    if (ok) toast('Exported ' + rows.length + ' packers · ' + shiftLabel(sk));
+    return ok;
+  }
+
+  function exportActiveWeek(force) {
+    // Packer Export = this day/shift packer list (not multi-file week dump).
+    return exportCurrentShiftPackers();
   }
 
   function ensureCurrentWeekFresh() {
@@ -594,18 +619,11 @@
     if (els.charts) els.charts.innerHTML = '';
   }
 
-  function skuHitsHtml(skus) {
+  function skuListHtml(skus) {
     if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
-      var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = s.hitTarget ? 'OK' : (st.key === 'none' ? '-' : 'NO');
-      var got = PA.formatNumber(s.boxes);
-      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '-';
-      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '-';
-      var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
-        ' (' + (st.target != null ? st.target : '?') + ' BPH x ' + hrs + 'h) - ' + st.label;
-      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '-') + ' ' + got + '/' + need + ' ' + mark + '</span>';
+      var st = s.strikeStatus || { key: 'none' };
+      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '">' + escapeHtml(s.sku || '-') + '</span>';
     }).join('');
   }
 
@@ -618,29 +636,27 @@
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
-      var hitLbl = r.skuCount
-        ? (r.hitTarget ? 'All SKUs hit' : (r.hitCount + '/' + r.skuCount + ' SKUs hit'))
-        : 'No target';
       var hrsLbl = r.intraHours > 0
-        ? (PA.formatHours(r.shiftHours) + ' shift')
+        ? PA.formatHours(r.shiftHours)
         : PA.formatHours(r.packingHours);
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
-        '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
+        '<td class="pk-sku-cell">' + skuListHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
         '<td class="r mn">' + escapeHtml(hrsLbl) + '</td>' +
-        '<td>' + strikePill(r.strikeStatus) +
-        '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
+        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
-      '<div class="pk-table-meta">Each SKU shows got/need boxes (target BPH × hours). ✓ = hit for that SKU. All SKUs must hit.</div></div>' +
+      '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
+      ' · names merged · SKUs listed</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKUs (got/need)</th><th class="r">Boxes</th><th class="r">Hours</th>' +
-      '<th>All targets</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th class="r">BPH</th><th>Status</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="6" class="empty-td">No people rows</td></tr>') +
+      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
