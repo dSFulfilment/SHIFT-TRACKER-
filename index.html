@@ -381,6 +381,49 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 @media (max-width:640px){
   #floorToolsDock{ bottom:72px; }
 }
+/* Tablet / touch: full-bleed floor, bigger taps, SKU rail stays out of the way */
+@media (max-width:1100px), (pointer:coarse){
+  #app header#toolbar{ padding:6px 8px; gap:4px; }
+  #app .brand{ font-size:12px; }
+  #app .btn{ padding:7px 10px; font-size:12.5px; min-height:36px; }
+  #app .shift-btn{ padding:7px 10px; min-height:36px; }
+  #app .counts{ font-size:11px; max-width:38vw; overflow:hidden; text-overflow:ellipsis; }
+  #app #viewport{ padding:8px 8px 96px; }
+  #app #rosterPanel{ width:min(280px, 78vw); flex-basis:min(280px, 78vw); }
+  #app .card.station.floor-plate,
+  #app .card.floorslot{ position:relative; }
+  /* Expand tap area without moving the printed-floor alignment */
+  #app .card.station.floor-plate::before,
+  #app .card.floorslot::before{
+    content:''; position:absolute; inset:-12px; border-radius:12px;
+  }
+  #app .card.station.floor-plate .field.station-name,
+  #app .card.floorslot .field.slot-name{ font-size:10.5px; font-weight:700; }
+  #app .card.floorslot .field.slot-label{ font-size:12px; }
+  #app .role-popover{
+    min-width:min(300px, calc(100vw - 20px));
+    max-height:min(58vh, 440px);
+    padding:8px;
+    border-radius:14px;
+    z-index:10060;
+  }
+  #app .role-popover .role-opt{
+    padding:12px 12px; font-size:15px; min-height:44px; border-radius:10px;
+  }
+  #app .role-popover .assign-search{ height:42px; font-size:15px; border-radius:10px; }
+  #app .role-popover .role-section{ font-size:11px; padding:10px 10px 4px; }
+  #floorToolsDock{ left:12px; bottom:84px; }
+  #floorToolsDock .ft-fab{ width:56px; height:56px; }
+  #floorToolsDock .ft-fab svg{ width:26px; height:26px; }
+  #floorToolsDock .ft-panel{ width:min(320px, calc(100vw - 24px)); bottom:70px; }
+  #floorToolsDock .ft-tool{ border-radius:16px; min-height:56px; }
+  #floorToolsDock .ft-tool .ft-ico,
+  #floorToolsDock .ft-tool .ft-ico svg{ width:30px; height:30px; }
+  #app #floorToolChip{ top:auto; bottom:84px; left:76px; padding:8px 8px 8px 12px; }
+  #app #floorToolChip button{ width:36px; height:36px; }
+  .bp-fab-group{ bottom:12px; right:12px; left:12px; justify-content:stretch; border-radius:16px; }
+  .bp-fab-btn{ flex:1; padding:12px 6px; font-size:11.5px; min-height:48px; }
+}
 #app #floorToolChip{ display:none; position:fixed; top:56px; left:12px; z-index:10050; align-items:center; gap:6px;
   background:rgba(28,36,48,.92); color:#fff; border-radius:999px; padding:6px 6px 6px 10px;
   box-shadow:0 4px 14px rgba(0,0,0,.2); pointer-events:auto; }
@@ -2467,10 +2510,23 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     document.getElementById('zoomLabel').textContent = Math.round(zoom*100)+'%';
     if(!skipSave) saveDebounced();
   }
+  function isTouchFloorLayout(){
+    return !!(window.matchMedia && (
+      window.matchMedia('(max-width:1100px)').matches ||
+      window.matchMedia('(pointer:coarse)').matches
+    ));
+  }
   function fitZoom(skipSave){
-    var availW = viewport.clientWidth - 48;
+    var pad = isTouchFloorLayout() ? 16 : 48;
+    var availW = viewport.clientWidth - pad;
+    var availH = viewport.clientHeight - pad;
     if(availW<=0) return;
-    setZoom(availW / CANVAS_W, skipSave);
+    // On tablet, fit width AND height so the floor fills the screen without extra pan
+    if(isTouchFloorLayout() && availH>0){
+      setZoom(Math.min(availW / CANVAS_W, availH / CANVAS_H), skipSave);
+    } else {
+      setZoom(availW / CANVAS_W, skipSave);
+    }
   }
 
   // ---------------- cards on the board ----------------
@@ -2527,14 +2583,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var fName = document.createElement('div');
       fName.className = 'field station-name';
       fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Tap' : 'Vacant');
-      fName.title = 'Tap to assign · Tools → Move to drag/resize · double-click assigned name to clear';
+      fName.removeAttribute('title');
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
         clearStationAssignment(card.id);
       });
       el.appendChild(fName);
-      fLetter.title = 'Double-click to edit letter (Tools → Move)';
+      fLetter.removeAttribute('title');
     } else if(card.type==='floorslot'){
       if(card.slotKind==='sku') normalizeSkuSlotFields(card);
       var fSlotLabel = document.createElement('div');
@@ -2542,12 +2598,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       fSlotLabel.dataset.f = 'label';
       fSlotLabel.dataset.placeholder = 'Label';
       fSlotLabel.textContent = card.label || card.key || '';
-      fSlotLabel.title = 'Double-click to edit label (Tools → Move)';
+      fSlotLabel.removeAttribute('title');
       el.appendChild(fSlotLabel); fields.push(fSlotLabel);
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
       fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Tap';
-      fSlotName.title = 'Tap to assign · Tools → Move to drag/resize · double-click assigned name to clear';
+      fSlotName.removeAttribute('title');
       fSlotName.addEventListener('dblclick', function(e){
         e.stopPropagation();
         closeAssignPopover();
@@ -4710,11 +4766,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!hadReadError){ ensureFloorStations(); ensureFloorSlots(); }
     updateCounts();
     checkStationDuplicates();
+    // Tablet: keep the floor full-bleed — SKU rail stays collapsed unless opened
+    if(isTouchFloorLayout()){
+      rosterCollapsed = true;
+    }
     if(rosterCollapsed){
       document.getElementById('rosterPanel').classList.add('collapsed');
     }
     if(typeof updateRosterToggle === 'function') updateRosterToggle();
-    if(data && data.zoom) setZoom(data.zoom, true); else fitZoom(true);
+    // Tablet always fits the window; desktop keeps a saved zoom when present
+    if(isTouchFloorLayout() || !(data && data.zoom)) fitZoom(true);
+    else setZoom(data.zoom, true);
     updateShiftButtons();
     updateSnapButton();
     renderRoster();
