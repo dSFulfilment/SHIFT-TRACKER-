@@ -500,17 +500,17 @@
   }
 
   function skuHitsHtml(skus) {
-    if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
+    if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
       var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = s.hitTarget ? '✓' : (st.key === 'none' ? '·' : '✗');
+      var mark = s.hitTarget ? 'OK' : (st.key === 'none' ? '-' : 'NO');
       var got = PA.formatNumber(s.boxes);
-      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '—';
-      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '—';
+      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '-';
+      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '-';
       var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
-        ' (' + (st.target != null ? st.target : '?') + ' BPH × ' + hrs + 'h) — ' + st.label;
+        ' (' + (st.target != null ? st.target : '?') + ' BPH x ' + hrs + 'h) - ' + st.label;
       return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '—') + ' ' + got + '/' + need + ' ' + mark + '</span>';
+        escapeHtml(s.sku || '-') + ' ' + got + '/' + need + ' ' + mark + '</span>';
     }).join('');
   }
 
@@ -900,6 +900,10 @@
           state.legacy = data.legacy || { records: [], files: [], quality: PA.emptyQuality() };
           state.activeWeekKey = data.activeWeekKey || state.activeWeekKey;
           state.revision = data.revision || 0;
+          // Rebuild rows from raw CSV text so names keep original casing after parser fixes.
+          if (rebuildBucketsFromRawFiles(state.byDate)) {
+            await saveData();
+          }
         } else if (data && data.version === 2 && Array.isArray(data.records)) {
           var m = migrateV2ToV3(data);
           state.byDate = m.byDate;
@@ -923,6 +927,49 @@
     state.loading = false;
     ensureCurrentWeekFresh();
     renderAll();
+  }
+
+  /** Re-parse preserved raw CSV files so worker names use current casing rules. */
+  function rebuildBucketsFromRawFiles(byDate) {
+    var changed = false;
+    Object.keys(byDate || {}).forEach(function (dk) {
+      Object.keys(byDate[dk] || {}).forEach(function (sk) {
+        var bucket = byDate[dk][sk];
+        if (!bucket || !bucket.files || !bucket.files.length) return;
+        var rebuilt = [];
+        var quality = PA.emptyQuality();
+        var anyRaw = false;
+        bucket.files.forEach(function (f) {
+          if (!f || !f.text) return;
+          anyRaw = true;
+          var res = PA.processCsvText(f.text, {
+            sourceFile: f.name || 'saved.csv',
+            defaultShift: sk === 'afternoon' ? 'afternoon_shift' : 'morning_shift'
+          });
+          if (!res.ok) return;
+          // Keep only rows that belong in this calendar slot
+          var kept = res.records.filter(function (rec) {
+            var date = rec.reportDate || dk;
+            var shift = rosterShiftFromRecord(rec, sk);
+            return date === dk && shift === sk;
+          });
+          var merged = PA.mergeRecords(rebuilt, kept);
+          rebuilt = merged.records;
+          quality = PA.mergeQuality(quality, res.quality);
+          f.rowCount = kept.length;
+          f.format = res.format;
+          f.quality = res.quality;
+        });
+        if (anyRaw) {
+          var before = JSON.stringify((bucket.records || []).map(function (r) { return r.workerName; }));
+          var after = JSON.stringify(rebuilt.map(function (r) { return r.workerName; }));
+          bucket.records = rebuilt;
+          bucket.quality = quality;
+          if (before !== after) changed = true;
+        }
+      });
+    });
+    return changed;
   }
 
   async function stageFiles(fileList) {

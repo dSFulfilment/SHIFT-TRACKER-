@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Shift Floor Planner</title>
 <style>:root{
@@ -1390,6 +1391,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <option value="unassigned">No role yet</option>
         </select>
         <button type="button" id="roAddStaff">Add</button>
+        <button type="button" id="roFromPacker" title="Add missing names from Packer CSV uploads for this week">From Packer</button>
       </div>
     </div>
     <div class="ro-list-wrap">
@@ -1982,7 +1984,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       if(entry) nameField.textContent = entry.name;
       else nameField.textContent = card.floorPlate ? 'Tap' : 'Vacant';
       if(entry && breakHint){
-        nameField.title = entry.name+' · '+breakHint+' — double-click to clear';
+        nameField.title = entry.name+' · '+breakHint+' - double-click to clear';
       } else if(entry){
         nameField.title = 'Double-click to clear this assignment';
       } else {
@@ -2123,7 +2125,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(nameField){
       nameField.textContent = entry ? slotDisplayName(card) : 'Tap';
       nameField.title = entry
-        ? (slotDisplayName(card)+' — double-click to clear')
+        ? (slotDisplayName(card)+' - double-click to clear')
         : ('Tap to assign a '+(card.slotKind==='sku'?'SKU':card.slotKind==='boxmaker'?'box maker':'runner'));
     }
     if(card.slotKind==='sku'){
@@ -6837,13 +6839,9 @@ function toast(msg, err) {
     var s = trimStr(raw).replace(/\s+/g, ' ');
     if (!s) return { key: '', display: '', isTotals: false };
     if (TOTALS_NAME_RE.test(s)) return { key: '', display: s, isTotals: true };
-    var display = s
-      .split(' ')
-      .map(function (p) {
-        return p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p;
-      })
-      .join(' ');
-    return { key: display.toLowerCase(), display: display, isTotals: false };
+    // Keep CSV/roster casing as-is (only collapse spaces). Forced Title Case was
+    // mangling hyphenated names, O'Brien-style names, and ALL-CAPS names.
+    return { key: s.toLowerCase(), display: s, isTotals: false };
   }
 
   function normalizeStation(raw) {
@@ -8599,17 +8597,17 @@ function toast(msg, err) {
   }
 
   function skuHitsHtml(skus) {
-    if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
+    if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
       var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
-      var mark = s.hitTarget ? '✓' : (st.key === 'none' ? '·' : '✗');
+      var mark = s.hitTarget ? 'OK' : (st.key === 'none' ? '-' : 'NO');
       var got = PA.formatNumber(s.boxes);
-      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '—';
-      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '—';
+      var need = s.needBoxes != null ? PA.formatNumber(Math.ceil(s.needBoxes - 1e-9)) : '-';
+      var hrs = s.hoursForTarget != null ? PA.formatHours(s.hoursForTarget) : '-';
       var tip = (s.sku || '?') + ': got ' + got + ' boxes, need ' + need +
-        ' (' + (st.target != null ? st.target : '?') + ' BPH × ' + hrs + 'h) — ' + st.label;
+        ' (' + (st.target != null ? st.target : '?') + ' BPH x ' + hrs + 'h) - ' + st.label;
       return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
-        escapeHtml(s.sku || '—') + ' ' + got + '/' + need + ' ' + mark + '</span>';
+        escapeHtml(s.sku || '-') + ' ' + got + '/' + need + ' ' + mark + '</span>';
     }).join('');
   }
 
@@ -8999,6 +8997,10 @@ function toast(msg, err) {
           state.legacy = data.legacy || { records: [], files: [], quality: PA.emptyQuality() };
           state.activeWeekKey = data.activeWeekKey || state.activeWeekKey;
           state.revision = data.revision || 0;
+          // Rebuild rows from raw CSV text so names keep original casing after parser fixes.
+          if (rebuildBucketsFromRawFiles(state.byDate)) {
+            await saveData();
+          }
         } else if (data && data.version === 2 && Array.isArray(data.records)) {
           var m = migrateV2ToV3(data);
           state.byDate = m.byDate;
@@ -9022,6 +9024,49 @@ function toast(msg, err) {
     state.loading = false;
     ensureCurrentWeekFresh();
     renderAll();
+  }
+
+  /** Re-parse preserved raw CSV files so worker names use current casing rules. */
+  function rebuildBucketsFromRawFiles(byDate) {
+    var changed = false;
+    Object.keys(byDate || {}).forEach(function (dk) {
+      Object.keys(byDate[dk] || {}).forEach(function (sk) {
+        var bucket = byDate[dk][sk];
+        if (!bucket || !bucket.files || !bucket.files.length) return;
+        var rebuilt = [];
+        var quality = PA.emptyQuality();
+        var anyRaw = false;
+        bucket.files.forEach(function (f) {
+          if (!f || !f.text) return;
+          anyRaw = true;
+          var res = PA.processCsvText(f.text, {
+            sourceFile: f.name || 'saved.csv',
+            defaultShift: sk === 'afternoon' ? 'afternoon_shift' : 'morning_shift'
+          });
+          if (!res.ok) return;
+          // Keep only rows that belong in this calendar slot
+          var kept = res.records.filter(function (rec) {
+            var date = rec.reportDate || dk;
+            var shift = rosterShiftFromRecord(rec, sk);
+            return date === dk && shift === sk;
+          });
+          var merged = PA.mergeRecords(rebuilt, kept);
+          rebuilt = merged.records;
+          quality = PA.mergeQuality(quality, res.quality);
+          f.rowCount = kept.length;
+          f.format = res.format;
+          f.quality = res.quality;
+        });
+        if (anyRaw) {
+          var before = JSON.stringify((bucket.records || []).map(function (r) { return r.workerName; }));
+          var after = JSON.stringify(rebuilt.map(function (r) { return r.workerName; }));
+          bucket.records = rebuilt;
+          bucket.quality = quality;
+          if (before !== after) changed = true;
+        }
+      });
+    });
+    return changed;
   }
 
   async function stageFiles(fileList) {
@@ -9663,6 +9708,81 @@ function toast(msg, err) {
     if (nameInput) nameInput.addEventListener('keydown', function(e){
       if (e.key === 'Enter'){ e.preventDefault(); addStaffFromTab(); }
     });
+  })();
+
+  /** Recover / fill roster names from Packer CSV uploads already saved this week. */
+  async function addStaffFromPackerUploads(){
+    if (!hasStorage()){ rosterToast('Storage unavailable'); return; }
+    var names = [];
+    var seen = {};
+    try{
+      var r = await window.storage.get('packer-shift-data', false);
+      if (!r || !r.value){ rosterToast('No Packer uploads found yet'); return; }
+      var data = JSON.parse(r.value);
+      var byDate = (data && data.byDate) || {};
+      var ws = state.weekStart || startOfWeek(new Date());
+      for (var i = 0; i < 5; i++){
+        var dk = ymd(addDays(ws, i));
+        var day = byDate[dk] || {};
+        var bucket = day[state.rosterShift === 'afternoon' ? 'afternoon' : 'morning'];
+        if (!bucket) continue;
+        (bucket.records || []).forEach(function(rec){
+          var name = String(rec && rec.workerName || '').trim().replace(/\s+/g, ' ');
+          if (!name) return;
+          var key = normalizeStaffName(name);
+          if (!key || seen[key]) return;
+          seen[key] = true;
+          names.push(name);
+        });
+        (bucket.files || []).forEach(function(f){
+          if (!f || !f.text || !window.PackerAnalytics) return;
+          var res = window.PackerAnalytics.processCsvText(f.text, { sourceFile: f.name || 'saved.csv' });
+          if (!res || !res.ok) return;
+          res.records.forEach(function(rec){
+            var name = String(rec && rec.workerName || '').trim().replace(/\s+/g, ' ');
+            if (!name) return;
+            var key = normalizeStaffName(name);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            names.push(name);
+          });
+        });
+      }
+    }catch(e){
+      console.error(e);
+      rosterToast('Could not read Packer data');
+      return;
+    }
+    if (!names.length){ rosterToast('No Packer names for this week / shift'); return; }
+    var existing = {};
+    rosterStaff().forEach(function(p){ existing[normalizeStaffName(p.name)] = true; });
+    var toAdd = names.filter(function(n){ return !existing[normalizeStaffName(n)]; });
+    if (!toAdd.length){
+      rosterToast('All Packer names are already on ' + shiftLabel(state.rosterShift));
+      return;
+    }
+    if (!confirm('Add ' + toAdd.length + ' missing name(s) from Packer to ' + shiftLabel(state.rosterShift) + '?')) return;
+    var ok = await writeRoster(function(latest){
+      ensurePlannerShift(latest, state.rosterShift);
+      var roster = latest.shiftData[state.rosterShift].staffRoster;
+      var have = {};
+      roster.forEach(function(p){ have[normalizeStaffName(p.name)] = true; });
+      toAdd.forEach(function(n){
+        var key = normalizeStaffName(n);
+        if (have[key]) return;
+        roster.push({ id: uid(), name: n, role: 'packer' });
+        have[key] = true;
+      });
+      return latest;
+    });
+    if (!ok){ rosterToast('Could not save roster'); return; }
+    await refresh();
+    rosterToast('Added ' + toAdd.length + ' from Packer');
+  }
+  (function bindFromPacker(){
+    var btn = document.getElementById('roFromPacker');
+    if (!btn) return;
+    btn.addEventListener('click', function(){ addStaffFromPackerUploads(); });
   })();
 
   function peopleForStatus(dateKey, staff, statusKey){
