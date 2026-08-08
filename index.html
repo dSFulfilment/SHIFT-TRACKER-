@@ -6505,8 +6505,2238 @@ function toast(msg, err) {
   setTimeout(function() { el.classList.remove('show'); }, 2400);
 }
 </script>
-<script src="js/packer-analytics.js"></script>
-<script src="js/packer-dashboard.js"></script>
+<script>
+/**
+ * Packer CSV analytics — parse, clean, aggregate, filter, format.
+ * Works in browser (window.PackerAnalytics) and Node (module.exports).
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.PackerAnalytics = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var NA = 'N/A';
+
+  var SKU_TARGETS = {
+    '125': { target: 17, strike: 15.7 },
+    '150': { target: 18, strike: 16.3 },
+    '200': { target: 17, strike: 15.3 },
+    '250': { target: 16, strike: 14.6 },
+    '300': { target: 18, strike: 16.0 },
+    '400': { target: 16, strike: 14.6 },
+    '500': { target: 23, strike: 20.6 },
+    '600': { target: 20, strike: 17.8 },
+    '700': { target: 21, strike: 19.0 }
+  };
+
+  var HEADER_ALIASES = {
+    workerName: ['pnp worker name', 'worker name', 'employee name', 'packer name', 'name'],
+    station: ['station name', 'station', 'workstation'],
+    sku: ['box sku sizes', 'sku', 'box sku', 'primary sku', 'sku size', 'sku sizes'],
+    boxes: ['total boxes packed', 'boxes packed', 'total boxes', 'boxes'],
+    hours: ['packing time hours', 'packing time (hours)', 'hours', 'packing hours'],
+    hourKey: ['report date hour', 'hour', 'report hour', 'date hour'],
+    items: ['total items packed', 'items packed', 'items', 'total items'],
+    pouches: ['total pouches packed', 'pouches packed', 'pouches', 'total pouches'],
+    shift: ['shift', 'shift name', 'shift type'],
+    timeSec: ['packing time seconds', 'packing time (seconds)', 'seconds', 'packing seconds'],
+    date: ['report date', 'date', 'work date', 'shift date'],
+    idle: ['idle time', 'idle time hours', 'idle hours', 'idle time (hours)'],
+    shiftHours: ['shift hours', 'shift length hours', 'scheduled hours'],
+    target: ['target', 'target bph', 'target boxes per hour', 'bph target']
+  };
+
+  var REQUIRED_BY_FORMAT = {
+    endOfShift: ['workerName', 'sku', 'boxes', 'hours'],
+    summary: ['workerName', 'shift', 'station', 'boxes'],
+    hourly: ['workerName', 'hourKey', 'boxes'],
+    detailed: ['workerName', 'boxes']
+  };
+
+  var TOTALS_NAME_RE = /^(total|totals|grand total|sum|average|avg|subtotal|overall)$/i;
+
+  var KNOWN_SHIFTS = {
+    morning: 'morning_shift',
+    morning_shift: 'morning_shift',
+    day: 'morning_shift',
+    am: 'morning_shift',
+    afternoon: 'afternoon_shift',
+    afternoon_shift: 'afternoon_shift',
+    pm: 'afternoon_shift',
+    evening: 'evening_shift',
+    evening_shift: 'evening_shift',
+    night: 'night_shift',
+    night_shift: 'night_shift'
+  };
+
+  function trimStr(v) {
+    return String(v == null ? '' : v).replace(/\u00a0/g, ' ').trim();
+  }
+
+  function stripBOM(text) {
+    text = String(text == null ? '' : text);
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  }
+
+  function parseCSV(text) {
+    text = stripBOM(text);
+    var rows = [];
+    var field = '';
+    var row = [];
+    var inQuotes = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else inQuotes = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') {
+          row.push(field);
+          field = '';
+        } else if (c === '\n') {
+          row.push(field);
+          rows.push(row);
+          row = [];
+          field = '';
+        } else if (c === '\r') {
+          /* skip */
+        } else field += c;
+      }
+    }
+    if (field.length || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+    return rows.filter(function (r) {
+      return r.length > 1 || (r.length === 1 && r[0] !== '');
+    });
+  }
+
+  function resolveHeaders(rawHeaders) {
+    var normalized = rawHeaders.map(function (h) {
+      return trimStr(h);
+    });
+    var map = {};
+    var used = {};
+    Object.keys(HEADER_ALIASES).forEach(function (canon) {
+      var aliases = HEADER_ALIASES[canon];
+      for (var i = 0; i < normalized.length; i++) {
+        if (used[i]) continue;
+        if (aliases.indexOf(normalized[i].toLowerCase()) !== -1) {
+          map[canon] = normalized[i];
+          used[i] = true;
+          break;
+        }
+      }
+    });
+    return map;
+  }
+
+  function parseNum(raw) {
+    if (raw === undefined || raw === null) return { value: null, valid: true, blank: true };
+    var s = trimStr(raw);
+    if (s === '') return { value: null, valid: true, blank: true };
+    var cleaned = s.replace(/[,$%]/g, '').trim();
+    if (cleaned === '') return { value: null, valid: true, blank: true };
+    var n = Number(cleaned);
+    if (isFinite(n)) return { value: n, valid: true, blank: false };
+    return { value: null, valid: false, blank: false };
+  }
+
+  function numOrZero(parsed) {
+    return parsed && parsed.value != null && isFinite(parsed.value) ? parsed.value : 0;
+  }
+
+  function pad2(n) {
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  /** Parse AU-friendly dates to YYYY-MM-DD. */
+  function parseDate(raw) {
+    var s = trimStr(raw);
+    if (!s) return null;
+    var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+    var dmy = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if (dmy) {
+      var a = parseInt(dmy[1], 10);
+      var b = parseInt(dmy[2], 10);
+      var y = parseInt(dmy[3], 10);
+      if (y < 100) y += 2000;
+      var day;
+      var month;
+      if (a > 12) {
+        day = a;
+        month = b;
+      } else if (b > 12) {
+        day = b;
+        month = a;
+      } else {
+        day = a;
+        month = b;
+      }
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        return y + '-' + pad2(month) + '-' + pad2(day);
+      }
+    }
+    return null;
+  }
+
+  function parseReportDateFromHourKey(hk) {
+    var s = trimStr(hk);
+    var iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+    var us = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if (us) return parseDate(us[0]);
+    return null;
+  }
+
+  function parseHourFromKey(hk) {
+    var s = trimStr(hk);
+    var m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
+    if (!m) {
+      var only = s.match(/^(\d{1,2})$/);
+      if (only) {
+        var h0 = parseInt(only[1], 10);
+        return h0 >= 0 && h0 <= 23 ? h0 : null;
+      }
+      return null;
+    }
+    var h = parseInt(m[1], 10);
+    var ap = (m[3] || '').toLowerCase();
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    return h >= 0 && h <= 23 ? h : null;
+  }
+
+  function normalizeWorkerName(raw) {
+    var s = trimStr(raw).replace(/\s+/g, ' ');
+    if (!s) return { key: '', display: '', isTotals: false };
+    if (TOTALS_NAME_RE.test(s)) return { key: '', display: s, isTotals: true };
+    var display = s
+      .split(' ')
+      .map(function (p) {
+        return p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p;
+      })
+      .join(' ');
+    return { key: display.toLowerCase(), display: display, isTotals: false };
+  }
+
+  function normalizeStation(raw) {
+    var s = trimStr(raw).replace(/\s+/g, ' ');
+    if (!s) return '';
+    return s.replace(/\b\w/g, function (c) {
+      return c.toUpperCase();
+    });
+  }
+
+  function normalizeShift(raw) {
+    var s = trimStr(raw).toLowerCase().replace(/\s+/g, '_');
+    if (!s) return { key: '', label: '', known: false };
+    if (KNOWN_SHIFTS[s]) {
+      var key = KNOWN_SHIFTS[s];
+      var labels = {
+        morning_shift: 'Morning',
+        afternoon_shift: 'Afternoon',
+        evening_shift: 'Evening',
+        night_shift: 'Night'
+      };
+      return { key: key, label: labels[key] || key, known: true };
+    }
+    var label = trimStr(raw).replace(/_/g, ' ').replace(/\b\w/g, function (c) {
+      return c.toUpperCase();
+    });
+    return { key: s, label: label || s, known: false };
+  }
+
+  function normalizeSku(raw) {
+    var s = trimStr(raw);
+    if (!s) return '';
+    // Mixed batches ("250,500" / "250 / 500") are not a single SKU size.
+    var groups = s.match(/\d+/g) || [];
+    if (groups.length > 1) return '';
+    if (/[,\/&]| and /i.test(s) && groups.length > 1) return '';
+    var digits = s.replace(/[^0-9]/g, '');
+    return digits || '';
+  }
+
+  function safeDivide(num, den) {
+    if (num == null || den == null) return null;
+    if (!isFinite(num) || !isFinite(den) || den === 0) return null;
+    return num / den;
+  }
+
+  function boxesPerHour(boxes, hours) {
+    return safeDivide(boxes, hours);
+  }
+  function itemsPerHour(items, hours) {
+    return safeDivide(items, hours);
+  }
+  function pouchesPerHour(pouches, hours) {
+    return safeDivide(pouches, hours);
+  }
+  function secondsPerBox(seconds, boxes) {
+    return safeDivide(seconds, boxes);
+  }
+  function secondsPerItem(seconds, items) {
+    return safeDivide(seconds, items);
+  }
+  function efficiencyVersusTarget(actual, target) {
+    return safeDivide(actual, target);
+  }
+  function idlePercentage(idle, shiftHours) {
+    return safeDivide(idle, shiftHours);
+  }
+
+  function performanceStatus(efficiency) {
+    if (efficiency == null || !isFinite(efficiency)) {
+      return { key: 'unknown', label: 'No target', rank: 99 };
+    }
+    var pct = efficiency * 100;
+    if (pct >= 110) return { key: 'excellent', label: 'Excellent (≥110%)', rank: 0 };
+    if (pct >= 95) return { key: 'on_target', label: 'On target (95–109.99%)', rank: 1 };
+    return { key: 'needs_attention', label: 'Needs attention (<95%)', rank: 2 };
+  }
+
+  function hoursFromSeconds(sec) {
+    if (sec == null || !isFinite(sec)) return null;
+    return sec / 3600;
+  }
+
+  function detectFormat(fieldMap) {
+    if (fieldMap.sku && fieldMap.boxes && fieldMap.hours) return 'endOfShift';
+    if (fieldMap.shift && fieldMap.station && fieldMap.boxes) return 'summary';
+    if (fieldMap.hourKey && fieldMap.boxes) return 'hourly';
+    if (fieldMap.workerName && fieldMap.boxes) return 'detailed';
+    return null;
+  }
+
+  function missingColumnsMessage(format, fieldMap) {
+    var needed = REQUIRED_BY_FORMAT[format] || ['workerName', 'boxes'];
+    var missing = needed.filter(function (k) {
+      return !fieldMap[k];
+    });
+    if (!missing.length) return null;
+    var labels = {
+      workerName: 'worker name',
+      station: 'station',
+      sku: 'SKU',
+      boxes: 'boxes',
+      hours: 'packing hours',
+      hourKey: 'report date hour',
+      shift: 'shift'
+    };
+    return (
+      'CSV is missing required column(s): ' +
+      missing
+        .map(function (k) {
+          return labels[k] || k;
+        })
+        .join(', ') +
+      '.'
+    );
+  }
+
+  function recordFingerprint(rec) {
+    return [
+      rec.reportDate || '',
+      rec.hourKey || (rec.hour != null ? String(rec.hour) : ''),
+      rec.workerKey || '',
+      rec.shiftKey || '',
+      rec.station || '',
+      rec.sku || '',
+      String(rec.boxes != null ? rec.boxes : ''),
+      String(rec.items != null ? rec.items : ''),
+      String(rec.packingHours != null ? rec.packingHours : ''),
+      String(rec.packingSeconds != null ? rec.packingSeconds : '')
+    ].join('|');
+  }
+
+  function enrichMetrics(rec) {
+    var hours = rec.packingHours;
+    if ((hours == null || hours === 0) && rec.packingSeconds != null) {
+      hours = hoursFromSeconds(rec.packingSeconds);
+    }
+    var bph = boxesPerHour(rec.boxes, hours);
+    var iph = itemsPerHour(rec.items, hours);
+    var pph = pouchesPerHour(rec.pouches, hours);
+    var spb = secondsPerBox(rec.packingSeconds, rec.boxes);
+    var spi = secondsPerItem(rec.packingSeconds, rec.items);
+    var target = rec.targetBph;
+    if (target == null && rec.sku && SKU_TARGETS[rec.sku]) target = SKU_TARGETS[rec.sku].target;
+    var eff = efficiencyVersusTarget(bph, target);
+    var idlePct = idlePercentage(rec.idleHours, rec.shiftHours);
+    var status = performanceStatus(eff);
+    var calcFailed = [];
+    if (bph == null && (rec.boxes > 0 || (hours != null && hours > 0))) calcFailed.push('boxesPerHour');
+    if (iph == null && rec.items > 0) calcFailed.push('itemsPerHour');
+    if (spb == null && rec.boxes > 0) calcFailed.push('secondsPerBox');
+    if (eff == null && bph != null) calcFailed.push('efficiency');
+    if (idlePct == null && rec.idleHours != null) calcFailed.push('idlePercentage');
+
+    rec.packingHours = hours;
+    rec.calc = {
+      boxesPerHour: bph,
+      itemsPerHour: iph,
+      pouchesPerHour: pph,
+      secondsPerBox: spb,
+      secondsPerItem: spi,
+      efficiency: eff,
+      idlePercentage: idlePct,
+      targetBph: target != null ? target : null,
+      status: status,
+      failed: calcFailed
+    };
+    return rec;
+  }
+
+  function rowToRecord(cells, fieldMap, meta) {
+    var get = function (canon) {
+      var h = fieldMap[canon];
+      return h ? cells[h] : '';
+    };
+    var worker = normalizeWorkerName(get('workerName'));
+    if (worker.isTotals) {
+      return { skip: true, reason: 'totals_row' };
+    }
+    if (!worker.key) {
+      return { skip: true, reason: 'missing_worker' };
+    }
+
+    var boxesP = parseNum(get('boxes'));
+    var itemsP = parseNum(get('items'));
+    var pouchesP = parseNum(get('pouches'));
+    var hoursP = parseNum(get('hours'));
+    var secP = parseNum(get('timeSec'));
+    var idleP = parseNum(get('idle'));
+    var shiftHoursP = parseNum(get('shiftHours'));
+    var targetP = parseNum(get('target'));
+
+    var invalidNumeric = [];
+    if (!boxesP.valid) invalidNumeric.push('boxes');
+    if (!itemsP.valid) invalidNumeric.push('items');
+    if (!pouchesP.valid) invalidNumeric.push('pouches');
+    if (!hoursP.valid) invalidNumeric.push('hours');
+    if (!secP.valid) invalidNumeric.push('timeSec');
+    if (!idleP.valid) invalidNumeric.push('idle');
+    if (!shiftHoursP.valid) invalidNumeric.push('shiftHours');
+    if (!targetP.valid) invalidNumeric.push('target');
+
+    var hourKey = trimStr(get('hourKey'));
+    var dateRaw = get('date');
+    var reportDate = parseDate(dateRaw) || parseReportDateFromHourKey(hourKey);
+    var hour = parseHourFromKey(hourKey);
+    var shift = normalizeShift(get('shift') || meta.defaultShift || '');
+    var skuRaw = get('sku');
+    var sku = normalizeSku(skuRaw);
+    var mixedSku = !!(trimStr(skuRaw) && !sku && fieldMap.sku);
+    var station = normalizeStation(get('station'));
+
+    var packingHours = hoursP.blank ? null : hoursP.value;
+    var packingSeconds = secP.blank ? null : secP.value;
+    if (packingHours == null && packingSeconds != null) packingHours = hoursFromSeconds(packingSeconds);
+    if (packingSeconds == null && packingHours != null) packingSeconds = packingHours * 3600;
+
+    var raw = {};
+    Object.keys(cells).forEach(function (k) {
+      raw[k] = cells[k];
+    });
+
+    var rec = {
+      sourceFile: meta.sourceFile || '',
+      sourceIndex: meta.sourceIndex != null ? meta.sourceIndex : null,
+      reportDate: reportDate,
+      hour: hour,
+      hourKey: hourKey || null,
+      workerKey: worker.key,
+      workerName: worker.display,
+      shiftKey: shift.key || meta.defaultShift || '',
+      shiftLabel: shift.label || '',
+      shiftKnown: shift.known || !!(meta.defaultShift && KNOWN_SHIFTS[meta.defaultShift]),
+      station: station,
+      sku: sku,
+      boxes: numOrZero(boxesP),
+      items: numOrZero(itemsP),
+      pouches: numOrZero(pouchesP),
+      packingHours: packingHours,
+      packingSeconds: packingSeconds,
+      idleHours: idleP.blank ? null : idleP.value,
+      shiftHours: shiftHoursP.blank ? null : shiftHoursP.value,
+      targetBph: targetP.blank ? null : targetP.value,
+      invalidNumeric: invalidNumeric,
+      mixedSku: mixedSku,
+      raw: raw
+    };
+    enrichMetrics(rec);
+    rec.id = recordFingerprint(rec);
+    return { skip: false, record: rec, invalidNumeric: invalidNumeric, mixedSku: mixedSku };
+  }
+
+  /**
+   * Parse a CSV string into cleaned records + quality stats.
+   * Does not mutate the original text.
+   */
+  function processCsvText(text, options) {
+    options = options || {};
+    var rawText = String(text == null ? '' : text);
+    var rows = parseCSV(rawText);
+    if (rows.length < 2) {
+      return {
+        ok: false,
+        error: 'That file looks empty — no header row and data rows were found.',
+        records: [],
+        quality: emptyQuality(),
+        rawText: rawText
+      };
+    }
+
+    var rawHeaders = rows[0].map(trimStr);
+    var fieldMap = resolveHeaders(rawHeaders);
+    if (!fieldMap.workerName) {
+      return {
+        ok: false,
+        error:
+          'Unrecognized CSV format — no worker-name column found (expected one of: Pnp Worker Name, Worker Name, Employee Name, Packer Name).',
+        records: [],
+        quality: emptyQuality(),
+        rawHeaders: rawHeaders,
+        fieldMap: fieldMap,
+        rawText: rawText
+      };
+    }
+
+    var format = detectFormat(fieldMap);
+    if (!format) {
+      return {
+        ok: false,
+        error:
+          'Unrecognized CSV format — columns found don’t match a shift summary, hourly, end-of-shift, or detailed export.',
+        records: [],
+        quality: emptyQuality(),
+        rawHeaders: rawHeaders,
+        fieldMap: fieldMap,
+        rawText: rawText
+      };
+    }
+
+    var missingMsg = missingColumnsMessage(format, fieldMap);
+    if (missingMsg) {
+      return {
+        ok: false,
+        error: missingMsg,
+        records: [],
+        quality: emptyQuality(),
+        rawHeaders: rawHeaders,
+        fieldMap: fieldMap,
+        format: format,
+        rawText: rawText
+      };
+    }
+
+    var quality = emptyQuality();
+    var records = [];
+    var seenInFile = {};
+
+    rows.slice(1).forEach(function (r, idx) {
+      var isBlank = r.every(function (c) {
+        return trimStr(c) === '';
+      });
+      if (isBlank) {
+        quality.blankRows++;
+        quality.invalidRows++;
+        return;
+      }
+      var cells = {};
+      rawHeaders.forEach(function (h, i) {
+        cells[h] = trimStr(r[i] !== undefined ? r[i] : '');
+      });
+      var result = rowToRecord(cells, fieldMap, {
+        sourceFile: options.sourceFile || '',
+        sourceIndex: idx + 2,
+        defaultShift: options.defaultShift || ''
+      });
+      if (result.skip) {
+        quality.invalidRows++;
+        if (result.reason === 'missing_worker') quality.missingWorkerNames++;
+        if (result.reason === 'totals_row') quality.totalsRowsSkipped++;
+        return;
+      }
+      var rec = result.record;
+      quality.validRows++;
+      if (!rec.reportDate) quality.missingDates++;
+      if (rec.packingHours == null && rec.packingSeconds == null) quality.missingPackingTime++;
+      if (!rec.shiftKnown && rec.shiftKey) quality.unknownShifts++;
+      if (result.mixedSku) quality.mixedSkuRows++;
+      if (result.invalidNumeric && result.invalidNumeric.length) {
+        quality.invalidNumericValues += result.invalidNumeric.length;
+      }
+      if (rec.calc && rec.calc.failed && rec.calc.failed.length) {
+        quality.failedCalculations += rec.calc.failed.length;
+      }
+      if (seenInFile[rec.id]) {
+        quality.duplicateRows++;
+        return;
+      }
+      seenInFile[rec.id] = true;
+      records.push(rec);
+    });
+
+    if (!records.length) {
+      return {
+        ok: false,
+        error:
+          'No usable worker rows found' +
+          (quality.missingWorkerNames
+            ? ' (' + quality.missingWorkerNames + ' row(s) were missing a worker name)'
+            : '') +
+          (quality.totalsRowsSkipped ? ' (' + quality.totalsRowsSkipped + ' totals row(s) skipped)' : '') +
+          '.',
+        records: [],
+        quality: quality,
+        rawHeaders: rawHeaders,
+        fieldMap: fieldMap,
+        format: format,
+        rawText: rawText
+      };
+    }
+
+    return {
+      ok: true,
+      records: records,
+      quality: quality,
+      rawHeaders: rawHeaders,
+      fieldMap: fieldMap,
+      format: format,
+      rawText: rawText,
+      error: null
+    };
+  }
+
+  function emptyQuality() {
+    return {
+      validRows: 0,
+      invalidRows: 0,
+      blankRows: 0,
+      missingWorkerNames: 0,
+      missingDates: 0,
+      missingPackingTime: 0,
+      duplicateRows: 0,
+      unknownShifts: 0,
+      totalsRowsSkipped: 0,
+      invalidNumericValues: 0,
+      failedCalculations: 0,
+      mixedSkuRows: 0
+    };
+  }
+
+  function mergeQuality(a, b) {
+    var out = emptyQuality();
+    Object.keys(out).forEach(function (k) {
+      out[k] = (a && a[k] ? a[k] : 0) + (b && b[k] ? b[k] : 0);
+    });
+    return out;
+  }
+
+  /** Combine record lists, dropping duplicates by fingerprint. */
+  function mergeRecords(existing, incoming) {
+    var map = {};
+    var out = [];
+    var dupes = 0;
+    (existing || []).concat(incoming || []).forEach(function (rec) {
+      if (!rec || !rec.id) return;
+      if (map[rec.id]) {
+        dupes++;
+        return;
+      }
+      map[rec.id] = true;
+      out.push(rec);
+    });
+    return { records: out, duplicatesRemoved: dupes };
+  }
+
+  function filterRecords(records, filters) {
+    filters = filters || {};
+    var minPerf = filters.minPerformance;
+    if (minPerf != null && minPerf !== '') minPerf = Number(minPerf);
+    else minPerf = null;
+
+    return (records || []).filter(function (r) {
+      if (filters.reportDate && r.reportDate !== filters.reportDate) return false;
+      if (filters.shift && r.shiftKey !== filters.shift) return false;
+      if (filters.worker && r.workerKey !== filters.worker) return false;
+      if (filters.station && r.station !== filters.station) return false;
+      if (filters.sku && r.sku !== filters.sku) return false;
+      if (filters.hour != null && filters.hour !== '' && r.hour !== Number(filters.hour)) return false;
+      if (filters.search) {
+        var q = String(filters.search).toLowerCase();
+        var hay = (r.workerName + ' ' + r.station + ' ' + r.sku + ' ' + r.shiftLabel).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      if (minPerf != null && isFinite(minPerf)) {
+        var bph = r.calc && r.calc.boxesPerHour;
+        if (bph == null || bph < minPerf) return false;
+      }
+      return true;
+    });
+  }
+
+  function weightedAverage(pairs) {
+    // pairs: [{ value, weight }]
+    var wSum = 0;
+    var vSum = 0;
+    var n = 0;
+    (pairs || []).forEach(function (p) {
+      if (p.value == null || !isFinite(p.value) || p.weight == null || !isFinite(p.weight) || p.weight <= 0)
+        return;
+      vSum += p.value * p.weight;
+      wSum += p.weight;
+      n++;
+    });
+    if (!n || wSum <= 0) return null;
+    return vSum / wSum;
+  }
+
+  function sumField(records, field) {
+    var t = 0;
+    (records || []).forEach(function (r) {
+      var v = r[field];
+      if (v != null && isFinite(v)) t += v;
+    });
+    return t;
+  }
+
+  function sumCalc(records, field) {
+    var t = 0;
+    var any = false;
+    (records || []).forEach(function (r) {
+      var v = r.calc && r.calc[field];
+      if (v != null && isFinite(v)) {
+        t += v;
+        any = true;
+      }
+    });
+    return any ? t : null;
+  }
+
+  function aggregateKpis(records) {
+    var totalBoxes = sumField(records, 'boxes');
+    var totalItems = sumField(records, 'items');
+    var totalHours = sumField(records, 'packingHours');
+    var workers = {};
+    (records || []).forEach(function (r) {
+      if (r.workerKey) workers[r.workerKey] = true;
+    });
+    var avgBph = safeDivide(totalBoxes, totalHours);
+    var effPairs = (records || []).map(function (r) {
+      return {
+        value: r.calc && r.calc.efficiency,
+        weight: r.packingHours != null && r.packingHours > 0 ? r.packingHours : r.boxes || 0
+      };
+    });
+    var avgEff = weightedAverage(effPairs);
+    var idlePairs = (records || []).map(function (r) {
+      return {
+        value: r.calc && r.calc.idlePercentage,
+        weight: r.shiftHours != null && r.shiftHours > 0 ? r.shiftHours : r.packingHours || 0
+      };
+    });
+    var avgIdle = weightedAverage(idlePairs);
+
+    return {
+      totalBoxes: totalBoxes,
+      totalItems: totalItems,
+      averageBoxesPerHour: avgBph,
+      averageEfficiency: avgEff,
+      totalPackingHours: totalHours > 0 ? totalHours : null,
+      averageIdlePercentage: avgIdle,
+      activeWorkers: Object.keys(workers).length
+    };
+  }
+
+  function aggregateWorkers(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      var k = r.workerKey;
+      if (!k) return;
+      if (!by[k]) {
+        by[k] = {
+          workerKey: k,
+          workerName: r.workerName,
+          shifts: {},
+          stations: {},
+          skus: {},
+          boxes: 0,
+          items: 0,
+          pouches: 0,
+          packingHours: 0,
+          packingSeconds: 0,
+          idleHours: 0,
+          shiftHours: 0,
+          hasIdle: false,
+          hasShiftHours: false,
+          dates: {},
+          hours: {},
+          targetWeighted: [],
+          rows: 0
+        };
+      }
+      var g = by[k];
+      g.rows++;
+      g.boxes += r.boxes || 0;
+      g.items += r.items || 0;
+      g.pouches += r.pouches || 0;
+      if (r.packingHours != null) g.packingHours += r.packingHours;
+      if (r.packingSeconds != null) g.packingSeconds += r.packingSeconds;
+      if (r.idleHours != null) {
+        g.idleHours += r.idleHours;
+        g.hasIdle = true;
+      }
+      if (r.shiftHours != null) {
+        g.shiftHours += r.shiftHours;
+        g.hasShiftHours = true;
+      }
+      if (r.shiftKey) g.shifts[r.shiftKey] = r.shiftLabel || r.shiftKey;
+      if (r.station) g.stations[r.station] = (g.stations[r.station] || 0) + (r.boxes || 0);
+      if (r.sku) g.skus[r.sku] = (g.skus[r.sku] || 0) + (r.boxes || 0);
+      if (r.reportDate) g.dates[r.reportDate] = (g.dates[r.reportDate] || 0) + (r.boxes || 0);
+      if (r.hour != null) g.hours[r.hour] = (g.hours[r.hour] || 0) + (r.boxes || 0);
+      var t = r.calc && r.calc.targetBph;
+      if (t != null) {
+        g.targetWeighted.push({
+          value: t,
+          weight: r.packingHours != null && r.packingHours > 0 ? r.packingHours : r.boxes || 1
+        });
+      }
+    });
+
+    return Object.keys(by)
+      .map(function (k) {
+        var g = by[k];
+        var hours = g.packingHours > 0 ? g.packingHours : hoursFromSeconds(g.packingSeconds);
+        var bph = boxesPerHour(g.boxes, hours);
+        var iph = itemsPerHour(g.items, hours);
+        var spb = secondsPerBox(g.packingSeconds > 0 ? g.packingSeconds : hours != null ? hours * 3600 : null, g.boxes);
+        var target = weightedAverage(g.targetWeighted);
+        if (target == null) {
+          var skuKeys = Object.keys(g.skus);
+          if (skuKeys.length === 1 && SKU_TARGETS[skuKeys[0]]) target = SKU_TARGETS[skuKeys[0]].target;
+        }
+        var eff = efficiencyVersusTarget(bph, target);
+        var idlePct =
+          g.hasIdle && g.hasShiftHours ? idlePercentage(g.idleHours, g.shiftHours) : null;
+        var status = performanceStatus(eff);
+        var shiftLabels = Object.keys(g.shifts)
+          .map(function (sk) {
+            return g.shifts[sk];
+          })
+          .join(', ');
+        var stationLabels = Object.keys(g.stations).sort(function (a, b) {
+          return g.stations[b] - g.stations[a];
+        });
+        return {
+          workerKey: g.workerKey,
+          workerName: g.workerName,
+          shift: shiftLabels || '—',
+          station: stationLabels[0] || '—',
+          stations: stationLabels,
+          skus: g.skus,
+          boxes: g.boxes,
+          items: g.items,
+          packingHours: hours,
+          boxesPerHour: bph,
+          itemsPerHour: iph,
+          secondsPerBox: spb,
+          efficiency: eff,
+          idlePercentage: idlePct,
+          status: status,
+          dates: g.dates,
+          hours: g.hours,
+          rows: g.rows,
+          // weighted score for ranking: prefer BPH weighted by hours (falls back to boxes)
+          rankScore: bph != null ? bph : -1,
+          weight: hours != null && hours > 0 ? hours : g.boxes
+        };
+      })
+      .sort(function (a, b) {
+        // Rank by boxes/hour (weighted performance), then boxes
+        if (b.rankScore !== a.rankScore) return b.rankScore - a.rankScore;
+        return b.boxes - a.boxes;
+      })
+      .map(function (row, i) {
+        row.rank = i + 1;
+        return row;
+      });
+  }
+
+  function aggregateByHour(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (r.hour == null) return;
+      if (!by[r.hour]) by[r.hour] = { hour: r.hour, boxes: 0, items: 0, packingHours: 0 };
+      by[r.hour].boxes += r.boxes || 0;
+      by[r.hour].items += r.items || 0;
+      if (r.packingHours != null) by[r.hour].packingHours += r.packingHours;
+    });
+    return Object.keys(by)
+      .map(Number)
+      .sort(function (a, b) {
+        return a - b;
+      })
+      .map(function (h) {
+        var g = by[h];
+        g.boxesPerHour = boxesPerHour(g.boxes, g.packingHours > 0 ? g.packingHours : null);
+        return g;
+      });
+  }
+
+  function aggregateByDimension(records, keyFn, labelFn) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      var key = keyFn(r);
+      if (!key) return;
+      if (!by[key]) {
+        by[key] = {
+          key: key,
+          label: labelFn ? labelFn(r, key) : key,
+          boxes: 0,
+          items: 0,
+          packingHours: 0,
+          workers: {}
+        };
+      }
+      by[key].boxes += r.boxes || 0;
+      by[key].items += r.items || 0;
+      if (r.packingHours != null) by[key].packingHours += r.packingHours;
+      if (r.workerKey) by[key].workers[r.workerKey] = true;
+    });
+    return Object.keys(by)
+      .map(function (k) {
+        var g = by[k];
+        g.boxesPerHour = boxesPerHour(g.boxes, g.packingHours > 0 ? g.packingHours : null);
+        g.workerCount = Object.keys(g.workers).length;
+        delete g.workers;
+        return g;
+      })
+      .sort(function (a, b) {
+        var ab = a.boxesPerHour != null ? a.boxesPerHour : -1;
+        var bb = b.boxesPerHour != null ? b.boxesPerHour : -1;
+        if (bb !== ab) return bb - ab;
+        return b.boxes - a.boxes;
+      });
+  }
+
+  function aggregateStations(records) {
+    return aggregateByDimension(
+      records,
+      function (r) {
+        return r.station || '';
+      },
+      function (r) {
+        return r.station;
+      }
+    );
+  }
+
+  function aggregateSkus(records) {
+    return aggregateByDimension(
+      records,
+      function (r) {
+        return r.sku || '';
+      },
+      function (r) {
+        return r.sku;
+      }
+    );
+  }
+
+  function aggregateShifts(records) {
+    return aggregateByDimension(
+      records,
+      function (r) {
+        return r.shiftKey || '';
+      },
+      function (r) {
+        return r.shiftLabel || r.shiftKey;
+      }
+    );
+  }
+
+  function workerDetail(records, workerKey) {
+    var filtered = (records || []).filter(function (r) {
+      return r.workerKey === workerKey;
+    });
+    var summary = aggregateWorkers(filtered)[0] || null;
+    var byDate = {};
+    filtered.forEach(function (r) {
+      var d = r.reportDate || 'unknown';
+      if (!byDate[d]) byDate[d] = { date: d, boxes: 0, packingHours: 0, items: 0 };
+      byDate[d].boxes += r.boxes || 0;
+      byDate[d].items += r.items || 0;
+      if (r.packingHours != null) byDate[d].packingHours += r.packingHours;
+    });
+    var daily = Object.keys(byDate)
+      .sort()
+      .map(function (d) {
+        var g = byDate[d];
+        g.boxesPerHour = boxesPerHour(g.boxes, g.packingHours > 0 ? g.packingHours : null);
+        return g;
+      });
+    return {
+      summary: summary,
+      records: filtered,
+      daily: daily,
+      hourly: aggregateByHour(filtered),
+      stations: aggregateStations(filtered),
+      skus: aggregateSkus(filtered)
+    };
+  }
+
+  function uniqueOptions(records) {
+    var dates = {};
+    var shifts = {};
+    var workers = {};
+    var stations = {};
+    var skus = {};
+    var hours = {};
+    (records || []).forEach(function (r) {
+      if (r.reportDate) dates[r.reportDate] = true;
+      if (r.shiftKey) shifts[r.shiftKey] = r.shiftLabel || r.shiftKey;
+      if (r.workerKey) workers[r.workerKey] = r.workerName;
+      if (r.station) stations[r.station] = true;
+      if (r.sku) skus[r.sku] = true;
+      if (r.hour != null) hours[r.hour] = true;
+    });
+    return {
+      dates: Object.keys(dates).sort().reverse(),
+      shifts: Object.keys(shifts)
+        .sort()
+        .map(function (k) {
+          return { key: k, label: shifts[k] };
+        }),
+      workers: Object.keys(workers)
+        .sort(function (a, b) {
+          return workers[a].localeCompare(workers[b]);
+        })
+        .map(function (k) {
+          return { key: k, label: workers[k] };
+        }),
+      stations: Object.keys(stations).sort(),
+      skus: Object.keys(skus).sort(function (a, b) {
+        return Number(a) - Number(b);
+      }),
+      hours: Object.keys(hours)
+        .map(Number)
+        .sort(function (a, b) {
+          return a - b;
+        })
+    };
+  }
+
+  function summarizeQuality(records, quality) {
+    var q = quality ? mergeQuality(emptyQuality(), quality) : emptyQuality();
+    if (!quality && records) {
+      q.validRows = records.length;
+      records.forEach(function (r) {
+        if (!r.reportDate) q.missingDates++;
+        if (r.packingHours == null && r.packingSeconds == null) q.missingPackingTime++;
+        if (!r.shiftKnown && r.shiftKey) q.unknownShifts++;
+        if (r.calc && r.calc.failed) q.failedCalculations += r.calc.failed.length;
+      });
+    }
+    return q;
+  }
+
+  // ── Formatting (AU) ────────────────────────────────────────────────
+  function formatDateAU(iso) {
+    if (!iso) return NA;
+    var p = String(iso).split('-');
+    if (p.length !== 3) return String(iso);
+    return pad2(parseInt(p[2], 10)) + '/' + pad2(parseInt(p[1], 10)) + '/' + p[0];
+  }
+
+  function formatDateLongAU(iso) {
+    if (!iso) return NA;
+    var p = String(iso).split('-');
+    if (p.length !== 3) return String(iso);
+    var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    if (isNaN(d.getTime())) return formatDateAU(iso);
+    return d.toLocaleDateString('en-AU', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
+
+  function formatNumber(n, digits) {
+    if (n == null || !isFinite(n)) return NA;
+    var d = digits == null ? 0 : digits;
+    return Number(n).toLocaleString('en-AU', {
+      minimumFractionDigits: d,
+      maximumFractionDigits: d
+    });
+  }
+
+  function formatRate(n) {
+    return n == null || !isFinite(n) ? NA : formatNumber(n, 1);
+  }
+
+  function formatPercent(ratio) {
+    if (ratio == null || !isFinite(ratio)) return NA;
+    return formatNumber(ratio * 100, 1) + '%';
+  }
+
+  function formatHours(h) {
+    if (h == null || !isFinite(h)) return NA;
+    if (h < 1) return formatNumber(h * 60, 0) + ' min';
+    return formatNumber(h, 2) + ' h';
+  }
+
+  function formatSeconds(s) {
+    if (s == null || !isFinite(s)) return NA;
+    return formatNumber(s, 1) + ' s';
+  }
+
+  function formatHourLabel(h) {
+    if (h == null || !isFinite(h)) return NA;
+    var ap = h >= 12 ? 'pm' : 'am';
+    var h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    return h12 + ap;
+  }
+
+  /** Convert legacy shift-keyed storage into flat records (best-effort). */
+  function migrateLegacyShifts(shiftsData) {
+    var records = [];
+    Object.keys(shiftsData || {}).forEach(function (shiftKey) {
+      var s = shiftsData[shiftKey] || {};
+      var shift = normalizeShift(shiftKey);
+      Object.keys(s.summary || {}).forEach(function (wk) {
+        var w = s.summary[wk];
+        var stations = w.stations && w.stations.length ? w.stations : [''];
+        stations.forEach(function (st) {
+          var rec = enrichMetrics({
+            sourceFile: '(migrated)',
+            reportDate: s.reportDate || null,
+            hour: null,
+            hourKey: null,
+            workerKey: normalizeWorkerName(w.name || wk).key,
+            workerName: normalizeWorkerName(w.name || wk).display,
+            shiftKey: shift.key || shiftKey,
+            shiftLabel: shift.label || shiftKey,
+            shiftKnown: !!shift.known,
+            station: normalizeStation(st),
+            sku: '',
+            boxes: w.boxes || 0,
+            items: w.items || 0,
+            pouches: w.pouches || 0,
+            packingHours: w.timeSec ? w.timeSec / 3600 : null,
+            packingSeconds: w.timeSec || null,
+            idleHours: null,
+            shiftHours: null,
+            targetBph: null,
+            raw: { migrated: true }
+          });
+          rec.id = recordFingerprint(rec);
+          records.push(rec);
+        });
+      });
+      Object.keys(s.hourly || {}).forEach(function (hk) {
+        Object.keys(s.hourly[hk] || {}).forEach(function (wk) {
+          var boxes = s.hourly[hk][wk] || 0;
+          var worker = normalizeWorkerName(wk);
+          var rec = enrichMetrics({
+            sourceFile: '(migrated-hourly)',
+            reportDate: parseReportDateFromHourKey(hk) || s.reportDate || null,
+            hour: parseHourFromKey(hk),
+            hourKey: hk,
+            workerKey: worker.key,
+            workerName: worker.display,
+            shiftKey: shift.key || shiftKey,
+            shiftLabel: shift.label || shiftKey,
+            shiftKnown: !!shift.known,
+            station: '',
+            sku: '',
+            boxes: boxes,
+            items: 0,
+            pouches: 0,
+            packingHours: null,
+            packingSeconds: null,
+            idleHours: null,
+            shiftHours: null,
+            targetBph: null,
+            raw: { migrated: true, hourKey: hk }
+          });
+          rec.id = recordFingerprint(rec);
+          records.push(rec);
+        });
+      });
+      if (s.endOfShift && s.endOfShift.results) {
+        s.endOfShift.results.forEach(function (r) {
+          var worker = normalizeWorkerName(r.worker);
+          var hours = r.bph > 0 && r.boxes ? r.boxes / r.bph : null;
+          var rec = enrichMetrics({
+            sourceFile: '(migrated-eos)',
+            reportDate: s.reportDate || null,
+            hour: null,
+            hourKey: null,
+            workerKey: r.workerKey || worker.key,
+            workerName: worker.display,
+            shiftKey: shift.key || shiftKey,
+            shiftLabel: shift.label || shiftKey,
+            shiftKnown: !!shift.known,
+            station: '',
+            sku: normalizeSku(r.sku),
+            boxes: r.boxes || 0,
+            items: 0,
+            pouches: 0,
+            packingHours: hours,
+            packingSeconds: hours != null ? hours * 3600 : null,
+            idleHours: null,
+            shiftHours: null,
+            targetBph: r.target != null ? r.target : null,
+            raw: { migrated: true }
+          });
+          rec.id = recordFingerprint(rec);
+          records.push(rec);
+        });
+      }
+    });
+    return mergeRecords([], records).records;
+  }
+
+  function sortRows(rows, sortKey, dir) {
+    var mult = dir === 'asc' ? 1 : -1;
+    var list = (rows || []).slice();
+    list.sort(function (a, b) {
+      var av = a[sortKey];
+      var bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'string') return av.localeCompare(bv) * mult;
+      if (av < bv) return -1 * mult;
+      if (av > bv) return 1 * mult;
+      return 0;
+    });
+    return list;
+  }
+
+  function paginate(rows, page, pageSize) {
+    page = Math.max(1, page || 1);
+    pageSize = Math.max(1, pageSize || 25);
+    var total = (rows || []).length;
+    var pages = Math.max(1, Math.ceil(total / pageSize));
+    if (page > pages) page = pages;
+    var start = (page - 1) * pageSize;
+    return {
+      rows: (rows || []).slice(start, start + pageSize),
+      page: page,
+      pageSize: pageSize,
+      total: total,
+      pages: pages
+    };
+  }
+
+  return {
+    NA: NA,
+    SKU_TARGETS: SKU_TARGETS,
+    HEADER_ALIASES: HEADER_ALIASES,
+    parseCSV: parseCSV,
+    stripBOM: stripBOM,
+    resolveHeaders: resolveHeaders,
+    parseNum: parseNum,
+    parseDate: parseDate,
+    parseReportDateFromHourKey: parseReportDateFromHourKey,
+    parseHourFromKey: parseHourFromKey,
+    normalizeWorkerName: normalizeWorkerName,
+    normalizeStation: normalizeStation,
+    normalizeShift: normalizeShift,
+    normalizeSku: normalizeSku,
+    safeDivide: safeDivide,
+    boxesPerHour: boxesPerHour,
+    itemsPerHour: itemsPerHour,
+    pouchesPerHour: pouchesPerHour,
+    secondsPerBox: secondsPerBox,
+    secondsPerItem: secondsPerItem,
+    efficiencyVersusTarget: efficiencyVersusTarget,
+    idlePercentage: idlePercentage,
+    performanceStatus: performanceStatus,
+    processCsvText: processCsvText,
+    recordFingerprint: recordFingerprint,
+    mergeRecords: mergeRecords,
+    mergeQuality: mergeQuality,
+    emptyQuality: emptyQuality,
+    filterRecords: filterRecords,
+    weightedAverage: weightedAverage,
+    aggregateKpis: aggregateKpis,
+    aggregateWorkers: aggregateWorkers,
+    aggregateByHour: aggregateByHour,
+    aggregateStations: aggregateStations,
+    aggregateSkus: aggregateSkus,
+    aggregateShifts: aggregateShifts,
+    workerDetail: workerDetail,
+    uniqueOptions: uniqueOptions,
+    summarizeQuality: summarizeQuality,
+    formatDateAU: formatDateAU,
+    formatDateLongAU: formatDateLongAU,
+    formatNumber: formatNumber,
+    formatRate: formatRate,
+    formatPercent: formatPercent,
+    formatHours: formatHours,
+    formatSeconds: formatSeconds,
+    formatHourLabel: formatHourLabel,
+    migrateLegacyShifts: migrateLegacyShifts,
+    sortRows: sortRows,
+    paginate: paginate,
+    enrichMetrics: enrichMetrics
+  };
+});
+
+</script>
+<script>
+/**
+ * Packer CSV performance dashboard UI.
+ * Depends on window.PackerAnalytics and #tabPacker markup.
+ */
+(function () {
+  'use strict';
+
+  var PA = window.PackerAnalytics;
+  if (!PA) {
+    console.error('PackerAnalytics module missing');
+    return;
+  }
+
+  var STORAGE_KEY = 'packer-shift-data';
+  var PAGE_SIZE = 25;
+
+  var state = {
+    version: 2,
+    files: [], // { id, name, uploadedAt, text } — raw CSV kept unchanged
+    records: [],
+    quality: PA.emptyQuality(),
+    lastUpdated: null,
+    filters: {
+      reportDate: '',
+      shift: '',
+      worker: '',
+      station: '',
+      sku: '',
+      hour: '',
+      minPerformance: '',
+      search: ''
+    },
+    sortKey: 'rankScore',
+    sortDir: 'desc',
+    page: 1,
+    selectedWorker: null,
+    loading: false,
+    error: null,
+    defaultShift: 'morning_shift'
+  };
+
+  var els = {
+    lastUpdated: document.getElementById('pkLastUpdated'),
+    fileInput: document.getElementById('pkFileInput'),
+    uploadBtn: document.getElementById('pkUploadBtn'),
+    clearBtn: document.getElementById('pkClearBtn'),
+    tagSelect: document.getElementById('pkTagSelect'),
+    filters: document.getElementById('pkFilters'),
+    kpis: document.getElementById('pkKpis'),
+    charts: document.getElementById('pkCharts'),
+    tableWrap: document.getElementById('pkTableWrap'),
+    quality: document.getElementById('pkQuality'),
+    detail: document.getElementById('pkDetail'),
+    status: document.getElementById('pkStatus'),
+    toast: document.getElementById('packerToast'),
+    body: document.getElementById('pkPanels')
+  };
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function toast(msg, type) {
+    if (!els.toast) return;
+    els.toast.textContent = msg;
+    els.toast.style.background = type === 'err' ? '#c01c14' : '#0d1117';
+    els.toast.style.color = '#fff';
+    els.toast.classList.add('show');
+    clearTimeout(els.toast._t);
+    els.toast._t = setTimeout(function () {
+      els.toast.classList.remove('show');
+    }, 3200);
+  }
+
+  function uid() {
+    return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function filtered() {
+    return PA.filterRecords(state.records, state.filters);
+  }
+
+  function statusPill(status) {
+    if (!status) return '<span class="pk-status pk-status-unknown">No target</span>';
+    var cls =
+      status.key === 'excellent'
+        ? 'pk-status-excellent'
+        : status.key === 'on_target'
+          ? 'pk-status-on'
+          : status.key === 'needs_attention'
+            ? 'pk-status-attention'
+            : 'pk-status-unknown';
+    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(status.label) + '">' + escapeHtml(status.label) + '</span>';
+  }
+
+  function barChart(items, valueKey, labelKey, opts) {
+    opts = opts || {};
+    var max = 0;
+    items.forEach(function (it) {
+      var v = it[valueKey];
+      if (v != null && v > max) max = v;
+    });
+    if (!items.length) {
+      return '<div class="pk-empty-inline">No data for this chart</div>';
+    }
+    if (max <= 0) max = 1;
+    var rows = items
+      .slice(0, opts.limit || 12)
+      .map(function (it) {
+        var v = it[valueKey];
+        var label = it[labelKey];
+        var pct = v == null ? 0 : Math.round((v / max) * 100);
+        var display = opts.format ? opts.format(v) : PA.formatRate(v);
+        return (
+          '<div class="pk-bar-row">' +
+          '<div class="pk-bar-lbl" title="' +
+          escapeHtml(String(label)) +
+          '">' +
+          escapeHtml(String(label)) +
+          '</div>' +
+          '<div class="pk-bar-track" role="img" aria-label="' +
+          escapeHtml(String(label) + ': ' + display) +
+          '"><div class="pk-bar-fill' +
+          (opts.tone ? ' ' + opts.tone : '') +
+          '" style="width:' +
+          pct +
+          '%"></div></div>' +
+          '<div class="pk-bar-val">' +
+          escapeHtml(display) +
+          '</div></div>'
+        );
+      })
+      .join('');
+    return '<div class="pk-bars">' + rows + '</div>';
+  }
+
+  function columnChart(items, valueKey, labelFn) {
+    if (!items.length) return '<div class="pk-empty-inline">No data for this chart</div>';
+    var max = 1;
+    items.forEach(function (it) {
+      if (it[valueKey] != null && it[valueKey] > max) max = it[valueKey];
+    });
+    var bars = items
+      .map(function (it) {
+        var v = it[valueKey] || 0;
+        var h = Math.max(4, Math.round((v / max) * 100));
+        var lbl = labelFn(it);
+        return (
+          '<div class="pk-col">' +
+          '<div class="pk-col-bar" style="height:' +
+          h +
+          '%" title="' +
+          escapeHtml(lbl + ': ' + PA.formatNumber(v)) +
+          '"></div>' +
+          '<div class="pk-col-lbl">' +
+          escapeHtml(lbl) +
+          '</div></div>'
+        );
+      })
+      .join('');
+    return '<div class="pk-cols">' + bars + '</div>';
+  }
+
+  function renderStatus() {
+    if (!els.status) return;
+    if (state.loading) {
+      els.status.innerHTML = '<div class="pk-banner pk-banner-load">Loading CSV data…</div>';
+      return;
+    }
+    if (state.error) {
+      els.status.innerHTML =
+        '<div class="pk-banner pk-banner-err" role="alert">' + escapeHtml(state.error) + '</div>';
+      return;
+    }
+    if (!state.records.length) {
+      els.status.innerHTML =
+        '<div class="pk-banner pk-banner-empty">' +
+        '<strong>No packer data yet</strong><br>' +
+        'Upload one or more CSV exports (summary, hourly, end-of-shift, or detailed). ' +
+        'Raw files are kept unchanged; totals rows and malformed workers are skipped.</div>';
+      return;
+    }
+    els.status.innerHTML = '';
+  }
+
+  function renderFilters() {
+    if (!els.filters) return;
+    var opts = PA.uniqueOptions(state.records);
+    var f = state.filters;
+    function options(list, selected, getVal, getLbl, allLabel) {
+      return (
+        '<option value="">' +
+        allLabel +
+        '</option>' +
+        list
+          .map(function (item) {
+            var v = getVal(item);
+            var l = getLbl(item);
+            return (
+              '<option value="' +
+              escapeHtml(String(v)) +
+              '"' +
+              (String(selected) === String(v) ? ' selected' : '') +
+              '>' +
+              escapeHtml(String(l)) +
+              '</option>'
+            );
+          })
+          .join('')
+      );
+    }
+    els.filters.innerHTML =
+      '<div class="pk-filter-grid">' +
+      '<label class="pk-fl"><span>Report date</span><select data-f="reportDate">' +
+      options(
+        opts.dates,
+        f.reportDate,
+        function (d) {
+          return d;
+        },
+        function (d) {
+          return PA.formatDateAU(d);
+        },
+        'All dates'
+      ) +
+      '</select></label>' +
+      '<label class="pk-fl"><span>Shift</span><select data-f="shift">' +
+      options(
+        opts.shifts,
+        f.shift,
+        function (s) {
+          return s.key;
+        },
+        function (s) {
+          return s.label;
+        },
+        'All shifts'
+      ) +
+      '</select></label>' +
+      '<label class="pk-fl"><span>Worker</span><select data-f="worker">' +
+      options(
+        opts.workers,
+        f.worker,
+        function (w) {
+          return w.key;
+        },
+        function (w) {
+          return w.label;
+        },
+        'All workers'
+      ) +
+      '</select></label>' +
+      '<label class="pk-fl"><span>Station</span><select data-f="station">' +
+      options(
+        opts.stations,
+        f.station,
+        function (s) {
+          return s;
+        },
+        function (s) {
+          return s;
+        },
+        'All stations'
+      ) +
+      '</select></label>' +
+      '<label class="pk-fl"><span>SKU size</span><select data-f="sku">' +
+      options(
+        opts.skus,
+        f.sku,
+        function (s) {
+          return s;
+        },
+        function (s) {
+          return s;
+        },
+        'All SKUs'
+      ) +
+      '</select></label>' +
+      '<label class="pk-fl"><span>Hour</span><select data-f="hour">' +
+      options(
+        opts.hours,
+        f.hour,
+        function (h) {
+          return h;
+        },
+        function (h) {
+          return PA.formatHourLabel(h);
+        },
+        'All hours'
+      ) +
+      '</select></label>' +
+      '<label class="pk-fl"><span>Min boxes/hour</span><input type="number" min="0" step="0.1" data-f="minPerformance" value="' +
+      escapeHtml(f.minPerformance) +
+      '" placeholder="e.g. 15"></label>' +
+      '<label class="pk-fl pk-fl-grow"><span>Search table</span><input type="search" data-f="search" value="' +
+      escapeHtml(f.search) +
+      '" placeholder="Worker, station, SKU…"></label>' +
+      '</div>';
+
+    Array.prototype.forEach.call(els.filters.querySelectorAll('[data-f]'), function (input) {
+      var ev = input.tagName === 'SELECT' ? 'change' : 'input';
+      input.addEventListener(ev, function () {
+        state.filters[input.getAttribute('data-f')] = input.value;
+        state.page = 1;
+        renderKpis();
+        renderCharts();
+        renderTable();
+        renderQuality();
+      });
+    });
+  }
+
+  function renderKpis() {
+    if (!els.kpis) return;
+    var rows = filtered();
+    if (!state.records.length) {
+      els.kpis.innerHTML = '';
+      return;
+    }
+    var k = PA.aggregateKpis(rows);
+    var cards = [
+      { label: 'Total boxes packed', value: PA.formatNumber(k.totalBoxes), tone: 'cb', sub: 'Sum of filtered rows' },
+      { label: 'Total items packed', value: PA.formatNumber(k.totalItems), tone: 'cb', sub: 'Sum of filtered rows' },
+      {
+        label: 'Avg boxes / hour',
+        value: PA.formatRate(k.averageBoxesPerHour),
+        tone: 'cg',
+        sub: 'Calculated · boxes ÷ packing hours'
+      },
+      {
+        label: 'Avg efficiency',
+        value: PA.formatPercent(k.averageEfficiency),
+        tone: 'cg',
+        sub: 'Calculated · weighted vs target'
+      },
+      {
+        label: 'Total packing hours',
+        value: PA.formatHours(k.totalPackingHours),
+        tone: 'ca',
+        sub: 'Sum of packing time'
+      },
+      {
+        label: 'Avg idle %',
+        value: PA.formatPercent(k.averageIdlePercentage),
+        tone: 'ca',
+        sub: 'Calculated · weighted idle ÷ shift hours'
+      },
+      {
+        label: 'Active workers',
+        value: PA.formatNumber(k.activeWorkers),
+        tone: '',
+        sub: 'Distinct packers in filter'
+      }
+    ];
+    els.kpis.innerHTML =
+      '<div class="pk-kpi-grid">' +
+      cards
+        .map(function (c) {
+          return (
+            '<div class="pk-kpi ' +
+            c.tone +
+            '"><div class="pk-kpi-l">' +
+            escapeHtml(c.label) +
+            '</div><div class="pk-kpi-v">' +
+            escapeHtml(c.value) +
+            '</div><div class="pk-kpi-s">' +
+            escapeHtml(c.sub) +
+            '</div></div>'
+          );
+        })
+        .join('') +
+      '</div>';
+  }
+
+  function renderCharts() {
+    if (!els.charts) return;
+    if (!state.records.length) {
+      els.charts.innerHTML = '';
+      return;
+    }
+    var rows = filtered();
+    var workers = PA.aggregateWorkers(rows);
+    var byHour = PA.aggregateByHour(rows);
+    var stations = PA.aggregateStations(rows);
+    var skus = PA.aggregateSkus(rows);
+    var shifts = PA.aggregateShifts(rows);
+
+    var ranking = workers.map(function (w) {
+      return { label: w.workerName, boxesPerHour: w.boxesPerHour };
+    });
+    var eff = workers.map(function (w) {
+      return { label: w.workerName, efficiency: w.efficiency };
+    });
+    var idle = workers
+      .filter(function (w) {
+        return w.idlePercentage != null;
+      })
+      .map(function (w) {
+        return { label: w.workerName, idle: w.idlePercentage };
+      });
+
+    els.charts.innerHTML =
+      '<div class="pk-chart-grid">' +
+      chartCard('Worker ranking by boxes / hour', barChart(ranking, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
+      chartCard(
+        'Boxes packed by hour',
+        columnChart(byHour, 'boxes', function (it) {
+          return PA.formatHourLabel(it.hour);
+        })
+      ) +
+      chartCard(
+        'Efficiency vs target by worker',
+        barChart(eff, 'efficiency', 'label', {
+          format: PA.formatPercent,
+          tone: 'tone-g'
+        })
+      ) +
+      chartCard(
+        'Idle % by worker',
+        idle.length
+          ? barChart(idle, 'idle', 'label', { format: PA.formatPercent, tone: 'tone-a' })
+          : '<div class="pk-empty-inline">Idle time not present in uploaded CSVs</div>'
+      ) +
+      chartCard(
+        'Station performance',
+        barChart(stations, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })
+      ) +
+      chartCard(
+        'SKU-size performance',
+        barChart(skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' })
+      ) +
+      chartCard(
+        'Shift comparison',
+        barChart(shifts, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-a' })
+      ) +
+      '</div>';
+  }
+
+  function chartCard(title, body) {
+    return (
+      '<section class="pk-chart-card"><h3 class="pk-chart-title">' +
+      escapeHtml(title) +
+      '</h3>' +
+      body +
+      '</section>'
+    );
+  }
+
+  function renderTable() {
+    if (!els.tableWrap) return;
+    if (!state.records.length) {
+      els.tableWrap.innerHTML = '';
+      return;
+    }
+    var workers = PA.aggregateWorkers(filtered());
+    // Re-sort if user chose a column other than default rankScore
+    if (state.sortKey !== 'rankScore') {
+      workers = PA.sortRows(workers, state.sortKey, state.sortDir);
+      workers.forEach(function (w, i) {
+        w.rank = i + 1;
+      });
+    } else if (state.sortDir === 'asc') {
+      workers = workers.slice().reverse();
+      workers.forEach(function (w, i) {
+        w.rank = i + 1;
+      });
+    }
+    var page = PA.paginate(workers, state.page, PAGE_SIZE);
+
+    function th(key, label, cls) {
+      var arrow = state.sortKey === key ? (state.sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+      return (
+        '<th class="' +
+        (cls || '') +
+        '"><button type="button" class="pk-th" data-sort="' +
+        key +
+        '">' +
+        escapeHtml(label + arrow) +
+        '</button></th>'
+      );
+    }
+
+    var body = page.rows
+      .map(function (w) {
+        return (
+          '<tr class="pk-worker-row" data-worker="' +
+          escapeHtml(w.workerKey) +
+          '" tabindex="0">' +
+          '<td class="r mn">' +
+          w.rank +
+          '</td>' +
+          '<td><button type="button" class="pk-link" data-worker="' +
+          escapeHtml(w.workerKey) +
+          '">' +
+          escapeHtml(w.workerName) +
+          '</button></td>' +
+          '<td>' +
+          escapeHtml(w.shift) +
+          '</td>' +
+          '<td>' +
+          escapeHtml(w.station) +
+          '</td>' +
+          '<td class="r mn">' +
+          escapeHtml(PA.formatNumber(w.boxes)) +
+          '</td>' +
+          '<td class="r mn">' +
+          escapeHtml(PA.formatNumber(w.items)) +
+          '</td>' +
+          '<td class="r mn">' +
+          escapeHtml(PA.formatHours(w.packingHours)) +
+          '</td>' +
+          '<td class="r mn" title="Calculated">' +
+          escapeHtml(PA.formatRate(w.boxesPerHour)) +
+          '</td>' +
+          '<td class="r mn" title="Calculated">' +
+          escapeHtml(PA.formatRate(w.itemsPerHour)) +
+          '</td>' +
+          '<td class="r mn" title="Calculated">' +
+          escapeHtml(PA.formatSeconds(w.secondsPerBox)) +
+          '</td>' +
+          '<td class="r mn" title="Calculated">' +
+          escapeHtml(PA.formatPercent(w.efficiency)) +
+          '</td>' +
+          '<td class="r mn" title="Calculated">' +
+          escapeHtml(PA.formatPercent(w.idlePercentage)) +
+          '</td>' +
+          '<td>' +
+          statusPill(w.status) +
+          '</td></tr>'
+        );
+      })
+      .join('');
+
+    els.tableWrap.innerHTML =
+      '<section class="pk-table-card">' +
+      '<div class="pk-table-hdr"><h2 class="pk-section-title">Worker performance</h2>' +
+      '<div class="pk-table-meta">' +
+      page.total +
+      ' worker' +
+      (page.total === 1 ? '' : 's') +
+      ' · ranked by weighted boxes/hour · calculated fields show N/A when denominator is missing</div></div>' +
+      '<div class="tw pk-tw"><table><thead><tr>' +
+      th('rank', 'Rank', 'r') +
+      th('workerName', 'Worker') +
+      th('shift', 'Shift') +
+      th('station', 'Station') +
+      th('boxes', 'Boxes', 'r') +
+      th('items', 'Items', 'r') +
+      th('packingHours', 'Packing hours', 'r') +
+      th('boxesPerHour', 'Boxes/hour', 'r') +
+      th('itemsPerHour', 'Items/hour', 'r') +
+      th('secondsPerBox', 'Sec/box', 'r') +
+      th('efficiency', 'Eff. vs target', 'r') +
+      th('idlePercentage', 'Idle %', 'r') +
+      th('status', 'Performance status') +
+      '</tr></thead><tbody>' +
+      (body ||
+        '<tr><td colspan="13" class="empty-td">No workers match the current filters</td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="pk-pager">' +
+      '<button type="button" class="btn btn-sm" data-page="prev"' +
+      (page.page <= 1 ? ' disabled' : '') +
+      '>Previous</button>' +
+      '<span>Page ' +
+      page.page +
+      ' of ' +
+      page.pages +
+      '</span>' +
+      '<button type="button" class="btn btn-sm" data-page="next"' +
+      (page.page >= page.pages ? ' disabled' : '') +
+      '>Next</button></div></section>';
+
+    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-sort]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-sort');
+        if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+        else {
+          state.sortKey = key;
+          state.sortDir = key === 'workerName' || key === 'shift' || key === 'station' || key === 'status' ? 'asc' : 'desc';
+        }
+        state.page = 1;
+        renderTable();
+      });
+    });
+    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-page]'), function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        state.page += btn.getAttribute('data-page') === 'next' ? 1 : -1;
+        renderTable();
+      });
+    });
+    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-worker]'), function (el) {
+      function open() {
+        state.selectedWorker = el.getAttribute('data-worker');
+        renderDetail();
+      }
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      });
+    });
+  }
+
+  function renderDetail() {
+    if (!els.detail) return;
+    if (!state.selectedWorker) {
+      els.detail.innerHTML = '';
+      els.detail.hidden = true;
+      return;
+    }
+    var detail = PA.workerDetail(filtered(), state.selectedWorker);
+    if (!detail.summary) {
+      els.detail.innerHTML = '';
+      els.detail.hidden = true;
+      return;
+    }
+    var s = detail.summary;
+    els.detail.hidden = false;
+    var trend =
+      detail.daily.length > 1
+        ? columnChart(detail.daily, 'boxes', function (it) {
+            return it.date === 'unknown' ? '?' : PA.formatDateAU(it.date);
+          })
+        : '<div class="pk-empty-inline">Trend needs multiple report dates</div>';
+
+    els.detail.innerHTML =
+      '<div class="pk-detail-panel" role="dialog" aria-label="Worker detail">' +
+      '<div class="pk-detail-hdr">' +
+      '<div><h2 class="pk-section-title">' +
+      escapeHtml(s.workerName) +
+      '</h2>' +
+      '<div class="pk-table-meta">' +
+      escapeHtml(s.shift) +
+      ' · ' +
+      statusPill(s.status) +
+      '</div></div>' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
+      '<div class="pk-detail-kpis">' +
+      detailMetric('Boxes', PA.formatNumber(s.boxes)) +
+      detailMetric('Packing hours', PA.formatHours(s.packingHours)) +
+      detailMetric('Boxes / hour', PA.formatRate(s.boxesPerHour)) +
+      detailMetric('Idle %', PA.formatPercent(s.idlePercentage)) +
+      detailMetric('Efficiency', PA.formatPercent(s.efficiency)) +
+      '</div>' +
+      '<div class="pk-detail-grid">' +
+      '<section><h3 class="pk-chart-title">Daily trend</h3>' +
+      trend +
+      '</section>' +
+      '<section><h3 class="pk-chart-title">Hourly boxes</h3>' +
+      columnChart(detail.hourly, 'boxes', function (it) {
+        return PA.formatHourLabel(it.hour);
+      }) +
+      '</section>' +
+      '<section><h3 class="pk-chart-title">Station history</h3>' +
+      barChart(detail.stations, 'boxes', 'label', { format: PA.formatNumber, tone: 'tone-b' }) +
+      '</section>' +
+      '<section><h3 class="pk-chart-title">SKU performance</h3>' +
+      barChart(detail.skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' }) +
+      '</section>' +
+      '</div></div>';
+
+    var close = document.getElementById('pkDetailClose');
+    if (close)
+      close.addEventListener('click', function () {
+        state.selectedWorker = null;
+        renderDetail();
+      });
+  }
+
+  function detailMetric(label, value) {
+    return (
+      '<div class="pk-detail-metric"><div class="pk-kpi-l">' +
+      escapeHtml(label) +
+      '</div><div class="pk-kpi-v" style="font-size:1.15rem">' +
+      escapeHtml(value) +
+      '</div></div>'
+    );
+  }
+
+  function renderQuality() {
+    if (!els.quality) return;
+    if (!state.records.length && !state.files.length) {
+      els.quality.innerHTML = '';
+      return;
+    }
+    var q = PA.summarizeQuality(state.records, state.quality);
+    // Recount duplicates already removed is in quality.duplicateRows from imports
+    var items = [
+      ['Valid rows', q.validRows],
+      ['Invalid rows', q.invalidRows],
+      ['Missing worker names', q.missingWorkerNames],
+      ['Missing dates', q.missingDates],
+      ['Missing packing time', q.missingPackingTime],
+      ['Duplicate rows skipped', q.duplicateRows],
+      ['Unknown / inconsistent shifts', q.unknownShifts],
+      ['Failed calculated fields', q.failedCalculations],
+      ['Totals rows skipped', q.totalsRowsSkipped],
+      ['Mixed SKU rows (SKU cleared)', q.mixedSkuRows || 0],
+      ['Files kept (raw unchanged)', state.files.length]
+    ];
+    els.quality.innerHTML =
+      '<section class="pk-quality">' +
+      '<h2 class="pk-section-title">Data quality</h2>' +
+      '<div class="pk-quality-grid">' +
+      items
+        .map(function (it) {
+          return (
+            '<div class="pk-quality-item"><div class="pk-kpi-v" style="font-size:1.1rem">' +
+            escapeHtml(PA.formatNumber(it[1])) +
+            '</div><div class="pk-kpi-l">' +
+            escapeHtml(it[0]) +
+            '</div></div>'
+          );
+        })
+        .join('') +
+      '</div>' +
+      '<div class="pk-file-list">' +
+      state.files
+        .map(function (f) {
+          return (
+            '<div class="pk-file-chip" title="Raw CSV preserved">' +
+            escapeHtml(f.name) +
+            ' · ' +
+            escapeHtml(new Date(f.uploadedAt).toLocaleString('en-AU')) +
+            '</div>'
+          );
+        })
+        .join('') +
+      '</div></section>';
+  }
+
+  function renderAll() {
+    renderStatus();
+    renderFilters();
+    renderKpis();
+    renderCharts();
+    renderTable();
+    renderDetail();
+    renderQuality();
+    updateHeader();
+  }
+
+  function updateHeader() {
+    if (!els.lastUpdated) return;
+    if (!state.lastUpdated) {
+      els.lastUpdated.textContent = 'No uploads yet';
+      return;
+    }
+    var opts = PA.uniqueOptions(state.records);
+    var parts = [];
+    if (opts.dates[0]) parts.push('Latest date ' + PA.formatDateAU(opts.dates[0]));
+    parts.push(state.records.length + ' rows');
+    parts.push(state.files.length + ' file' + (state.files.length === 1 ? '' : 's'));
+    els.lastUpdated.textContent = parts.join(' · ');
+  }
+
+  async function saveData() {
+    try {
+      var payload = {
+        version: 2,
+        files: state.files,
+        records: state.records,
+        quality: state.quality,
+        lastUpdated: state.lastUpdated,
+        defaultShift: state.defaultShift
+      };
+      await window.storage.set(STORAGE_KEY, JSON.stringify(payload), false);
+      return true;
+    } catch (e) {
+      console.error('packer save failed', e);
+      return false;
+    }
+  }
+
+  async function loadAll() {
+    state.loading = true;
+    renderStatus();
+    try {
+      var r = await window.storage.get(STORAGE_KEY, false);
+      if (r && r.value) {
+        var data = JSON.parse(r.value);
+        if (data && data.version === 2 && Array.isArray(data.records)) {
+          state.files = data.files || [];
+          state.records = data.records || [];
+          state.quality = data.quality || PA.emptyQuality();
+          state.lastUpdated = data.lastUpdated || null;
+          state.defaultShift = data.defaultShift || 'morning_shift';
+        } else {
+          // Legacy shift-keyed object → migrate into flat records; no raw files available
+          state.records = PA.migrateLegacyShifts(data);
+          state.files = [];
+          state.quality = PA.summarizeQuality(state.records, null);
+          state.lastUpdated = Date.now();
+          await saveData();
+        }
+      }
+    } catch (e) {
+      console.error('packer load failed', e);
+      state.error = 'Could not read saved data — showing an empty dashboard so nothing is overwritten.';
+      toast(state.error, 'err');
+    }
+    state.loading = false;
+    if (els.tagSelect) {
+      // Keep a default shift tag for hourly / EOS uploads that lack a Shift column
+      var shifts = [
+        { key: 'morning_shift', label: 'Morning' },
+        { key: 'afternoon_shift', label: 'Afternoon' },
+        { key: 'evening_shift', label: 'Evening' },
+        { key: 'night_shift', label: 'Night' }
+      ];
+      els.tagSelect.innerHTML = shifts
+        .map(function (s) {
+          return (
+            '<option value="' +
+            s.key +
+            '"' +
+            (s.key === state.defaultShift ? ' selected' : '') +
+            '>' +
+            s.label +
+            '</option>'
+          );
+        })
+        .join('');
+    }
+    renderAll();
+  }
+
+  async function importFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    state.loading = true;
+    state.error = null;
+    renderStatus();
+    var messages = [];
+    var anyOk = false;
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      try {
+        var text = await file.text();
+        var res = PA.processCsvText(text, {
+          sourceFile: file.name,
+          defaultShift: (els.tagSelect && els.tagSelect.value) || state.defaultShift
+        });
+        if (!res.ok) {
+          messages.push(file.name + ': ' + res.error);
+          continue;
+        }
+        // Keep original raw text unchanged
+        state.files.push({
+          id: uid(),
+          name: file.name,
+          uploadedAt: Date.now(),
+          text: res.rawText
+        });
+        var before = state.records.length;
+        var merged = PA.mergeRecords(state.records, res.records);
+        var newDupes = merged.duplicatesRemoved - 0;
+        // duplicatesRemoved counts all dupes in concat; subtract those already in existing
+        var onlyIncomingDupes = PA.mergeRecords([], res.records);
+        var crossDupes = before + onlyIncomingDupes.records.length - merged.records.length;
+        state.records = merged.records;
+        res.quality.duplicateRows += Math.max(0, crossDupes);
+        state.quality = PA.mergeQuality(state.quality, res.quality);
+        state.lastUpdated = Date.now();
+        anyOk = true;
+        messages.push(
+          file.name +
+            ': ' +
+            res.records.length +
+            ' row(s) (' +
+            res.format +
+            ')' +
+            (crossDupes > 0 ? ', ' + crossDupes + ' duplicate(s) skipped' : '')
+        );
+      } catch (err) {
+        messages.push('Failed to read ' + file.name);
+        console.error(err);
+      }
+    }
+    state.loading = false;
+    var saved = true;
+    if (anyOk) {
+      saved = await saveData();
+      if (!saved) messages.push('Could not save to storage — data may be lost on refresh');
+    }
+    if (!anyOk && messages.length) state.error = messages.join(' · ');
+    renderAll();
+    toast(messages.join(' · ') || 'No files imported', anyOk && saved ? undefined : 'err');
+  }
+
+  async function clearAll() {
+    if (!confirm('Clear all imported packer CSV data? Raw copies in storage will be removed from this browser.'))
+      return;
+    state.files = [];
+    state.records = [];
+    state.quality = PA.emptyQuality();
+    state.lastUpdated = null;
+    state.selectedWorker = null;
+    state.error = null;
+    state.page = 1;
+    await saveData();
+    renderAll();
+    toast('Packer data cleared');
+  }
+
+  // Events
+  if (els.uploadBtn && els.fileInput) {
+    els.uploadBtn.addEventListener('click', function () {
+      els.fileInput.click();
+    });
+    els.fileInput.addEventListener('change', function (e) {
+      importFiles(e.target.files).then(function () {
+        els.fileInput.value = '';
+      });
+    });
+  }
+  if (els.clearBtn) els.clearBtn.addEventListener('click', clearAll);
+  if (els.tagSelect) {
+    els.tagSelect.addEventListener('change', function () {
+      state.defaultShift = els.tagSelect.value;
+      saveData();
+    });
+  }
+
+  loadAll();
+})();
+
+</script>
 
 <script>
 (function(){

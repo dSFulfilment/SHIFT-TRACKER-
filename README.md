@@ -1,36 +1,38 @@
 # Shift Floor Planner
 
-Single-page warehouse shift tool with:
+Single-file warehouse shift tool (`index.html`). Open it in a browser — no server, works offline.
+
+Includes:
 
 - Floor Plan board (staff, SKUs, stations, annotations)
 - Break Planner (role-based break groups)
 - Shift Tracker (plan vs actual packing rate)
 - Packer CSV import and performance dashboard
+- Roster / week attendance
 
-## Run the dashboard
+## Use it live (offline)
 
-Open `index.html` in a browser, or from this folder:
+1. Download the latest `index.html` from the branch or PR (raw file).
+2. Open that file in Chrome/Edge/Safari (double-click or File → Open).
+3. Data stays in the browser (`localStorage` / host `window.storage` when available).
 
-```bash
-npm start
-```
+You only need `index.html`. Optional folders:
 
-Then visit http://localhost:8080 and use the bottom nav to open **Packer**.
+- `fixtures/` — sample CSVs for trying Packer upload
+- `js/packer-analytics.js` + `tests/` — for developers running unit tests only
 
-Data persists in local storage (or the host `window.storage` API when available). Original CSV text is stored unchanged alongside cleaned analytics rows.
+## Latest updates
 
-## Packer CSV
+Branch: `cursor/shift-floor-planner-f7b8`  
+PR: https://github.com/dSFulfilment/SHIFT-TRACKER-/pull/1  
 
-Upload one or more CSV exports. Headers are auto-detected (case-insensitive). Supported shapes:
+Raw HTML (always current on that branch):
 
-- **Summary** — Shift, worker, station, boxes (+ optional items/pouches/seconds/SKU)
-- **Hourly** — Worker, report date hour, boxes
-- **End of shift** — Worker, SKU, boxes, packing hours
-- **Detailed** — Worker + boxes with optional date/hour/shift/station/SKU/idle/target
+https://raw.githubusercontent.com/dSFulfilment/SHIFT-TRACKER-/cursor/shift-floor-planner-f7b8/index.html
 
-Sample fixtures live in `fixtures/`.
+Save that file and reopen it whenever you want the newest build.
 
-## Tests
+## Developer tests (optional)
 
 ```bash
 npm test
