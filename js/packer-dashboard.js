@@ -48,8 +48,58 @@
     loading: false,
     error: null,
     view: 'strike', // strike | hourly | quality
-    pendingImport: null // { files: [{name,text,result}], targetDate, targetShift, mode }
+    pendingImport: null // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
   };
+
+  /** Map CSV shiftKey → calendar morning|afternoon. */
+  function rosterShiftFromRecord(rec, fallback) {
+    var sk = (rec && rec.shiftKey) || '';
+    if (/afternoon|evening|night/i.test(sk)) return 'afternoon';
+    if (/morning|day|^am$/i.test(sk)) return 'morning';
+    return fallback === 'afternoon' ? 'afternoon' : 'morning';
+  }
+
+  /** Group import rows into byDate buckets using each row's report date + shift. */
+  function groupImportRecords(records, fallbackDate, fallbackShift) {
+    var groups = {};
+    (records || []).forEach(function (rec) {
+      var date = (rec && rec.reportDate) || fallbackDate || '';
+      if (!date) return;
+      var shift = rosterShiftFromRecord(rec, fallbackShift);
+      var key = date + '|' + shift;
+      if (!groups[key]) groups[key] = { date: date, shift: shift, records: [] };
+      groups[key].records.push(rec);
+    });
+    return groups;
+  }
+
+  function summarizeImportPlan(files, fallbackDate, fallbackShift) {
+    var totals = {};
+    var formats = {};
+    (files || []).forEach(function (f) {
+      var res = f && f.result;
+      if (!res || !res.ok) return;
+      if (res.format) formats[res.format] = (formats[res.format] || 0) + 1;
+      var groups = groupImportRecords(res.records, fallbackDate, fallbackShift);
+      Object.keys(groups).forEach(function (k) {
+        if (!totals[k]) totals[k] = { date: groups[k].date, shift: groups[k].shift, count: 0 };
+        totals[k].count += groups[k].records.length;
+      });
+    });
+    var buckets = Object.keys(totals).sort().map(function (k) { return totals[k]; });
+    buckets.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.shift < b.shift ? -1 : 1;
+    });
+    return { buckets: buckets, formats: formats };
+  }
+
+  function preferViewFromFormats(formats) {
+    var hasHourly = !!(formats && formats.hourly);
+    var hasStrike = !!(formats && (formats.summary || formats.detailed || formats.endOfShift));
+    if (hasHourly && !hasStrike) return 'hourly';
+    return 'strike';
+  }
 
   var els = {
     lastUpdated: document.getElementById('pkLastUpdated'),
@@ -398,13 +448,13 @@
     if (state.showLegacy) {
       els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>Legacy imports</strong><br>' +
         'Data from before the Day/Afternoon × Mon–Fri calendar. Kept so nothing was dropped. ' +
-        'New uploads go into the selected weekday.</div>';
+        'New uploads use each row’s report date and Day/Afternoon.</div>';
       return;
     }
     if (!currentRecords().length) {
       els.status.innerHTML = '<div class="pk-banner">No data for ' +
         escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-        '. Upload your <b>raw</b> CSV (for strike check) and <b>hourly boxes</b> CSV — you’ll preview before save.</div>';
+        '. At end of shift upload <b>Boxes Packed by Worker</b> (strike check) and/or <b>Inter hour</b> (boxes per hour). Rows go into the report date and Day/Afternoon from the CSV.</div>';
       return;
     }
     els.status.innerHTML = '';
@@ -476,7 +526,7 @@
     }).join('');
     var note = withHours.length
       ? 'Boxes/hour vs SKU target & strike line'
-      : 'Upload your raw CSV (with packing hours + SKU) for strike check. Hourly file alone can’t compute BPH.';
+      : 'Upload Boxes Packed by Worker (needs packing time + SKU). Inter hour alone can’t compute BPH.';
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Strike check</h2>' +
       '<div class="pk-table-meta">' + escapeHtml(note) + '</div></div>' +
@@ -484,7 +534,7 @@
       '<th class="r">#</th><th>Worker</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
       '<th class="r">Target</th><th class="r">Strike</th><th>Status</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="8" class="empty-td">No strike rows yet — upload raw + hourly CSVs</td></tr>') +
+      (body || '<tr><td colspan="8" class="empty-td">No strike rows yet — upload Boxes Packed by Worker</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -502,7 +552,7 @@
     var byHour = PA.aggregateByHour(filtered());
     var workers = PA.aggregateWorkers(filtered());
     if (!byHour.length) {
-      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No hourly rows for this day. Upload the boxes-per-hour CSV.</div></section>';
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No hourly rows for this day/shift. Upload the Inter hour CSV.</div></section>';
       return;
     }
     var hourKeys = byHour.map(function (h) { return h.hour; });
@@ -604,17 +654,32 @@
     var p = state.pendingImport;
     if (!p) { els.preview.hidden = true; els.preview.innerHTML = ''; return; }
     els.preview.hidden = false;
-    var bucket = ensureBucket(p.targetDate, p.targetShift);
-    var existing = (bucket.records || []).length;
-    var fileBlocks = p.files.map(function (f, idx) {
+    var plan = summarizeImportPlan(p.files, p.fallbackDate, p.fallbackShift);
+    var routeBlocks = plan.buckets.length
+      ? '<div class="pk-preview-file"><strong>Will save into</strong><div class="pk-table-meta">' +
+        plan.buckets.map(function (b) {
+          var existing = (ensureBucket(b.date, b.shift).records || []).length;
+          return escapeHtml(PA.formatDateAU(b.date) + ' · ' + shiftLabel(b.shift)) +
+            ': ' + b.count + ' row(s)' +
+            (existing ? ' (already has ' + existing + ')' : '');
+        }).join('<br>') +
+        '</div></div>'
+      : '<div class="pk-banner pk-banner-load">No report dates found in the CSV — rows will use the day you’re viewing (' +
+        escapeHtml(PA.formatDateAU(p.fallbackDate) + ' · ' + shiftLabel(p.fallbackShift)) + ').</div>';
+    var existingTotal = plan.buckets.reduce(function (n, b) {
+      return n + ((ensureBucket(b.date, b.shift).records || []).length);
+    }, 0);
+    var fileBlocks = p.files.map(function (f) {
       var r = f.result;
       if (!r.ok) {
         return '<div class="pk-preview-file err"><strong>' + escapeHtml(f.name) + '</strong><br>' +
           escapeHtml(r.error || 'Invalid') + '</div>';
       }
       var q = r.quality || {};
+      var label = r.format === 'hourly' ? 'Inter hour'
+        : (r.format === 'summary' ? 'Boxes Packed by Worker' : (r.format || '?'));
       return '<div class="pk-preview-file"><strong>' + escapeHtml(f.name) + '</strong>' +
-        '<div class="pk-table-meta">Format: ' + escapeHtml(r.format || '?') +
+        '<div class="pk-table-meta">' + escapeHtml(label) +
         ' · ' + r.records.length + ' usable row(s)' +
         (q.invalidRows ? ' · ' + q.invalidRows + ' invalid' : '') +
         (q.duplicateRows ? ' · ' + q.duplicateRows + ' dupes in file' : '') +
@@ -626,20 +691,14 @@
     els.preview.innerHTML =
       '<div class="pk-preview-card" role="dialog" aria-label="Import preview">' +
       '<h2 class="pk-section-title">Import preview</h2>' +
+      '<div class="pk-table-meta" style="margin-bottom:8px">Day and Afternoon come from each CSV row — not from the tab you’re on.</div>' +
       '<div class="pk-preview-targets">' +
-      '<label class="pk-fl"><span>Day</span><select id="pkPreviewDate">' +
-      dayOptionsHtml(p.targetDate) + '</select></label>' +
-      '<label class="pk-fl"><span>Shift</span><select id="pkPreviewShift">' +
-      '<option value="morning"' + (p.targetShift === 'morning' ? ' selected' : '') + '>Day</option>' +
-      '<option value="afternoon"' + (p.targetShift === 'afternoon' ? ' selected' : '') + '>Afternoon</option>' +
-      '</select></label>' +
       '<label class="pk-fl"><span>If data already exists</span><select id="pkPreviewMode">' +
       '<option value="merge"' + (p.mode !== 'replace' ? ' selected' : '') + '>Merge (skip duplicates)</option>' +
-      '<option value="replace"' + (p.mode === 'replace' ? ' selected' : '') + '>Replace this day/shift</option>' +
+      '<option value="replace"' + (p.mode === 'replace' ? ' selected' : '') + '>Replace those day/shifts</option>' +
       '</select></label></div>' +
-      (existing ? '<div class="pk-banner pk-banner-load">This day/shift already has ' + existing +
-        ' row(s). Choose Merge or Replace above.</div>' : '') +
-      fileBlocks +
+      (existingTotal ? '<div class="pk-banner pk-banner-load">Some of those day/shifts already have data. Choose Merge or Replace above.</div>' : '') +
+      routeBlocks + fileBlocks +
       '<div class="pk-preview-actions">' +
       '<button type="button" class="btn btn-ghost" id="pkPreviewCancel">Cancel</button>' +
       '<button type="button" class="btn btn-primary" id="pkPreviewImport"' + (anyOk ? '' : ' disabled') + '>Import</button>' +
@@ -649,68 +708,90 @@
       if (els.fileInput) els.fileInput.value = '';
     });
     document.getElementById('pkPreviewImport').addEventListener('click', function () {
-      p.targetDate = document.getElementById('pkPreviewDate').value;
-      p.targetShift = document.getElementById('pkPreviewShift').value;
       p.mode = document.getElementById('pkPreviewMode').value;
       commitPendingImport();
     });
-  }
-  function dayOptionsHtml(selected) {
-    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
-    var html = '';
-    for (var i = 0; i < 5; i++) {
-      var d = addDays(state.weekStart, i);
-      var key = ymd(d);
-      html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' +
-        DAY_NAMES[i] + ' ' + PA.formatDateAU(key) + '</option>';
-    }
-    return html;
   }
 
   async function commitPendingImport() {
     var p = state.pendingImport;
     if (!p) return;
-    var bucket = ensureBucket(p.targetDate, p.targetShift);
     var messages = [];
     var anyOk = false;
-    if (p.mode === 'replace') {
-      bucket.records = [];
-      bucket.files = [];
-      bucket.quality = PA.emptyQuality();
-    }
+    var touched = {};
+    var formats = {};
+    var jumpDate = p.fallbackDate;
+    var jumpShift = p.fallbackShift;
+    var jumpCount = 0;
+
     p.files.forEach(function (f) {
       var res = f.result;
       if (!res || !res.ok) {
         messages.push(f.name + ': ' + (res && res.error ? res.error : 'failed'));
         return;
       }
-      var before = bucket.records.length;
-      var merged = PA.mergeRecords(bucket.records, res.records);
-      var cross = before + res.records.length - merged.records.length;
-      bucket.records = merged.records;
-      res.quality.duplicateRows += Math.max(0, cross);
-      bucket.quality = PA.mergeQuality(bucket.quality, res.quality);
-      bucket.files.push({
-        id: uid(),
-        name: f.name,
-        uploadedAt: Date.now(),
-        text: res.rawText,
-        rowCount: res.records.length,
-        format: res.format,
-        quality: res.quality
+      if (res.format) formats[res.format] = (formats[res.format] || 0) + 1;
+      var groups = groupImportRecords(res.records, p.fallbackDate, p.fallbackShift);
+      var keys = Object.keys(groups);
+      if (!keys.length) {
+        messages.push(f.name + ': no rows with a usable date');
+        return;
+      }
+      var fileDupes = 0;
+      var fileAdded = 0;
+      keys.forEach(function (k) {
+        var g = groups[k];
+        var bucket = ensureBucket(g.date, g.shift);
+        touched[k] = { date: g.date, shift: g.shift };
+        if (p.mode === 'replace' && !bucket._replacedThisImport) {
+          bucket.records = [];
+          bucket.files = [];
+          bucket.quality = PA.emptyQuality();
+          bucket._replacedThisImport = true;
+        }
+        var before = bucket.records.length;
+        var merged = PA.mergeRecords(bucket.records, g.records);
+        var cross = before + g.records.length - merged.records.length;
+        fileDupes += Math.max(0, cross);
+        fileAdded += merged.records.length - before;
+        bucket.records = merged.records;
+        bucket.quality = PA.mergeQuality(bucket.quality, res.quality);
+        bucket.files.push({
+          id: uid(),
+          name: f.name,
+          uploadedAt: Date.now(),
+          text: res.rawText,
+          rowCount: g.records.length,
+          format: res.format,
+          quality: res.quality
+        });
+        if (g.records.length > jumpCount) {
+          jumpCount = g.records.length;
+          jumpDate = g.date;
+          jumpShift = g.shift;
+        }
       });
       anyOk = true;
-      messages.push(f.name + ': ' + res.records.length + ' row(s)' + (cross ? ', ' + cross + ' dupes skipped' : ''));
+      messages.push(f.name + ': ' + fileAdded + ' row(s) into ' + keys.length + ' slot(s)' +
+        (fileDupes ? ', ' + fileDupes + ' dupes skipped' : ''));
     });
+
+    Object.keys(touched).forEach(function (k) {
+      var t = touched[k];
+      var b = ensureBucket(t.date, t.shift);
+      delete b._replacedThisImport;
+    });
+
     state.pendingImport = null;
-    // Jump UI to the target day/shift
     state.showLegacy = false;
-    state.rosterShift = p.targetShift;
-    var ws = startOfWeek(new Date(p.targetDate + 'T00:00:00'));
+    state.view = preferViewFromFormats(formats);
+    state.rosterShift = jumpShift === 'afternoon' ? 'afternoon' : 'morning';
+    var ws = startOfWeek(new Date(jumpDate + 'T00:00:00'));
     state.weekStart = ws;
     state.activeWeekKey = ymd(ws);
+    state.dayIdx = 0;
     for (var i = 0; i < 5; i++) {
-      if (ymd(addDays(ws, i)) === p.targetDate) { state.dayIdx = i; break; }
+      if (ymd(addDays(ws, i)) === jumpDate) { state.dayIdx = i; break; }
     }
     var saved = true;
     if (anyOk) saved = await saveData();
@@ -857,8 +938,8 @@
     state.loading = false;
     state.pendingImport = {
       files: staged,
-      targetDate: activeDateKey(),
-      targetShift: state.rosterShift === 'afternoon' ? 'afternoon' : 'morning',
+      fallbackDate: activeDateKey(),
+      fallbackShift: state.rosterShift === 'afternoon' ? 'afternoon' : 'morning',
       mode: 'merge'
     };
     renderStatus();

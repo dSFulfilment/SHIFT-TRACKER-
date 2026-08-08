@@ -7961,9 +7961,59 @@ function toast(msg, err) {
     selectedWorker: null,
     loading: false,
     error: null,
-    view: 'table', // table | charts | quality
-    pendingImport: null // { files: [{name,text,result}], targetDate, targetShift, mode }
+    view: 'strike', // strike | hourly | quality
+    pendingImport: null // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
   };
+
+  /** Map CSV shiftKey → calendar morning|afternoon. */
+  function rosterShiftFromRecord(rec, fallback) {
+    var sk = (rec && rec.shiftKey) || '';
+    if (/afternoon|evening|night/i.test(sk)) return 'afternoon';
+    if (/morning|day|^am$/i.test(sk)) return 'morning';
+    return fallback === 'afternoon' ? 'afternoon' : 'morning';
+  }
+
+  /** Group import rows into byDate buckets using each row's report date + shift. */
+  function groupImportRecords(records, fallbackDate, fallbackShift) {
+    var groups = {};
+    (records || []).forEach(function (rec) {
+      var date = (rec && rec.reportDate) || fallbackDate || '';
+      if (!date) return;
+      var shift = rosterShiftFromRecord(rec, fallbackShift);
+      var key = date + '|' + shift;
+      if (!groups[key]) groups[key] = { date: date, shift: shift, records: [] };
+      groups[key].records.push(rec);
+    });
+    return groups;
+  }
+
+  function summarizeImportPlan(files, fallbackDate, fallbackShift) {
+    var totals = {};
+    var formats = {};
+    (files || []).forEach(function (f) {
+      var res = f && f.result;
+      if (!res || !res.ok) return;
+      if (res.format) formats[res.format] = (formats[res.format] || 0) + 1;
+      var groups = groupImportRecords(res.records, fallbackDate, fallbackShift);
+      Object.keys(groups).forEach(function (k) {
+        if (!totals[k]) totals[k] = { date: groups[k].date, shift: groups[k].shift, count: 0 };
+        totals[k].count += groups[k].records.length;
+      });
+    });
+    var buckets = Object.keys(totals).sort().map(function (k) { return totals[k]; });
+    buckets.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.shift < b.shift ? -1 : 1;
+    });
+    return { buckets: buckets, formats: formats };
+  }
+
+  function preferViewFromFormats(formats) {
+    var hasHourly = !!(formats && formats.hourly);
+    var hasStrike = !!(formats && (formats.summary || formats.detailed || formats.endOfShift));
+    if (hasHourly && !hasStrike) return 'hourly';
+    return 'strike';
+  }
 
   var els = {
     lastUpdated: document.getElementById('pkLastUpdated'),
@@ -8077,19 +8127,14 @@ function toast(msg, err) {
     return PA.filterRecords(currentRecords(), state.filters);
   }
 
-  function statusPill(status) {
-    if (!status) return '<span class="pk-status pk-status-unknown" title="No target">No target</span>';
+  function strikePill(st) {
+    if (!st) return '<span class="pk-status pk-status-unknown">No target</span>';
     var cls =
-      status.key === 'excellent' ? 'pk-status-excellent'
-        : status.key === 'on_target' ? 'pk-status-on'
-          : status.key === 'needs_attention' ? 'pk-status-attention'
+      st.key === 'on' ? 'pk-status-excellent'
+        : st.key === 'below' ? 'pk-status-below'
+          : st.key === 'strike' ? 'pk-status-strike'
             : 'pk-status-unknown';
-    var short =
-      status.key === 'excellent' ? 'Excellent'
-        : status.key === 'on_target' ? 'On target'
-          : status.key === 'needs_attention' ? 'Needs attention'
-            : 'No target';
-    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(status.label) + '">' + escapeHtml(short) + '</span>';
+    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(st.label) + '">' + escapeHtml(st.label) + '</span>';
   }
 
   function barChart(items, valueKey, labelKey, opts) {
@@ -8317,13 +8362,13 @@ function toast(msg, err) {
     if (state.showLegacy) {
       els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>Legacy imports</strong><br>' +
         'Data from before the Day/Afternoon × Mon–Fri calendar. Kept so nothing was dropped. ' +
-        'New uploads go into the selected weekday.</div>';
+        'New uploads use each row’s report date and Day/Afternoon.</div>';
       return;
     }
     if (!currentRecords().length) {
-      els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>No packer data for ' +
-        escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift) + ' · ' + PA.formatDateAU(activeDateKey())) +
-        '</strong><br>Upload a CSV — you’ll get a preview before anything is saved.</div>';
+      els.status.innerHTML = '<div class="pk-banner">No data for ' +
+        escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
+        '. At end of shift upload <b>Boxes Packed by Worker</b> (strike check) and/or <b>Inter hour</b> (boxes per hour). Rows go into the report date and Day/Afternoon from the CSV.</div>';
       return;
     }
     els.status.innerHTML = '';
@@ -8339,13 +8384,18 @@ function toast(msg, err) {
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
+    var rows = PA.aggregateStrikeRows(filtered());
+    var counts = { on: 0, below: 0, strike: 0, none: 0 };
+    rows.forEach(function (r) {
+      if (r.strikeStatus && counts[r.strikeStatus.key] != null) counts[r.strikeStatus.key]++;
+      else counts.none++;
+    });
     var k = PA.aggregateKpis(filtered());
     var stats = [
+      { cls: 'on', num: String(counts.on), lbl: 'On target' },
+      { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
+      { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
       { cls: 'boxes', num: PA.formatNumber(k.totalBoxes), lbl: 'Boxes' },
-      { cls: 'boxes', num: PA.formatNumber(k.totalItems), lbl: 'Items' },
-      { cls: 'rate', num: PA.formatRate(k.averageBoxesPerHour), lbl: 'BPH' },
-      { cls: 'eff', num: PA.formatPercent(k.averageEfficiency), lbl: 'Eff' },
-      { cls: 'hours', num: PA.formatHours(k.totalPackingHours), lbl: 'Hours' },
       { cls: '', num: PA.formatNumber(k.activeWorkers), lbl: 'People' }
     ];
     els.kpis.innerHTML = stats.map(function (s) {
@@ -8355,91 +8405,54 @@ function toast(msg, err) {
   }
 
   function applyView() {
-    var v = state.view || 'table';
-    if (els.tableWrap) els.tableWrap.hidden = v !== 'table';
-    if (els.charts) els.charts.hidden = v !== 'charts';
+    var v = state.view || 'strike';
+    if (els.tableWrap) els.tableWrap.hidden = v !== 'strike' && v !== 'hourly';
+    if (els.charts) els.charts.hidden = true;
     if (els.quality) els.quality.hidden = v !== 'quality';
     if (els.views) {
       Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-view') === v);
       });
     }
+    if (v === 'strike' || v === 'hourly') renderTable();
   }
 
   function renderCharts() {
-    if (!els.charts) return;
-    if (!currentRecords().length) { els.charts.innerHTML = ''; return; }
-    var rows = filtered();
-    var workers = PA.aggregateWorkers(rows);
-    var byHour = PA.aggregateByHour(rows);
-    var stations = PA.aggregateStations(rows);
-    var skus = PA.aggregateSkus(rows);
-    var ranking = workers.map(function (w) { return { label: w.workerName, boxesPerHour: w.boxesPerHour }; });
-    var eff = workers.map(function (w) { return { label: w.workerName, efficiency: w.efficiency }; });
-    var idle = workers.filter(function (w) { return w.idlePercentage != null; })
-      .map(function (w) { return { label: w.workerName, idle: w.idlePercentage }; });
-    els.charts.innerHTML = '<div class="pk-chart-grid">' +
-      chartCard('Worker ranking by boxes / hour', barChart(ranking, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
-      chartCard('Boxes packed by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
-      chartCard('Efficiency vs target by worker', barChart(eff, 'efficiency', 'label', { format: PA.formatPercent, tone: 'tone-g' })) +
-      chartCard('Idle % by worker', idle.length ? barChart(idle, 'idle', 'label', { format: PA.formatPercent, tone: 'tone-a' }) : '<div class="pk-empty-inline">Idle time not in uploaded CSVs</div>') +
-      chartCard('Station performance', barChart(stations, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
-      chartCard('SKU-size performance', barChart(skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' })) +
-      '</div>';
+    if (els.charts) els.charts.innerHTML = '';
   }
 
-  function renderTable() {
-    if (!els.tableWrap) return;
-    if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
-    var workers = PA.aggregateWorkers(filtered());
-    if (state.sortKey !== 'rankScore') {
-      workers = PA.sortRows(workers, state.sortKey, state.sortDir);
-      workers.forEach(function (w, i) { w.rank = i + 1; });
-    } else if (state.sortDir === 'asc') {
-      workers = workers.slice().reverse();
-      workers.forEach(function (w, i) { w.rank = i + 1; });
-    }
-    var page = PA.paginate(workers, state.page, PAGE_SIZE);
-    function th(key, label, cls) {
-      var arrow = state.sortKey === key ? (state.sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-      return '<th class="' + (cls || '') + '"><button type="button" class="pk-th" data-sort="' + key + '">' +
-        escapeHtml(label + arrow) + '</button></th>';
-    }
-    var body = page.rows.map(function (w) {
-      return '<tr class="pk-worker-row" data-worker="' + escapeHtml(w.workerKey) + '" tabindex="0">' +
-        '<td class="r mn">' + w.rank + '</td><td><button type="button" class="pk-link" data-worker="' +
-        escapeHtml(w.workerKey) + '">' + escapeHtml(w.workerName) + '</button></td>' +
-        '<td>' + escapeHtml(w.station) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatNumber(w.boxes)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatHours(w.packingHours)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatRate(w.boxesPerHour)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatPercent(w.efficiency)) + '</td>' +
-        '<td>' + statusPill(w.status) + '</td></tr>';
+  function renderStrikeTable() {
+    var rows = PA.aggregateStrikeRows(filtered());
+    // Prefer rows that have hours (raw/EOS) — hourly-only uploads won't have BPH
+    var withHours = rows.filter(function (r) { return r.packingHours != null && r.packingHours > 0; });
+    var list = withHours.length ? withHours : rows;
+    var page = PA.paginate(list, state.page, PAGE_SIZE);
+    var body = page.rows.map(function (r, i) {
+      return '<tr>' +
+        '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
+        '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
+        '<td>' + escapeHtml(r.sku) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(r.target != null ? String(r.target) : 'N/A') + '</td>' +
+        '<td class="r mn">' + escapeHtml(r.strike != null ? String(r.strike) : 'N/A') + '</td>' +
+        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
+    var note = withHours.length
+      ? 'Boxes/hour vs SKU target & strike line'
+      : 'Upload Boxes Packed by Worker (needs packing time + SKU). Inter hour alone can’t compute BPH.';
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Workers</h2>' +
-      '<div class="pk-table-meta">' + page.total + ' · ranked by boxes/hour</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Strike check</h2>' +
+      '<div class="pk-table-meta">' + escapeHtml(note) + '</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      th('rank', '#', 'r') + th('workerName', 'Worker') + th('station', 'Station') +
-      th('boxes', 'Boxes', 'r') + th('packingHours', 'Hours', 'r') +
-      th('boxesPerHour', 'BPH', 'r') + th('efficiency', 'Eff', 'r') +
-      th('status', 'Status') +
-      '</tr></thead><tbody>' + (body || '<tr><td colspan="8" class="empty-td">No workers for this day</td></tr>') +
+      '<th class="r">#</th><th>Worker</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
+      '<th class="r">Target</th><th class="r">Strike</th><th>Status</th>' +
+      '</tr></thead><tbody>' +
+      (body || '<tr><td colspan="8" class="empty-td">No strike rows yet — upload Boxes Packed by Worker</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
       '<button type="button" class="btn" data-page="next"' + (page.page >= page.pages ? ' disabled' : '') + '>Next</button></div></section>';
-    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-sort]'), function (btn) {
-      btn.addEventListener('click', function () {
-        var key = btn.getAttribute('data-sort');
-        if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-        else {
-          state.sortKey = key;
-          state.sortDir = key === 'workerName' || key === 'station' || key === 'status' ? 'asc' : 'desc';
-        }
-        state.page = 1; renderTable();
-      });
-    });
     Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-page]'), function (btn) {
       btn.addEventListener('click', function () {
         if (btn.disabled) return;
@@ -8447,13 +8460,48 @@ function toast(msg, err) {
         renderTable();
       });
     });
-    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-worker]'), function (el) {
-      function open() { state.selectedWorker = el.getAttribute('data-worker'); renderDetail(); }
-      el.addEventListener('click', open);
-      el.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-      });
+  }
+
+  function renderHourlyTable() {
+    var byHour = PA.aggregateByHour(filtered());
+    var workers = PA.aggregateWorkers(filtered());
+    if (!byHour.length) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No hourly rows for this day/shift. Upload the Inter hour CSV.</div></section>';
+      return;
+    }
+    var hourKeys = byHour.map(function (h) { return h.hour; });
+    var head = hourKeys.map(function (h) { return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + '</th>'; }).join('');
+    // Rebuild per-worker hour map from records
+    var map = {};
+    filtered().forEach(function (r) {
+      if (r.hour == null || !r.workerKey) return;
+      if (!map[r.workerKey]) map[r.workerKey] = { name: r.workerName, hours: {}, total: 0 };
+      map[r.workerKey].hours[r.hour] = (map[r.workerKey].hours[r.hour] || 0) + (r.boxes || 0);
+      map[r.workerKey].total += r.boxes || 0;
     });
+    var names = Object.keys(map).sort(function (a, b) { return map[b].total - map[a].total; });
+    var body = names.map(function (wk) {
+      var w = map[wk];
+      var cells = hourKeys.map(function (h) {
+        var v = w.hours[h];
+        return '<td class="r mn">' + (v != null ? v : '—') + '</td>';
+      }).join('');
+      return '<tr><td>' + escapeHtml(w.name) + '</td>' + cells +
+        '<td class="r mn bold">' + w.total + '</td></tr>';
+    }).join('');
+    els.tableWrap.innerHTML =
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Boxes / hour</h2>' +
+      '<div class="pk-table-meta">' + names.length + ' workers</div></div>' +
+      chartCard('Boxes by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
+      '<div class="pk-tw" style="margin-top:8px"><table><thead><tr><th>Worker</th>' + head +
+      '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
+  }
+
+  function renderTable() {
+    if (!els.tableWrap) return;
+    if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
+    if (state.view === 'hourly') renderHourlyTable();
+    else renderStrikeTable();
   }
 
   function renderDetail() {
@@ -8468,8 +8516,8 @@ function toast(msg, err) {
       : '<div class="pk-empty-inline">Trend needs multiple report dates</div>';
     els.detail.innerHTML =
       '<div class="pk-detail-panel"><div class="pk-detail-hdr"><div><h2 class="pk-section-title">' +
-      escapeHtml(s.workerName) + '</h2><div class="pk-table-meta">' + statusPill(s.status) +
-      '</div></div><button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
+      escapeHtml(s.workerName) + '</h2></div>' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
       '<div class="pk-detail-kpis">' +
       detailMetric('Boxes', PA.formatNumber(s.boxes)) +
       detailMetric('Packing hours', PA.formatHours(s.packingHours)) +
@@ -8520,17 +8568,32 @@ function toast(msg, err) {
     var p = state.pendingImport;
     if (!p) { els.preview.hidden = true; els.preview.innerHTML = ''; return; }
     els.preview.hidden = false;
-    var bucket = ensureBucket(p.targetDate, p.targetShift);
-    var existing = (bucket.records || []).length;
-    var fileBlocks = p.files.map(function (f, idx) {
+    var plan = summarizeImportPlan(p.files, p.fallbackDate, p.fallbackShift);
+    var routeBlocks = plan.buckets.length
+      ? '<div class="pk-preview-file"><strong>Will save into</strong><div class="pk-table-meta">' +
+        plan.buckets.map(function (b) {
+          var existing = (ensureBucket(b.date, b.shift).records || []).length;
+          return escapeHtml(PA.formatDateAU(b.date) + ' · ' + shiftLabel(b.shift)) +
+            ': ' + b.count + ' row(s)' +
+            (existing ? ' (already has ' + existing + ')' : '');
+        }).join('<br>') +
+        '</div></div>'
+      : '<div class="pk-banner pk-banner-load">No report dates found in the CSV — rows will use the day you’re viewing (' +
+        escapeHtml(PA.formatDateAU(p.fallbackDate) + ' · ' + shiftLabel(p.fallbackShift)) + ').</div>';
+    var existingTotal = plan.buckets.reduce(function (n, b) {
+      return n + ((ensureBucket(b.date, b.shift).records || []).length);
+    }, 0);
+    var fileBlocks = p.files.map(function (f) {
       var r = f.result;
       if (!r.ok) {
         return '<div class="pk-preview-file err"><strong>' + escapeHtml(f.name) + '</strong><br>' +
           escapeHtml(r.error || 'Invalid') + '</div>';
       }
       var q = r.quality || {};
+      var label = r.format === 'hourly' ? 'Inter hour'
+        : (r.format === 'summary' ? 'Boxes Packed by Worker' : (r.format || '?'));
       return '<div class="pk-preview-file"><strong>' + escapeHtml(f.name) + '</strong>' +
-        '<div class="pk-table-meta">Format: ' + escapeHtml(r.format || '?') +
+        '<div class="pk-table-meta">' + escapeHtml(label) +
         ' · ' + r.records.length + ' usable row(s)' +
         (q.invalidRows ? ' · ' + q.invalidRows + ' invalid' : '') +
         (q.duplicateRows ? ' · ' + q.duplicateRows + ' dupes in file' : '') +
@@ -8542,20 +8605,14 @@ function toast(msg, err) {
     els.preview.innerHTML =
       '<div class="pk-preview-card" role="dialog" aria-label="Import preview">' +
       '<h2 class="pk-section-title">Import preview</h2>' +
+      '<div class="pk-table-meta" style="margin-bottom:8px">Day and Afternoon come from each CSV row — not from the tab you’re on.</div>' +
       '<div class="pk-preview-targets">' +
-      '<label class="pk-fl"><span>Day</span><select id="pkPreviewDate">' +
-      dayOptionsHtml(p.targetDate) + '</select></label>' +
-      '<label class="pk-fl"><span>Shift</span><select id="pkPreviewShift">' +
-      '<option value="morning"' + (p.targetShift === 'morning' ? ' selected' : '') + '>Day</option>' +
-      '<option value="afternoon"' + (p.targetShift === 'afternoon' ? ' selected' : '') + '>Afternoon</option>' +
-      '</select></label>' +
       '<label class="pk-fl"><span>If data already exists</span><select id="pkPreviewMode">' +
       '<option value="merge"' + (p.mode !== 'replace' ? ' selected' : '') + '>Merge (skip duplicates)</option>' +
-      '<option value="replace"' + (p.mode === 'replace' ? ' selected' : '') + '>Replace this day/shift</option>' +
+      '<option value="replace"' + (p.mode === 'replace' ? ' selected' : '') + '>Replace those day/shifts</option>' +
       '</select></label></div>' +
-      (existing ? '<div class="pk-banner pk-banner-load">This day/shift already has ' + existing +
-        ' row(s). Choose Merge or Replace above.</div>' : '') +
-      fileBlocks +
+      (existingTotal ? '<div class="pk-banner pk-banner-load">Some of those day/shifts already have data. Choose Merge or Replace above.</div>' : '') +
+      routeBlocks + fileBlocks +
       '<div class="pk-preview-actions">' +
       '<button type="button" class="btn btn-ghost" id="pkPreviewCancel">Cancel</button>' +
       '<button type="button" class="btn btn-primary" id="pkPreviewImport"' + (anyOk ? '' : ' disabled') + '>Import</button>' +
@@ -8565,68 +8622,90 @@ function toast(msg, err) {
       if (els.fileInput) els.fileInput.value = '';
     });
     document.getElementById('pkPreviewImport').addEventListener('click', function () {
-      p.targetDate = document.getElementById('pkPreviewDate').value;
-      p.targetShift = document.getElementById('pkPreviewShift').value;
       p.mode = document.getElementById('pkPreviewMode').value;
       commitPendingImport();
     });
-  }
-  function dayOptionsHtml(selected) {
-    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
-    var html = '';
-    for (var i = 0; i < 5; i++) {
-      var d = addDays(state.weekStart, i);
-      var key = ymd(d);
-      html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' +
-        DAY_NAMES[i] + ' ' + PA.formatDateAU(key) + '</option>';
-    }
-    return html;
   }
 
   async function commitPendingImport() {
     var p = state.pendingImport;
     if (!p) return;
-    var bucket = ensureBucket(p.targetDate, p.targetShift);
     var messages = [];
     var anyOk = false;
-    if (p.mode === 'replace') {
-      bucket.records = [];
-      bucket.files = [];
-      bucket.quality = PA.emptyQuality();
-    }
+    var touched = {};
+    var formats = {};
+    var jumpDate = p.fallbackDate;
+    var jumpShift = p.fallbackShift;
+    var jumpCount = 0;
+
     p.files.forEach(function (f) {
       var res = f.result;
       if (!res || !res.ok) {
         messages.push(f.name + ': ' + (res && res.error ? res.error : 'failed'));
         return;
       }
-      var before = bucket.records.length;
-      var merged = PA.mergeRecords(bucket.records, res.records);
-      var cross = before + res.records.length - merged.records.length;
-      bucket.records = merged.records;
-      res.quality.duplicateRows += Math.max(0, cross);
-      bucket.quality = PA.mergeQuality(bucket.quality, res.quality);
-      bucket.files.push({
-        id: uid(),
-        name: f.name,
-        uploadedAt: Date.now(),
-        text: res.rawText,
-        rowCount: res.records.length,
-        format: res.format,
-        quality: res.quality
+      if (res.format) formats[res.format] = (formats[res.format] || 0) + 1;
+      var groups = groupImportRecords(res.records, p.fallbackDate, p.fallbackShift);
+      var keys = Object.keys(groups);
+      if (!keys.length) {
+        messages.push(f.name + ': no rows with a usable date');
+        return;
+      }
+      var fileDupes = 0;
+      var fileAdded = 0;
+      keys.forEach(function (k) {
+        var g = groups[k];
+        var bucket = ensureBucket(g.date, g.shift);
+        touched[k] = { date: g.date, shift: g.shift };
+        if (p.mode === 'replace' && !bucket._replacedThisImport) {
+          bucket.records = [];
+          bucket.files = [];
+          bucket.quality = PA.emptyQuality();
+          bucket._replacedThisImport = true;
+        }
+        var before = bucket.records.length;
+        var merged = PA.mergeRecords(bucket.records, g.records);
+        var cross = before + g.records.length - merged.records.length;
+        fileDupes += Math.max(0, cross);
+        fileAdded += merged.records.length - before;
+        bucket.records = merged.records;
+        bucket.quality = PA.mergeQuality(bucket.quality, res.quality);
+        bucket.files.push({
+          id: uid(),
+          name: f.name,
+          uploadedAt: Date.now(),
+          text: res.rawText,
+          rowCount: g.records.length,
+          format: res.format,
+          quality: res.quality
+        });
+        if (g.records.length > jumpCount) {
+          jumpCount = g.records.length;
+          jumpDate = g.date;
+          jumpShift = g.shift;
+        }
       });
       anyOk = true;
-      messages.push(f.name + ': ' + res.records.length + ' row(s)' + (cross ? ', ' + cross + ' dupes skipped' : ''));
+      messages.push(f.name + ': ' + fileAdded + ' row(s) into ' + keys.length + ' slot(s)' +
+        (fileDupes ? ', ' + fileDupes + ' dupes skipped' : ''));
     });
+
+    Object.keys(touched).forEach(function (k) {
+      var t = touched[k];
+      var b = ensureBucket(t.date, t.shift);
+      delete b._replacedThisImport;
+    });
+
     state.pendingImport = null;
-    // Jump UI to the target day/shift
     state.showLegacy = false;
-    state.rosterShift = p.targetShift;
-    var ws = startOfWeek(new Date(p.targetDate + 'T00:00:00'));
+    state.view = preferViewFromFormats(formats);
+    state.rosterShift = jumpShift === 'afternoon' ? 'afternoon' : 'morning';
+    var ws = startOfWeek(new Date(jumpDate + 'T00:00:00'));
     state.weekStart = ws;
     state.activeWeekKey = ymd(ws);
+    state.dayIdx = 0;
     for (var i = 0; i < 5; i++) {
-      if (ymd(addDays(ws, i)) === p.targetDate) { state.dayIdx = i; break; }
+      if (ymd(addDays(ws, i)) === jumpDate) { state.dayIdx = i; break; }
     }
     var saved = true;
     if (anyOk) saved = await saveData();
@@ -8773,8 +8852,8 @@ function toast(msg, err) {
     state.loading = false;
     state.pendingImport = {
       files: staged,
-      targetDate: activeDateKey(),
-      targetShift: state.rosterShift === 'afternoon' ? 'afternoon' : 'morning',
+      fallbackDate: activeDateKey(),
+      fallbackShift: state.rosterShift === 'afternoon' ? 'afternoon' : 'morning',
       mode: 'merge'
     };
     renderStatus();
@@ -8881,7 +8960,8 @@ function toast(msg, err) {
     els.views.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-view]') : null;
       if (!btn) return;
-      state.view = btn.getAttribute('data-view') || 'table';
+      state.view = btn.getAttribute('data-view') || 'strike';
+      state.page = 1;
       applyView();
     });
   }
