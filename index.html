@@ -1531,7 +1531,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       </div>
       <div class="stn-card">
         <h2>Roster marks</h2>
-        <p>On / Late / Left early / Absent / Leave marks only. Names stay on Floor Plan.</p>
+        <p>On / Late / Left early / Absent / Leave marks. Absent or Left early for today also clears that person off Floor Plan stations (name stays on the roster list).</p>
         <div class="stn-actions">
           <button type="button" class="primary" data-export="shiftWeekAttendance">Export</button>
           <button type="button" data-restore="shiftWeekAttendance">Restore</button>
@@ -5248,13 +5248,33 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       var sd = res.data.shiftData[currentShift];
       if(!sd) return;
       var incomingRoster = sd.staffRoster || [];
-      if(JSON.stringify(incomingRoster) !== JSON.stringify(staffRoster)){
+      var rosterChanged = JSON.stringify(incomingRoster) !== JSON.stringify(staffRoster);
+      if(rosterChanged){
         staffRoster = incomingRoster;
         renderRoster();
         refreshCardRoleVisuals();
-        refreshStationVisuals(); // a station assigned to someone another tab removed becomes VACANT here too
+      }
+      // Pull station / role-slot assignment clears from other tabs (e.g. Roster absent)
+      var byId = {};
+      (sd.cards || []).forEach(function(c){ if(c && c.id) byId[c.id] = c; });
+      var assignmentChanged = false;
+      cards.forEach(function(c){
+        var inc = byId[c.id];
+        if(!inc) return;
+        if(c.type !== 'station' && !(c.type === 'floorslot' && c.slotKind !== 'sku')) return;
+        var nextId = inc.rosterId || null;
+        if(c.rosterId !== nextId){
+          c.rosterId = nextId;
+          assignmentChanged = true;
+          if(c.type === 'station') updateStationCardVisual(c);
+          else updateFloorSlotVisual(c);
+        }
+      });
+      if(rosterChanged || assignmentChanged){
+        refreshStationVisuals();
         checkStationDuplicates();
         updateCounts();
+        if(assignmentChanged) syncBreakPlannerPackersFromFloor({ delay: 200 });
         flashStatus('Updated from another tab');
       }
     }catch(e){ console.error('external planner refresh failed', e); }
@@ -5264,6 +5284,49 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     setInterval(function(){ if (!document.hidden) handleExternalPlannerChange(); }, 4000);
   }
 
+  // Clear a person from packing stations + runner/boxmaker plates (keeps them on the name roster).
+  // Used when Roster marks them Absent / Left early for today.
+  function removePersonFromFloor(personId, shiftKey){
+    if(!personId || !shiftData) return { cleared:false, count:0 };
+    shiftKey = (shiftKey === 'morning' || shiftKey === 'afternoon') ? shiftKey : currentShift;
+    var targetCards = (shiftKey === currentShift)
+      ? cards
+      : ((shiftData[shiftKey] && shiftData[shiftKey].cards) || []);
+    var count = 0;
+    targetCards.forEach(function(c){
+      if(c.type === 'station' && c.rosterId === personId){
+        c.rosterId = null;
+        count++;
+        if(shiftKey === currentShift) updateStationCardVisual(c);
+      } else if(c.type === 'floorslot' && c.slotKind !== 'sku' && c.rosterId === personId){
+        c.rosterId = null;
+        count++;
+        if(shiftKey === currentShift) updateFloorSlotVisual(c);
+      }
+    });
+    if(!count) return { cleared:false, count:0 };
+    removePersonFromBreakPlanner(shiftKey, personId);
+    if(shiftKey === currentShift){
+      updateCounts();
+      renderRoster();
+      syncBreakPlannerPackersFromFloor({ delay: 0 });
+      saveDebounced();
+    } else if(window.SharedSync){
+      var cardsSnap = targetCards.slice();
+      window.SharedSync.scheduleSharedSave('planner', function(latest){
+        if(!latest.shiftData) latest.shiftData = {};
+        if(!latest.shiftData[shiftKey]){
+          latest.shiftData[shiftKey] = { cards:[], breakTitle:'Break Schedule', breakRows:[], staffRoster:[], notes:'' };
+        }
+        latest.shiftData[shiftKey].cards = cardsSnap;
+        return latest;
+      }, 0);
+    }
+    return { cleared:true, count:count };
+  }
+  window.__floorPlanner = {
+    removePersonFromFloor: removePersonFromFloor
+  };
 
   async function loadState(){
     fitZoom(true);
@@ -10126,11 +10189,61 @@ function toast(msg, err) {
     var day = state.byDate[dateKey] || {};
     return normalizeStatus(day[personId] || '');
   }
+  // Absent / Left early → pull them off Floor plates for today's selected shift
+  var OFF_FLOOR_STATUSES = { absent: true, left_early: true };
+  async function clearPersonFromFloorForMark(personId, status){
+    var shift = state.rosterShift || 'morning';
+    var staff = rosterStaff();
+    var name = '';
+    for (var i = 0; i < staff.length; i++){
+      if (staff[i].id === personId){ name = staff[i].name; break; }
+    }
+    var result = { cleared: false, count: 0 };
+    if (window.__floorPlanner && typeof window.__floorPlanner.removePersonFromFloor === 'function'){
+      result = window.__floorPlanner.removePersonFromFloor(personId, shift) || result;
+    } else if (window.SharedSync && typeof window.SharedSync.writeSharedState === 'function'){
+      try{
+        var res = await window.SharedSync.writeSharedState('planner', function(latest){
+          ensurePlannerShift(latest, shift);
+          var list = latest.shiftData[shift].cards || [];
+          var changed = false;
+          list.forEach(function(c){
+            if (c.type === 'station' && c.rosterId === personId){ c.rosterId = null; changed = true; }
+            if (c.type === 'floorslot' && c.slotKind !== 'sku' && c.rosterId === personId){ c.rosterId = null; changed = true; }
+          });
+          return changed ? latest : false;
+        });
+        if (res && res.data){
+          result.cleared = true;
+          result.count = 1;
+        }
+        await window.SharedSync.writeSharedState('breakPlanner', function(latest){
+          if (!latest[shift] || !latest[shift].groups) return false;
+          var changed = false;
+          latest[shift].groups.forEach(function(g){
+            ['packer','runner','boxmaker'].forEach(function(rk){
+              var before = (g[rk]||[]).length;
+              g[rk] = (g[rk]||[]).filter(function(pid){ return pid !== personId; });
+              if (g[rk].length !== before) changed = true;
+            });
+          });
+          return changed ? latest : false;
+        });
+      }catch(e){}
+    }
+    if (result.cleared){
+      var why = status === 'left_early' ? 'left early' : 'absent';
+      rosterToast((name || 'Person') + ' cleared from Floor (' + why + ')');
+    }
+  }
   function setStatus(dateKey, personId, status){
     if (!state.byDate[dateKey]) state.byDate[dateKey] = {};
     if (!status) delete state.byDate[dateKey][personId];
     else state.byDate[dateKey][personId] = status;
     saveState();
+    if (OFF_FLOOR_STATUSES[status] && dateKey === ymd(new Date())){
+      clearPersonFromFloorForMark(personId, status);
+    }
   }
   function roleLabel(role){
     if (role === 'packer') return 'Packer';
