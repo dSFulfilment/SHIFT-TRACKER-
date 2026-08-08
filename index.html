@@ -484,97 +484,153 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   border:none; background:#fff; color:var(--muted); cursor:pointer; }
 .bp-fab-btn.active{ background:var(--ink); color:#fff; }
 
-#breakPlannerTab{ height:100vh; overflow-y:auto; background:var(--paper);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  color:var(--ink); }
-.bp-wrap{ max-width:1180px; margin:0 auto; padding:16px 16px 90px; }
-
-.bp-header{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-.bp-title{ font-weight:700; font-size:15px; margin-right:4px; }
-.bp-shiftgroup{ display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; background:#fff; }
-.bp-shift-btn{ border:none; background:#fff; padding:6px 12px; font-size:12.5px; font-weight:600;
-  color:var(--ink); cursor:pointer; font-family:inherit; }
-.bp-shift-btn:not(:last-child){ border-right:1px solid var(--line); }
-.bp-shift-btn.active{ background:var(--ink); color:#fff; }
-.bp-btn{ display:inline-flex; align-items:center; gap:5px; border:1px solid var(--line); background:#fff;
-  padding:6px 11px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--ink);
-  font-family:inherit; white-space:nowrap; }
-.bp-btn:hover{ background:#F1F1EE; }
-.bp-btn.primary{ background:var(--ink); color:#fff; border-color:var(--ink); }
-.bp-btn.primary:hover{ opacity:.9; }
-
-.bp-grid{ display:grid; grid-template-columns:280px 1fr; gap:16px; align-items:start; }
-@media (max-width:860px){ .bp-grid{ grid-template-columns:1fr; } }
-
-.bp-card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
-.bp-card + .bp-card{ margin-top:14px; }
-.bp-section-lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
-  font-weight:700; margin:0 0 8px; display:flex; align-items:center; justify-content:space-between; }
-
-.bp-role-lbl{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; }
-.bp-role-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
-.bp-role-dot.packer{ background:var(--staff); }
-.bp-role-dot.runner{ background:var(--runner); }
-.bp-role-dot.boxmaker{ background:var(--boxmaker); }
-.bp-role-dot.unassigned{ background:#B9BEC7; }
-
-.bp-roster-section{ margin-bottom:12px; }
-.bp-roster-list{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-.bp-chip{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
-  border-radius:100px; padding:4px 6px 4px 10px; border:1px solid transparent; }
-.bp-chip.packer{ background:var(--staff-bg); color:var(--staff); }
-.bp-chip.runner{ background:var(--runner-bg); color:var(--runner); }
-.bp-chip.boxmaker{ background:var(--boxmaker-bg); color:var(--boxmaker); }
-.bp-chip.unassigned{ background:#F0F0EE; color:var(--muted); }
-.bp-st-badge{ display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.03em;
-  background:rgba(37,84,199,.14); color:var(--staff); border-radius:4px; padding:1px 4px; margin-left:2px; }
-.bp-chip select{ font-size:10.5px; font-weight:600; border:none; background:transparent; color:inherit;
-  cursor:pointer; font-family:inherit; }
-.bp-chip .x{ cursor:pointer; color:inherit; opacity:.55; font-weight:700; line-height:1; padding:0 1px; }
-.bp-chip .x:hover{ opacity:1; }
-.bp-empty-hint{ font-size:11.5px; color:#B9BEC7; margin-top:4px; }
-
-.bp-addrow{ display:flex; gap:5px; margin-top:10px; flex-wrap:wrap; }
-.bp-addrow input{ flex:1; min-width:110px; font-size:12px; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-family:inherit; }
-.bp-addrow select{ font-size:12px; border:1px solid var(--line); border-radius:6px; padding:6px 6px; font-family:inherit; }
-
-.bp-summary{ display:flex; gap:14px; flex-wrap:wrap; }
-.bp-summary-item{ font-size:12px; }
-.bp-summary-item b{ font-variant-numeric:tabular-nums; }
-.bp-summary-item.short b{ color:#B45309; }
-
-.bp-group-card{ border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#fff; }
-.bp-group-card + .bp-group-card{ margin-top:12px; }
-.bp-group-hdr{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-.bp-group-hdr input.bp-group-label{ font-size:13.5px; font-weight:700; border:none; background:transparent;
-  padding:2px 4px; border-radius:5px; font-family:inherit; width:120px; }
-.bp-group-hdr input.bp-group-label:focus{ outline:none; background:#F5F6FA; }
-.bp-group-rm{ margin-left:auto; cursor:pointer; color:#CBCFD6; font-size:12px; font-weight:700; padding:3px 6px; border-radius:5px; }
-.bp-group-rm:hover{ color:#B91C1C; background:#FDECEC; }
-
-.bp-times{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:10px; }
-.bp-time-block{ display:flex; align-items:center; gap:6px; }
-.bp-time-block label{ font-size:11px; color:var(--muted); font-weight:600; }
-.bp-time-block input[type=time]{ font-size:12px; border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-family:inherit; }
-
-.bp-role-lane{ margin-top:8px; padding-top:8px; border-top:1px solid #F0F0ED; }
-.bp-role-lane-hdr{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
-.bp-lane-select{ font-size:11.5px; border:1px solid var(--line); border-radius:6px; padding:3px 5px; font-family:inherit; max-width:150px; }
-.bp-warn{ display:inline-block; font-size:10.5px; font-weight:700; color:#B91C1C; background:#FDECEC;
-  border-radius:100px; padding:2px 8px; margin-left:6px; }
-
-.bp-toast{ position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
-  padding:.5rem 1.1rem; border-radius:100px; font-size:12.5px; font-weight:600; opacity:0; pointer-events:none;
+#breakPlannerTab{
+  position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
+  overflow:hidden; background:#EEF0F3; color:#1D1D1F;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  display:flex; flex-direction:column;
+}
+#breakPlannerTab .bp-shell{
+  flex:1; min-height:0; display:flex; flex-direction:column;
+  max-width:1100px; width:100%; margin:0 auto;
+}
+#breakPlannerTab .bp-chrome{
+  flex:0 0 auto; background:rgba(238,240,243,.97); backdrop-filter:blur(10px);
+  border-bottom:1px solid #E1E4EA; padding:6px 10px 7px; z-index:5;
+}
+#breakPlannerTab .bp-bar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+#breakPlannerTab .bp-title{
+  margin:0; font-size:14px; font-weight:800; letter-spacing:-.02em; flex:0 0 auto;
+}
+#breakPlannerTab .bp-shiftgroup{
+  display:inline-flex; border:1px solid #D8DCE3; border-radius:8px; overflow:hidden; background:#fff;
+}
+#breakPlannerTab .bp-shift-btn{
+  border:none; background:#fff; padding:5px 10px; font-size:11px; font-weight:800;
+  color:#6E6E73; cursor:pointer; font-family:inherit;
+}
+#breakPlannerTab .bp-shift-btn.active{ background:#1C2430; color:#fff; }
+#breakPlannerTab .bp-summary{
+  display:flex; gap:4px; flex-wrap:wrap; align-items:center; flex:1; min-width:0;
+}
+#breakPlannerTab .bp-summary-item{
+  font-size:10px; font-weight:700; color:#6E6E73; background:#fff; border:1px solid #E5E8EF;
+  border-radius:7px; padding:3px 7px; white-space:nowrap;
+}
+#breakPlannerTab .bp-summary-item b{ font-variant-numeric:tabular-nums; color:#1D1D1F; }
+#breakPlannerTab .bp-summary-item.short{ background:#FFFBF0; border-color:#F5E2B8; }
+#breakPlannerTab .bp-summary-item.short b{ color:#A05D00; }
+#breakPlannerTab .bp-actions{ display:flex; gap:4px; flex-wrap:wrap; margin-left:auto; }
+#breakPlannerTab .bp-btn{
+  border:1px solid #D8DCE3; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:700;
+  cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit; white-space:nowrap;
+}
+#breakPlannerTab .bp-btn:hover{ background:#F2F2F7; }
+#breakPlannerTab .bp-btn.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
+#breakPlannerTab .bp-btn.bp-btn-warn{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
+#breakPlannerTab .bp-pool{
+  display:flex; align-items:flex-start; gap:6px; margin-top:5px; min-width:0;
+}
+#breakPlannerTab .bp-pool.is-empty{ display:none; }
+#breakPlannerTab .bp-pool-lbl{
+  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:#8E8E93; flex:0 0 auto; padding-top:5px; white-space:nowrap;
+}
+#breakPlannerTab .bp-pool-list{
+  display:flex; flex-wrap:wrap; gap:3px; flex:1; min-width:0;
+}
+#breakPlannerTab .bp-pool-empty{
+  font-size:11px; color:#B9BEC7; padding:3px 0;
+}
+#breakPlannerTab .bp-list-wrap{
+  flex:1; min-height:0; overflow:auto; padding:8px 10px calc(76px + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling:touch;
+}
+#breakPlannerTab .bp-groups{ display:flex; flex-direction:column; gap:6px; }
+#breakPlannerTab .bp-empty{
+  text-align:center; color:#8E8E93; font-size:12px; padding:28px 12px;
+  background:#fff; border:1px dashed #D8DCE3; border-radius:10px;
+}
+#breakPlannerTab .bp-group-card{
+  background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:5px 8px 4px;
+}
+#breakPlannerTab .bp-group-hdr{
+  display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:2px;
+}
+#breakPlannerTab .bp-group-label{
+  font-size:12px; font-weight:800; border:1px solid transparent; background:transparent;
+  padding:2px 5px; border-radius:6px; font-family:inherit; width:88px; color:#1D1D1F;
+}
+#breakPlannerTab .bp-group-label:focus{ outline:none; background:#F5F6FA; border-color:#D8DCE3; }
+#breakPlannerTab .bp-group-stations{
+  font-size:11px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:6px;
+  padding:3px 6px; font-family:inherit; width:110px; background:#fff;
+}
+#breakPlannerTab .bp-times{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1; min-width:0; }
+#breakPlannerTab .bp-time-block{ display:flex; align-items:center; gap:3px; }
+#breakPlannerTab .bp-time-block label{
+  font-size:9px; color:#8E8E93; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
+}
+#breakPlannerTab .bp-time-block input[type=time]{
+  font-size:11px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 4px;
+  font-family:inherit; background:#fff; width:6.6em;
+}
+#breakPlannerTab .bp-group-rm{
+  margin-left:auto; cursor:pointer; color:#C7C7CC; font-size:16px; font-weight:700;
+  width:24px; height:24px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;
+  line-height:1; border:none; background:transparent; font-family:inherit; padding:0;
+}
+#breakPlannerTab .bp-group-rm:hover{ color:#FF3B30; background:#FFF5F4; }
+#breakPlannerTab .bp-role-lane{
+  display:grid; grid-template-columns:58px 1fr auto; gap:2px 6px; align-items:center;
+  padding:1px 0;
+}
+#breakPlannerTab .bp-role-lbl{
+  display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; color:#6E6E73;
+}
+#breakPlannerTab .bp-role-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
+#breakPlannerTab .bp-role-dot.packer{ background:var(--staff); }
+#breakPlannerTab .bp-role-dot.runner{ background:var(--runner); }
+#breakPlannerTab .bp-role-dot.boxmaker{ background:var(--boxmaker); }
+#breakPlannerTab .bp-role-dot.unassigned{ background:#B9BEC7; }
+#breakPlannerTab .bp-roster-list{ display:flex; flex-wrap:wrap; gap:3px; min-width:0; }
+#breakPlannerTab .bp-chip{
+  display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700;
+  border-radius:6px; padding:2px 5px 2px 7px; border:1px solid transparent; line-height:1.25;
+}
+#breakPlannerTab .bp-chip.packer{ background:var(--staff-bg); color:var(--staff); }
+#breakPlannerTab .bp-chip.runner{ background:var(--runner-bg); color:var(--runner); }
+#breakPlannerTab .bp-chip.boxmaker{ background:var(--boxmaker-bg); color:var(--boxmaker); }
+#breakPlannerTab .bp-chip.unassigned{ background:#F0F0EE; color:#8E8E93; }
+#breakPlannerTab .bp-st-badge{
+  display:inline-block; font-size:9px; font-weight:800; letter-spacing:.02em;
+  background:rgba(37,84,199,.14); color:var(--staff); border-radius:4px; padding:0 3px;
+}
+#breakPlannerTab .bp-chip .x{
+  cursor:pointer; color:inherit; opacity:.45; font-weight:700; line-height:1; padding:0 1px; font-size:12px;
+}
+#breakPlannerTab .bp-chip .x:hover{ opacity:1; }
+#breakPlannerTab .bp-empty-hint{ font-size:10.5px; color:#C7C7CC; }
+#breakPlannerTab .bp-lane-select{
+  font-size:10.5px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 4px;
+  font-family:inherit; max-width:132px; background:#fff; color:#1D1D1F;
+}
+#breakPlannerTab .bp-warn{
+  display:inline-block; font-size:9px; font-weight:800; color:#B8251C; background:#FFF5F4;
+  border-radius:5px; padding:1px 5px; margin-left:3px;
+}
+.bp-toast{ position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#1C2430; color:#fff;
+  padding:.45rem 1rem; border-radius:100px; font-size:12px; font-weight:600; opacity:0; pointer-events:none;
   transition:opacity .2s; z-index:9999; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:85vw;
   overflow:hidden; text-overflow:ellipsis; }
 .bp-toast.show{ opacity:1; }
-
-.bp-btn.bp-btn-warn{ background:#FDECEC; color:#B91C1C; border-color:#F0CFCF; }
-.bp-group-stations{ font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:6px;
-  padding:3px 7px; font-family:inherit; width:140px; margin-left:8px; }
-.bp-source-note{ font-size:10.5px; color:#B9BEC7; margin:2px 0 8px; font-style:italic; }
-
-.bp-sync-note{ font-size:11px; color:var(--muted); margin-bottom:8px; }
+@media (max-width:720px){
+  #breakPlannerTab .bp-role-lane{ grid-template-columns:1fr auto; }
+  #breakPlannerTab .bp-role-lbl{ grid-column:1 / -1; }
+  #breakPlannerTab .bp-group-stations{ width:90px; }
+}
 #tabTracker *, #tabTracker *::before, #tabTracker *::after, #tabPacker *, #tabPacker *::before, #tabPacker *::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0f2f5;--sur:#fff;--bdr:#e2e6ed;--bdr2:#c5cad6;
@@ -855,43 +911,28 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 </div>
 
 <div id="breakPlannerTab" style="display:none">
-  <div class="bp-wrap">
-    <div class="bp-header">
-      <span class="bp-title">Break Planner</span>
-      <div class="bp-shiftgroup">
-        <button class="bp-shift-btn active" id="bpShiftMorning" data-shift="morning">Day</button>
-        <button class="bp-shift-btn" id="bpShiftAfternoon" data-shift="afternoon">Afternoon</button>
+  <div class="bp-shell">
+    <div class="bp-chrome">
+      <div class="bp-bar">
+        <h1 class="bp-title">Breaks</h1>
+        <div class="bp-shiftgroup">
+          <button class="bp-shift-btn active" id="bpShiftMorning" data-shift="morning">Day</button>
+          <button class="bp-shift-btn" id="bpShiftAfternoon" data-shift="afternoon">Afternoon</button>
+        </div>
+        <div class="bp-summary" id="bpSummary"></div>
+        <div class="bp-actions">
+          <button class="bp-btn" id="bpImportBreaks" title="Rebuild break groups from floor break rows / stations">Sync</button>
+          <button class="bp-btn primary" id="bpAutoAssign" title="Put each floor-assigned packer into the break group for their station">Auto-assign</button>
+          <button class="bp-btn" id="bpAddGroup">+ Group</button>
+        </div>
       </div>
-      <button class="bp-btn" id="bpImportBreaks" title="Rebuild break groups from station map (A–D → Group 1, …)">&#8635; Sync groups from stations</button>
-      <button class="bp-btn primary" id="bpAutoAssign" title="Put each floor-assigned packer into the break group for their station">Auto-assign packers from stations</button>
-      <button class="bp-btn" id="bpAddGroup">+ Add break group</button>
+      <div class="bp-pool">
+        <span class="bp-pool-lbl">Still free</span>
+        <div class="bp-pool-list" id="bpRosterSections"></div>
+      </div>
     </div>
-    <div class="bp-sync-note" style="margin:-6px 0 12px">Packers auto-join the break group for their station (A–D → Group 1, E–H → Group 2, …). Sync also runs when you assign someone on the Floor Planner.</div>
-
-    <div class="bp-grid">
-      <div>
-        <div class="bp-card">
-          <div class="bp-section-lbl">Roster by role</div>
-          <div class="bp-sync-note">Same people list as the Roster tab (Day / Afternoon). Prefer managing staff there; changes sync here automatically.</div>
-          <div id="bpRosterSections"></div>
-          <div class="bp-addrow">
-            <input type="text" id="bpNewName" placeholder="Add staff name">
-            <select id="bpNewRole">
-              <option value="unassigned">No role yet</option>
-              <option value="packer">Packer</option>
-              <option value="runner">Runner</option>
-              <option value="boxmaker">Box Maker</option>
-            </select>
-            <button class="bp-btn primary" id="bpAddStaff">Add</button>
-          </div>
-        </div>
-        <div class="bp-card">
-          <div class="bp-section-lbl">Scheduled for a break</div>
-          <div class="bp-summary" id="bpSummary"></div>
-        </div>
-      </div>
-
-      <div id="bpGroups"></div>
+    <div class="bp-list-wrap">
+      <div class="bp-groups" id="bpGroups"></div>
     </div>
   </div>
 </div>
@@ -4769,9 +4810,6 @@ var currentShift = 'morning';
 var rosterSectionsEl = document.getElementById('bpRosterSections');
 var groupsEl = document.getElementById('bpGroups');
 var summaryEl = document.getElementById('bpSummary');
-var newNameInput = document.getElementById('bpNewName');
-var newRoleSelect = document.getElementById('bpNewRole');
-var addStaffBtn = document.getElementById('bpAddStaff');
 var addGroupBtn = document.getElementById('bpAddGroup');
 var importBreaksBtn = document.getElementById('bpImportBreaks');
 var autoAssignBtn = document.getElementById('bpAutoAssign');
@@ -5119,41 +5157,36 @@ function scheduleOwnSave(delay){
   }, delay == null ? 400 : delay);
 }
 
-// ── ROSTER RENDER ────────────────────────────────────────────────────
-function roleSections(){
-  return [
-    {key:'packer', label:'Packers'},
-    {key:'runner', label:'Runners'},
-    {key:'boxmaker', label:'Box Makers'},
-    {key:'unassigned', label:'No role yet'}
-  ];
-}
-function renderRosterSections(){
-  var people = personsForShift(currentShift);
-  var html = roleSections().map(function(sec){
-    var inSection = people.filter(function(p){ return p.role === sec.key; });
-    var chips = inSection.map(function(p){
-      var roleOpts = ['unassigned'].concat(ROLE_KEYS).map(function(rk){
-        return '<option value="' + rk + '"' + (rk === p.role ? ' selected' : '') + '>' + ROLE_LABELS[rk] + '</option>';
-      }).join('');
-      return '<span class="bp-chip ' + sec.key + '">' + escapeHtml(p.name) +
-        '<select data-role-select="' + p.id + '">' + roleOpts + '</select>' +
-        '<span class="x" data-remove-staff="' + p.id + '">&times;</span></span>';
-    }).join('');
-    return '<div class="bp-roster-section">' +
-      '<div class="bp-role-lbl"><span class="bp-role-dot ' + sec.key + '"></span>' + sec.label + ' (' + inSection.length + ')</div>' +
-      '<div class="bp-roster-list">' + chips + '</div>' +
-      (inSection.length ? '' : '<div class="bp-empty-hint">None yet</div>') +
-      '</div>';
-  }).join('');
-  rosterSectionsEl.innerHTML = html;
-}
-
-// ── SUMMARY ──────────────────────────────────────────────────────────
+// ── UNSCHEDULED POOL + SUMMARY ───────────────────────────────────────
 function assignedIdsForRole(sd, role){
   var ids = {};
   sd.groups.forEach(function(g){ (g[role]||[]).forEach(function(id){ ids[id] = true; }); });
   return ids;
+}
+function allAssignedIds(sd){
+  var ids = {};
+  ROLE_KEYS.forEach(function(role){
+    var map = assignedIdsForRole(sd, role);
+    Object.keys(map).forEach(function(id){ ids[id] = true; });
+  });
+  return ids;
+}
+function renderRosterSections(){
+  var sd = ensureShiftData(currentShift);
+  var people = personsForShift(currentShift).filter(function(p){ return ROLE_KEYS.indexOf(p.role) !== -1; });
+  var assigned = allAssignedIds(sd);
+  var free = people.filter(function(p){ return !assigned[p.id]; });
+  var pool = rosterSectionsEl.closest ? rosterSectionsEl.closest('.bp-pool') : null;
+  if (!free.length){
+    rosterSectionsEl.innerHTML = '';
+    if (pool) pool.classList.add('is-empty');
+    return;
+  }
+  if (pool) pool.classList.remove('is-empty');
+  rosterSectionsEl.innerHTML = free.map(function(p){
+    return '<span class="bp-chip ' + p.role + '" title="' + escapeHtml(ROLE_LABELS[p.role] || p.role) + '">' +
+      escapeHtml(p.name) + '</span>';
+  }).join('');
 }
 function renderSummary(){
   var sd = ensureShiftData(currentShift);
@@ -5162,11 +5195,13 @@ function renderSummary(){
     var total = people.filter(function(p){ return p.role === role; }).length;
     var assignedIds = assignedIdsForRole(sd, role);
     var scheduled = people.filter(function(p){ return p.role === role && assignedIds[p.id]; }).length;
-    var short = scheduled < total;
-    return '<div class="bp-summary-item' + (short ? ' short' : '') + '"><span class="bp-role-dot ' + role + '" style="display:inline-block;margin-right:4px"></span>' +
-      ROLE_LABELS[role] + ': <b>' + scheduled + '/' + total + '</b> scheduled</div>';
+    var short = total > 0 && scheduled < total;
+    var shortLabel = ROLE_LABELS[role];
+    if (role === 'boxmaker') shortLabel = 'Box';
+    return '<div class="bp-summary-item' + (short ? ' short' : '') + '">' +
+      shortLabel + ' <b>' + scheduled + '/' + total + '</b></div>';
   }).join('');
-  summaryEl.innerHTML = html || '<div style="font-size:12px;color:var(--muted)">Add staff and assign roles to see coverage</div>';
+  summaryEl.innerHTML = html;
 }
 
 // ── GROUPS RENDER ────────────────────────────────────────────────────
@@ -5174,7 +5209,7 @@ function renderGroups(){
   var sd = ensureShiftData(currentShift);
   var people = personsForShift(currentShift);
   if (!sd.groups.length){
-    groupsEl.innerHTML = '<div class="bp-card" style="text-align:center;color:var(--muted);font-size:12.5px">No break groups yet — add one to get started.</div>';
+    groupsEl.innerHTML = '<div class="bp-empty">No break groups yet — tap + Group to start.</div>';
     return;
   }
   var html = sd.groups.map(function(g){
@@ -5190,33 +5225,33 @@ function renderGroups(){
         var p = people.filter(function(x){ return x.id === pid; })[0];
         if (!p) return '';
         var stLetter = stationByRoster[pid];
-        var stBadge = stLetter ? ' <span class="bp-st-badge" title="Station ' + stLetter + '">St ' + stLetter + '</span>' : '';
+        var stBadge = stLetter ? ' <span class="bp-st-badge" title="Station ' + stLetter + '">' + stLetter + '</span>' : '';
         return '<span class="bp-chip ' + role + '">' + escapeHtml(p.name) + stBadge +
           '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>';
       }).join('');
       var available = roleRoster.filter(function(p){ return assignedIds.indexOf(p.id) === -1; });
-      var opts = '<option value="">+ add ' + ROLE_LABELS[role].toLowerCase() + '\u2026</option>' +
+      var opts = '<option value="">+ add</option>' +
         available.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
       var allOnBreak = roleRoster.length > 0 && assignedIds.length >= roleRoster.length;
-      var warn = allOnBreak ? '<span class="bp-warn">All ' + ROLE_LABELS[role] + 's on break</span>' : '';
+      var warn = allOnBreak ? '<span class="bp-warn">all</span>' : '';
+      var shortRole = role === 'boxmaker' ? 'Box' : ROLE_LABELS[role];
       return '<div class="bp-role-lane">' +
-        '<div class="bp-role-lane-hdr"><span class="bp-role-lbl"><span class="bp-role-dot ' + role + '"></span>' + ROLE_LABELS[role] + 's' + warn + '</span>' +
-        '<select class="bp-lane-select" data-lane-add="' + g.id + '|' + role + '">' + opts + '</select></div>' +
-        '<div class="bp-roster-list">' + chips + (chips ? '' : '<span class="bp-empty-hint">None assigned</span>') + '</div>' +
+        '<span class="bp-role-lbl"><span class="bp-role-dot ' + role + '"></span>' + shortRole + warn + '</span>' +
+        '<div class="bp-roster-list">' + chips + (chips ? '' : '<span class="bp-empty-hint">—</span>') + '</div>' +
+        '<select class="bp-lane-select" data-lane-add="' + g.id + '|' + role + '">' + opts + '</select>' +
         '</div>';
     }).join('');
     return '<div class="bp-group-card" data-group-card="' + g.id + '">' +
       '<div class="bp-group-hdr">' +
       '<input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '">' +
-      '<input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="Stations (e.g. A, B, C)" value="' + escapeHtml(g.stations || '') + '">' +
-      '<span class="bp-group-rm" data-remove-group="' + g.id + '">Remove</span>' +
-      '</div>' +
-      (g.sourceNote ? '<div class="bp-source-note">Was: ' + escapeHtml(g.sourceNote) + '</div>' : '') +
+      '<input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="Stations A–D" value="' + escapeHtml(g.stations || '') + '">' +
       '<div class="bp-times">' +
       '<div class="bp-time-block"><label>Tea</label><input type="time" data-time="' + g.id + '|teaStart" value="' + g.teaStart + '">' +
-      '<span style="color:var(--muted)">&ndash;</span><input type="time" data-time="' + g.id + '|teaEnd" value="' + g.teaEnd + '"></div>' +
+      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|teaEnd" value="' + g.teaEnd + '"></div>' +
       '<div class="bp-time-block"><label>Meal</label><input type="time" data-time="' + g.id + '|mealStart" value="' + g.mealStart + '">' +
-      '<span style="color:var(--muted)">&ndash;</span><input type="time" data-time="' + g.id + '|mealEnd" value="' + g.mealEnd + '"></div>' +
+      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|mealEnd" value="' + g.mealEnd + '"></div>' +
+      '</div>' +
+      '<button type="button" class="bp-group-rm" data-remove-group="' + g.id + '" title="Remove group">&times;</button>' +
       '</div>' +
       lanes +
       '</div>';
@@ -5245,18 +5280,6 @@ function isTypingInField(){
   return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'));
 }
 
-addStaffBtn.addEventListener('click', async function(){
-  var name = newNameInput.value.trim();
-  if (!name) return;
-  var role = newRoleSelect.value || 'unassigned';
-  var added = await addStaffToShared(currentShift, [name], role);
-  newNameInput.value = '';
-  renderRosterSections();
-  renderSummary();
-  if (added && !added.length) bpToast(name + ' is already on the roster');
-});
-newNameInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') addStaffBtn.click(); });
-
 addGroupBtn.addEventListener('click', function(){
   var sd = ensureShiftData(currentShift);
   sd.groups.push({ id: uid(), label: 'Group ' + (sd.groups.length + 1), stations:'', teaStart:'', teaEnd:'', mealStart:'', mealEnd:'',
@@ -5274,16 +5297,16 @@ function hasAnyAssignments(sd){
 var importBreaksTimer = null;
 function resetImportBreaksBtn(){
   importBreaksBtn.setAttribute('data-pending', '0');
-  importBreaksBtn.textContent = '\u21BB Sync groups from stations';
+  importBreaksBtn.textContent = 'Sync';
   importBreaksBtn.classList.remove('bp-btn-warn');
 }
 importBreaksBtn.addEventListener('click', async function(){
   var sd = ensureShiftData(currentShift);
   if (hasAnyAssignments(sd) && importBreaksBtn.getAttribute('data-pending') !== '1'){
     importBreaksBtn.setAttribute('data-pending', '1');
-    importBreaksBtn.textContent = 'Click again to replace groups (assignments will be lost)';
+    importBreaksBtn.textContent = 'Confirm replace?';
     importBreaksBtn.classList.add('bp-btn-warn');
-    bpToast('Click "Import breaks" once more within a few seconds to replace this shift\u2019s groups.');
+    bpToast('Tap Sync again to replace this shift\u2019s groups.');
     clearTimeout(importBreaksTimer);
     importBreaksTimer = setTimeout(resetImportBreaksBtn, 4500);
     return;
@@ -5311,8 +5334,7 @@ importBreaksBtn.addEventListener('click', async function(){
   });
   sd.groups = newGroups;
   var auto = autoAssignPackersFromStations(sd);
-  renderGroups();
-  renderSummary();
+  renderAll();
   scheduleOwnSave();
   bpToast('Imported ' + newGroups.length + ' group(s) · auto-assigned ' + auto.assigned + ' packer(s) from stations');
 });
@@ -5322,38 +5344,12 @@ autoAssignBtn.addEventListener('click', async function(){
   if (!plannerCache){ bpToast('No Floor Planner data found yet'); return; }
   var sd = ensureShiftData(currentShift);
   var result = autoAssignPackersFromStations(sd, { seedFromFloor: true });
-  renderGroups();
-  renderSummary();
+  renderAll();
   scheduleOwnSave();
   if (!result.stations){
     bpToast('No packers on stations yet — assign them on the Floor Planner first');
   } else {
     bpToast('Auto-assigned ' + result.assigned + ' packer(s) from ' + result.stations + ' station(s)');
-  }
-});
-
-// role change / remove staff (event delegation on roster container)
-rosterSectionsEl.addEventListener('change', async function(e){
-  var t = e.target;
-  var pid = t.getAttribute('data-role-select');
-  if (pid){
-    await setSharedRole(currentShift, pid, t.value);
-    var sd = ensureShiftData(currentShift);
-    removeStaffFromAllLanes(sd, pid); // their role changed, so any prior lane slot no longer matches
-    renderRosterSections();
-    renderGroups();
-    renderSummary();
-    scheduleOwnSave();
-  }
-});
-rosterSectionsEl.addEventListener('click', async function(e){
-  var t = e.target;
-  var pid = t.getAttribute('data-remove-staff');
-  if (pid){
-    await removeStaffFromShared(currentShift, pid);
-    renderRosterSections();
-    renderGroups();
-    renderSummary();
   }
 });
 
@@ -5395,8 +5391,7 @@ groupsEl.addEventListener('change', function(e){
       if (!g[role]) g[role] = [];
       if (g[role].indexOf(t.value) === -1) g[role].push(t.value);
     }
-    renderGroups();
-    renderSummary();
+    renderAll();
     scheduleOwnSave();
   }
 });
@@ -5406,8 +5401,7 @@ groupsEl.addEventListener('click', function(e){
   if (rmGroup){
     var sd = ensureShiftData(currentShift);
     sd.groups = sd.groups.filter(function(g){ return g.id !== rmGroup; });
-    renderGroups();
-    renderSummary();
+    renderAll();
     scheduleOwnSave();
     return;
   }
@@ -5417,8 +5411,7 @@ groupsEl.addEventListener('click', function(e){
     var sd2 = ensureShiftData(currentShift);
     var g2 = sd2.groups.filter(function(g){ return g.id === parts[0]; })[0];
     if (g2 && g2[parts[1]]) g2[parts[1]] = g2[parts[1]].filter(function(id){ return id !== parts[2]; });
-    renderGroups();
-    renderSummary();
+    renderAll();
     scheduleOwnSave();
   }
 });
