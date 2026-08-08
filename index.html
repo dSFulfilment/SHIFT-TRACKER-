@@ -10361,7 +10361,15 @@ function toast(msg, err) {
         activeWeekKey: '',
         byDate: {},
         archives: {},
-        legacy: { records: [], files: [], quality: { issues: [], counts: {} } },
+        legacy: {
+          records: [],
+          files: [],
+          quality: {
+            validRows: 0, invalidRows: 0, blankRows: 0, missingWorkerNames: 0,
+            missingDates: 0, missingPackingTime: 0, duplicateRows: 0, unknownShifts: 0,
+            totalsRowsSkipped: 0, invalidNumericValues: 0, failedCalculations: 0, mixedSkuRows: 0
+          }
+        },
         updatedAt: now
       });
     }
