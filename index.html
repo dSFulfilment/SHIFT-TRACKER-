@@ -91,7 +91,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       linear-gradient(45deg,transparent 75%,#EEEEEA 75%),
       linear-gradient(-45deg,transparent 75%,#EEEEEA 75%);
     background-size:16px 16px; background-position:0 0,0 8px,8px -8px,-8px 0;
-    background-color:#F7F7F4; padding:24px; }
+    background-color:#F7F7F4; padding:24px 24px 88px; }
 #app #viewport.draw-armed{ cursor:crosshair; }
 #app #viewport.move-armed,
 #app #viewport.is-dragging{ cursor:grab; touch-action:none; }
@@ -333,7 +333,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .roster-row .role-chip.unassigned{ background:#F3F4F6; color:#9CA3AF; }
 #app .roster-add select{ font-size:11px; border:1px solid var(--line); border-radius:6px; padding:5px 6px; background:#fff; max-width:96px; }
 /* Dock must not steal map clicks — closed panel used to cover Boxes 1 / left strip */
-#floorToolsDock{ position:fixed; left:16px; bottom:16px; z-index:9998; display:none;
+#floorToolsDock{ position:fixed; left:16px; bottom:84px; z-index:9998; display:none;
   flex-direction:column; align-items:flex-start; gap:10px; max-width:min(360px, calc(100vw - 32px));
   pointer-events:none; }
 #floorToolsDock.floor-visible{ display:flex; }
@@ -382,7 +382,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #floorToolsScrim{ display:none; position:fixed; inset:0; z-index:9997; background:transparent; }
 #floorToolsScrim.open{ display:block; }
 @media (max-width:640px){
-  #floorToolsDock{ bottom:72px; }
+  #floorToolsDock{ bottom:84px; }
 }
 /* Tablet / touch: full-bleed floor, bigger taps, SKU rail stays out of the way */
 @media (max-width:1100px), (pointer:coarse){
@@ -425,7 +425,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   #app #floorToolChip{ top:auto; bottom:84px; left:76px; padding:8px 8px 8px 12px; }
   #app #floorToolChip button{ width:36px; height:36px; }
   .bp-fab-group{ bottom:12px; right:12px; left:12px; justify-content:stretch; border-radius:16px; }
-  .bp-fab-btn{ flex:1; padding:12px 6px; font-size:11.5px; min-height:48px; }
+  .bp-fab-btn{ flex:1; padding:10px 4px; font-size:10.5px; min-height:46px; }
 }
 #app #floorToolChip{ display:none; position:fixed; top:56px; left:12px; z-index:10050; align-items:center; gap:6px;
   background:rgba(28,36,48,.92); color:#fff; border-radius:999px; padding:6px 6px 6px 10px;
@@ -457,7 +457,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app #viewport.move-armed .card.floorslot.selected .ctrl.del,
 #app #viewport.move-armed .card.station.selected .ctrl.resize,
 #app #viewport.move-armed .card.floorslot.selected .ctrl.resize{ width:22px; height:22px; }
-#app .role-popover{ display:none; position:fixed; z-index:300; background:#fff; border:1px solid var(--line);
+#app .role-popover{ display:none; position:fixed; z-index:10060; background:#fff; border:1px solid var(--line);
     border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:6px; flex-direction:column; gap:2px; min-width:132px; max-height:320px; overflow-y:auto; }
 #app .role-popover.open{ display:flex; }
 #app .role-popover .role-opt{ display:flex; align-items:center; gap:8px; padding:6px 8px; border:none; background:none;
@@ -467,7 +467,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .role-popover .role-opt.active{ background:#EDEDEA; }
 @media print{
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
-    header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel{ display:none !important; }
+    header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel,
+    #bpFabGroup, #bpToast, #toast, #packerToast{ display:none !important; }
     html, body{ height:auto !important; overflow:visible !important; background:#fff !important; margin:0 !important; }
     #app{ height:auto !important; }
     #main{ height:auto !important; }
@@ -652,13 +653,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #breakPlannerTab .bp-chip .x:hover{ opacity:1; }
 #breakPlannerTab .bp-empty-hint{ font-size:11px; color:#C7C7CC; }
 #breakPlannerTab .bp-sheet-scrim{
-  display:none; position:fixed; inset:0; background:rgba(15,23,42,.35); z-index:80;
+  display:none; position:fixed; inset:0; background:rgba(15,23,42,.35); z-index:10000;
 }
 #breakPlannerTab .bp-sheet-scrim.open{ display:block; }
 #breakPlannerTab .bp-sheet{
   display:none; position:fixed; left:50%; bottom:0; transform:translateX(-50%);
-  width:min(520px, 100%); max-height:70dvh; overflow:auto; z-index:81;
-  background:#fff; border-radius:16px 16px 0 0; padding:12px 12px calc(18px + env(safe-area-inset-bottom,0px));
+  width:min(520px, 100%); max-height:70dvh; overflow:auto; z-index:10001;
+  background:#fff; border-radius:16px 16px 0 0;
+  padding:12px 12px calc(72px + env(safe-area-inset-bottom,0px));
   box-shadow:0 -8px 30px rgba(0,0,0,.18);
 }
 #breakPlannerTab .bp-sheet.open{ display:block; }
@@ -676,7 +678,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 }
 .bp-toast{ position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#1C2430; color:#fff;
   padding:.45rem 1rem; border-radius:100px; font-size:12px; font-weight:600; opacity:0; pointer-events:none;
-  transition:opacity .2s; z-index:9999; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:85vw;
+  transition:opacity .2s; z-index:10002; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:85vw;
   overflow:hidden; text-overflow:ellipsis; }
 .bp-toast.show{ opacity:1; }
 @media (max-width:720px){
@@ -807,7 +809,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabTracker .aip:focus, #tabPacker .aip:focus{outline:none;border-color:#7baaf7;box-shadow:0 0 0 2px rgba(123,170,247,.2)}
 #tabTracker .aip::placeholder, #tabPacker .aip::placeholder{color:var(--fnt);font-weight:400;font-size:.78rem}
 #tabTracker .empty-td, #tabPacker .empty-td{text-align:center;padding:2.5rem;color:var(--fnt);font-size:.82rem}
-#tabTracker .toast, #tabPacker .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--sur);padding:.5rem 1.2rem;border-radius:100px;font-size:.78rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:200;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+#tabTracker .toast, #tabPacker .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--sur);padding:.5rem 1.2rem;border-radius:100px;font-size:.78rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10002;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18);max-width:85vw;overflow:hidden;text-overflow:ellipsis}
 #tabTracker .toast.show, #tabPacker .toast.show{opacity:1}#tabTracker .top-tabs, #tabPacker .top-tabs{display:flex;gap:.5rem;padding:.75rem 1rem 0;max-width:960px;margin:0 auto}
 #tabTracker .top-tab, #tabPacker .top-tab{padding:.5rem 1.1rem;border-radius:100px;border:1px solid var(--bdr2);background:var(--sur);color:var(--mut);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
 #tabTracker .top-tab.active, #tabPacker .top-tab.active{background:var(--txt);border-color:var(--txt);color:var(--sur)}
@@ -1238,7 +1240,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       </div>
       <div class="stn-card">
         <h2>Week review</h2>
-        <p>SKU totals by date (+ by worker) from Packer uploads this week.</p>
+        <p>SKU totals by date (+ by worker) from Packer, plus today’s Tracker plan vs actual CSV.</p>
         <div class="stn-actions">
           <button type="button" class="primary" id="stnExportWeekReview">Export CSV</button>
         </div>
@@ -5585,6 +5587,8 @@ function freePeopleForShift(){
 function closeAssignSheet(){
   if (sheetEl){ sheetEl.classList.remove('open'); sheetEl.setAttribute('aria-hidden', 'true'); sheetEl.innerHTML = ''; }
   if (sheetScrimEl){ sheetScrimEl.classList.remove('open'); sheetScrimEl.setAttribute('aria-hidden', 'true'); }
+  var fab = document.getElementById('bpFabGroup');
+  if (fab) fab.style.visibility = '';
 }
 function openSheetShell(mode, title, sub, bodyHtml){
   sheetEl.setAttribute('data-mode', mode || '');
@@ -5596,6 +5600,8 @@ function openSheetShell(mode, title, sub, bodyHtml){
   sheetEl.setAttribute('aria-hidden', 'false');
   sheetScrimEl.classList.add('open');
   sheetScrimEl.setAttribute('aria-hidden', 'false');
+  var fab = document.getElementById('bpFabGroup');
+  if (fab) fab.style.visibility = 'hidden';
 }
 function openAssignSheet(groupId){
   var sd = ensureShiftData(currentShift);
@@ -5977,7 +5983,10 @@ async function init(){
 }
 window.__breakPlanner = {
   refresh: function(){
-    loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
+    // Full reload so Floor Plan sync is not overwritten by stale Breaks memory.
+    return loadAll().then(function(){ renderAll(); }).catch(function(){
+      return loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
+    });
   }
 };
 init();
@@ -6003,8 +6012,6 @@ window.onload = function() {
       }
     }
   } catch(e) {}
-  var exportBtn = document.getElementById('exportWeekBtn');
-  if (exportBtn) exportBtn.addEventListener('click', function(){ exportWeeklyReview(); });
   onInput();
   loadBreakPlannerData();
   setInterval(function(){ if (!document.hidden) liveTick(); }, 1000);
@@ -6158,7 +6165,7 @@ function updateBreakStatusLine(hadReadError) {
     el.textContent = 'No break data found yet \u2014 set up the Breaks tab, or capacity will assume nobody is on break.';
     return;
   }
-  var shiftLabel = breakPlannerData.shiftKey === 'morning' ? 'Morning' : 'Afternoon';
+  var shiftLabel = breakPlannerData.shiftKey === 'morning' ? 'Day' : 'Afternoon';
   el.textContent = 'Using breaks from the Breaks tab (' + shiftLabel + ', following the Floor Planner\u2019s active shift).';
 }
 if (hasSyncLayer()) {
@@ -8469,7 +8476,6 @@ function toast(msg, err) {
     fileInput: document.getElementById('pkFileInput'),
     uploadBtn: document.getElementById('pkUploadBtn'),
     clearBtn: document.getElementById('pkClearBtn'),
-    exportWeekBtn: document.getElementById('pkExportWeekBtn'),
     shiftToggle: document.getElementById('pkShift'),
     daysEl: document.getElementById('pkDays'),
     weekLabel: document.getElementById('pkWeekLabel'),
@@ -9505,9 +9511,6 @@ function toast(msg, err) {
       toast('Cleared ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
     });
   }
-  if (els.exportWeekBtn) {
-    els.exportWeekBtn.addEventListener('click', function () { exportActiveWeek(true); });
-  }
   if (els.shiftToggle) {
     els.shiftToggle.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-shift]') : null;
@@ -10455,6 +10458,16 @@ function toast(msg, err) {
       if(!data){ toast('Not a recognised backup file'); return; }
 
       if(data.type === 'shift-floor-planner-backup' && data.keys){
+        if(expectedKey){
+          if(data.keys[expectedKey] == null){
+            toast('That backup has no ' + (KEY_LABELS[expectedKey] || expectedKey) + ' data');
+            return;
+          }
+          await writeValue(expectedKey, data.keys[expectedKey]);
+          toast((KEY_LABELS[expectedKey] || expectedKey) + ' restored — reloading…');
+          setTimeout(function(){ location.reload(); }, 600);
+          return;
+        }
         for(var i=0;i<KEYS.length;i++){
           var k = KEYS[i];
           if(data.keys[k] == null) continue;
@@ -10470,6 +10483,10 @@ function toast(msg, err) {
         if(KEYS.indexOf(pageKey) < 0){ toast('Unknown page in file'); return; }
         if(expectedKey && expectedKey !== pageKey){
           toast('That file is for ' + (KEY_LABELS[pageKey] || pageKey) + ', not ' + (KEY_LABELS[expectedKey] || expectedKey));
+          return;
+        }
+        if(!expectedKey){
+          toast('Use Restore on that page card, or Export all / Restore all for full backups');
           return;
         }
         if(data.value == null){ toast('File has no data'); return; }
@@ -10622,6 +10639,14 @@ function toast(msg, err) {
         if(toolsBtn) toolsBtn.setAttribute('aria-expanded', 'false');
       }
     }
+    var fab = document.getElementById('bpFabGroup');
+    if (fab) fab.style.visibility = '';
+    if (name !== 'breaks'){
+      var sheet = document.getElementById('bpAssignSheet');
+      var scrim = document.getElementById('bpSheetScrim');
+      if (sheet){ sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true'); }
+      if (scrim){ scrim.classList.remove('open'); scrim.setAttribute('aria-hidden', 'true'); }
+    }
     if (name === 'breaks' && window.__breakPlanner && typeof window.__breakPlanner.refresh === 'function'){
       window.__breakPlanner.refresh();
     }
@@ -10630,6 +10655,10 @@ function toast(msg, err) {
     }
     if (name === 'packer' && window.__packerDashboard && typeof window.__packerDashboard.refresh === 'function'){
       window.__packerDashboard.refresh();
+    }
+    if (name === 'tracker'){
+      if (typeof loadBreakPlannerData === 'function') loadBreakPlannerData();
+      if (typeof onInput === 'function') onInput();
     }
   }
   var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
