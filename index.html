@@ -175,17 +175,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.floorslot.slot-sku .field.slot-name{ display:none; }
 #app .card.floorslot .ctrl{ width:20px; height:20px; }
 #app .card.floorslot .ctrl svg{ width:11px; height:11px; }
-/* Packing plates: no floating chrome unless Move tool is on (then move/resize/delete) */
+/* Packing plates: hide resize/delete/duplicate/edit chrome unless Move is armed */
 #app .card.station .ctrl,
 #app .card.floorslot .ctrl,
 #app .card.station .rotate-line,
-#app .card.floorslot .rotate-line,
+#app .card.floorslot .rotate-line{
+  display:none !important;
+}
 #app #viewport.move-armed .card.station.selected .ctrl.resize,
 #app #viewport.move-armed .card.floorslot.selected .ctrl.resize,
 #app #viewport.move-armed .card.station.selected .ctrl.del,
 #app #viewport.move-armed .card.floorslot.selected .ctrl.del,
 #app #viewport.move-armed .card.station.selected .ctrl.dup,
-#app #viewport.move-armed .card.floorslot.selected .ctrl.dup,
+#app #viewport.move-armed .card.floorslot.selected .ctrl.dup{
+  display:flex !important; width:26px; height:26px; z-index:9;
+}
 /* Mark-up color chip stays easy to hit when selected */
 #app .card.text.selected .ctrl.color,
 #app .card.arrow.selected .ctrl.color,
@@ -361,8 +365,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   width:100%; aspect-ratio:1; border:1px solid var(--line); border-radius:14px; background:#FAFAF8;
   padding:0; cursor:pointer; color:var(--ink); }
 #floorToolsDock .ft-tool:hover{ background:#F1F1EE; }
-#floorToolsDock .ft-tool .ft-ico{ width:26px; height:26px; display:block; pointer-events:none; }
-#floorToolsDock .ft-tool .ft-ico svg{ width:26px; height:26px; display:block; }
+#floorToolsDock .ft-tool .ft-ico{ width:28px; height:28px; display:block; pointer-events:none; }
+#floorToolsDock .ft-tool .ft-ico svg{ width:28px; height:28px; display:block; }
 #floorToolsDock .ft-tool .swatch{ display:none; }
 #floorToolsDock .ft-tool.annot .swatch.ft-color{
   display:block; position:absolute; right:5px; bottom:5px; width:12px; height:12px; border-radius:50%;
@@ -2660,11 +2664,22 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       f.addEventListener('pointerdown', function(e){ if(f.querySelector('.edit-input')) e.stopPropagation(); });
     });
     if(rotCtrl) rotCtrl.addEventListener('pointerdown', function(e){ onRotatePointerDown(e, card.id); });
-    resizeCtrl.addEventListener('pointerdown', function(e){ onResizePointerDown(e, card.id); });
+    resizeCtrl.addEventListener('pointerdown', function(e){
+      if(isPlate && armedTool !== 'move'){ e.stopPropagation(); return; }
+      onResizePointerDown(e, card.id);
+    });
     dupCtrl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-    dupCtrl.addEventListener('click', function(e){ e.stopPropagation(); duplicateCard(card.id); });
+    dupCtrl.addEventListener('click', function(e){
+      e.stopPropagation();
+      if(isPlate && armedTool !== 'move') return;
+      duplicateCard(card.id);
+    });
     delCtrl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-    delCtrl.addEventListener('click', function(e){ e.stopPropagation(); deleteCard(card.id); });
+    delCtrl.addEventListener('click', function(e){
+      e.stopPropagation();
+      if(isPlate && armedTool !== 'move') return;
+      deleteCard(card.id);
+    });
     if(colorCtrl){
       colorCtrl.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
       colorCtrl.addEventListener('click', function(e){ e.stopPropagation(); openColorPicker(card.id, colorCtrl); });
@@ -3057,6 +3072,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(!fieldEl || fieldEl.querySelector('.edit-input')) return;
     var card = cards.find(function(c){ return c.id===cardId; });
     if(!card) return;
+    // Plate letter/label edits only while Move tool is on
+    if((card.type==='station' || card.type==='floorslot') && armedTool !== 'move') return;
     var key = fieldEl.dataset.f;
     if(!key) return;
     var currentValue = card[key] || '';
@@ -3371,6 +3388,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   function onResizePointerDown(e, id){
     e.stopPropagation(); e.preventDefault();
     var card = cards.find(function(c){ return c.id===id; });
+    if(!card) return;
+    if((card.type==='station' || card.type==='floorslot') && armedTool !== 'move') return;
     var ref = els.get(id);
     var rect = canvas.getBoundingClientRect();
     resizeState = {
