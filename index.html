@@ -1349,7 +1349,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         </div>
         <div class="st-actions">
           <button class="btn" onclick="loadExample()">Example</button>
-          <button class="btn" onclick="clearActuals()">Clear actuals</button>
+          <button class="btn" id="clearActualsBtn" type="button">Clear actuals</button>
           <button class="btn" onclick="exportCSV()">CSV</button>
           <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Toggle dark">Dark</button>
         </div>
@@ -6326,11 +6326,39 @@ function handleActualInput(idx, val) {
 }
 
 // ── CLEAR / EXAMPLE / EXPORT ─────────────────────────────────────────────────
+// Two-click confirm (same pattern as Floor Plan "Clear"): first click arms, second clears.
+var clearActualsArmed = false;
+var clearActualsTimer = null;
+function resetClearActualsBtn() {
+  clearActualsArmed = false;
+  var btn = document.getElementById('clearActualsBtn');
+  if (btn) {
+    btn.textContent = 'Clear actuals';
+    btn.classList.remove('btn-danger-pending');
+  }
+}
 function clearActuals() {
   actuals = [];
   onInput();
   toast('Actuals cleared');
 }
+(function bindClearActualsConfirm() {
+  var btn = document.getElementById('clearActualsBtn');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    if (!clearActualsArmed) {
+      clearActualsArmed = true;
+      btn.textContent = 'Confirm?';
+      btn.classList.add('btn-danger-pending');
+      clearTimeout(clearActualsTimer);
+      clearActualsTimer = setTimeout(resetClearActualsBtn, 3000);
+      return;
+    }
+    clearTimeout(clearActualsTimer);
+    resetClearActualsBtn();
+    clearActuals();
+  });
+})();
 
 function loadExample() {
   document.getElementById('shiftStart').value = '14:00';
