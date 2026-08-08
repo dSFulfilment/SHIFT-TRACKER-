@@ -1348,7 +1348,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <div class="st-sub">Plan vs actual · packing pace</div>
         </div>
         <div class="st-actions">
-          <button class="btn" onclick="loadExample()">Example</button>
+          <button class="btn" id="loadExampleBtn" type="button">Example</button>
           <button class="btn" id="clearActualsBtn" type="button">Clear actuals</button>
           <button class="btn" onclick="exportCSV()">CSV</button>
           <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Toggle dark">Dark</button>
@@ -6360,16 +6360,63 @@ function clearActuals() {
   });
 })();
 
+var EXAMPLE_SHIFT = { start: '14:00', end: '22:00', bpph: '15', startBoxes: '2400' };
+var loadExampleArmed = false;
+var loadExampleTimer = null;
+
+function resetLoadExampleBtn() {
+  loadExampleArmed = false;
+  var btn = document.getElementById('loadExampleBtn');
+  if (btn) {
+    btn.textContent = 'Example';
+    btn.classList.remove('btn-danger-pending');
+  }
+}
+
+/** True when Example would overwrite filled setup fields or clear entered actuals. */
+function exampleWouldOverwrite() {
+  var hasActual = actuals.some(function (a) { return a != null && a !== ''; });
+  if (hasActual) return true;
+  var start = document.getElementById('shiftStart').value || '';
+  var end = document.getElementById('shiftEnd').value || '';
+  var bpph = String(document.getElementById('bpph').value || '').trim();
+  var sb = String(document.getElementById('startBoxes').value || '').trim();
+  if (sb !== '' && sb !== EXAMPLE_SHIFT.startBoxes) return true;
+  if (start && start !== EXAMPLE_SHIFT.start) return true;
+  if (end && end !== EXAMPLE_SHIFT.end) return true;
+  if (bpph !== '' && parseFloat(bpph) !== parseFloat(EXAMPLE_SHIFT.bpph)) return true;
+  // startBoxes already at example value with matching times — still clears actuals array shape via onInput, but no entered values
+  return false;
+}
+
 function loadExample() {
-  document.getElementById('shiftStart').value = '14:00';
-  document.getElementById('shiftEnd').value   = '22:00';
-  document.getElementById('bpph').value       = '15';
-  document.getElementById('startBoxes').value = '2400';
+  document.getElementById('shiftStart').value = EXAMPLE_SHIFT.start;
+  document.getElementById('shiftEnd').value = EXAMPLE_SHIFT.end;
+  document.getElementById('bpph').value = EXAMPLE_SHIFT.bpph;
+  document.getElementById('startBoxes').value = EXAMPLE_SHIFT.startBoxes;
   actuals = [];
   onInput();
   loadBreakPlannerData(); // repopulates "Packers on Shift" from the Floor Plan
   toast('Example loaded');
 }
+
+(function bindLoadExampleConfirm() {
+  var btn = document.getElementById('loadExampleBtn');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    if (exampleWouldOverwrite() && !loadExampleArmed) {
+      loadExampleArmed = true;
+      btn.textContent = 'Confirm?';
+      btn.classList.add('btn-danger-pending');
+      clearTimeout(loadExampleTimer);
+      loadExampleTimer = setTimeout(resetLoadExampleBtn, 3000);
+      return;
+    }
+    clearTimeout(loadExampleTimer);
+    resetLoadExampleBtn();
+    loadExample();
+  });
+})();
 
 function exportCSV() {
   if (!lastPlan || !lastCfg) { toast('Set up the shift first', true); return; }
