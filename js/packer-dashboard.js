@@ -47,6 +47,7 @@
     selectedWorker: null,
     loading: false,
     error: null,
+    view: 'table', // table | charts | quality
     pendingImport: null // { files: [{name,text,result}], targetDate, targetShift, mode }
   };
 
@@ -63,6 +64,8 @@
     nextWeek: document.getElementById('pkNextWeek'),
     jumpToday: document.getElementById('pkJumpToday'),
     legacyBtn: document.getElementById('pkLegacyBtn'),
+    searchInput: document.getElementById('pkSearchInput'),
+    views: document.getElementById('pkViews'),
     filters: document.getElementById('pkFilters'),
     kpis: document.getElementById('pkKpis'),
     charts: document.getElementById('pkCharts'),
@@ -161,13 +164,18 @@
   }
 
   function statusPill(status) {
-    if (!status) return '<span class="pk-status pk-status-unknown">No target</span>';
+    if (!status) return '<span class="pk-status pk-status-unknown" title="No target">No target</span>';
     var cls =
       status.key === 'excellent' ? 'pk-status-excellent'
         : status.key === 'on_target' ? 'pk-status-on'
           : status.key === 'needs_attention' ? 'pk-status-attention'
             : 'pk-status-unknown';
-    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(status.label) + '">' + escapeHtml(status.label) + '</span>';
+    var short =
+      status.key === 'excellent' ? 'Excellent'
+        : status.key === 'on_target' ? 'On target'
+          : status.key === 'needs_attention' ? 'Needs attention'
+            : 'No target';
+    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(status.label) + '">' + escapeHtml(short) + '</span>';
   }
 
   function barChart(items, valueKey, labelKey, opts) {
@@ -408,65 +416,40 @@
   }
 
   function renderFilters() {
-    if (!els.filters) return;
-    var opts = PA.uniqueOptions(currentRecords());
-    var f = state.filters;
-    function options(list, selected, getVal, getLbl, allLabel) {
-      return '<option value="">' + allLabel + '</option>' + list.map(function (item) {
-        var v = getVal(item); var l = getLbl(item);
-        return '<option value="' + escapeHtml(String(v)) + '"' +
-          (String(selected) === String(v) ? ' selected' : '') + '>' + escapeHtml(String(l)) + '</option>';
-      }).join('');
+    // Search lives in chrome; advanced filters stay unused in the compact layout.
+    if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
+      els.searchInput.value = state.filters.search || '';
     }
-    els.filters.innerHTML =
-      '<div class="pk-filter-grid">' +
-      '<label class="pk-fl"><span>Report date</span><select data-f="reportDate">' +
-      options(opts.dates, f.reportDate, function (d) { return d; }, function (d) { return PA.formatDateAU(d); }, 'All dates') +
-      '</select></label>' +
-      '<label class="pk-fl"><span>Worker</span><select data-f="worker">' +
-      options(opts.workers, f.worker, function (w) { return w.key; }, function (w) { return w.label; }, 'All workers') +
-      '</select></label>' +
-      '<label class="pk-fl"><span>Station</span><select data-f="station">' +
-      options(opts.stations, f.station, function (s) { return s; }, function (s) { return s; }, 'All stations') +
-      '</select></label>' +
-      '<label class="pk-fl"><span>SKU size</span><select data-f="sku">' +
-      options(opts.skus, f.sku, function (s) { return s; }, function (s) { return s; }, 'All SKUs') +
-      '</select></label>' +
-      '<label class="pk-fl"><span>Hour</span><select data-f="hour">' +
-      options(opts.hours, f.hour, function (h) { return h; }, function (h) { return PA.formatHourLabel(h); }, 'All hours') +
-      '</select></label>' +
-      '<label class="pk-fl"><span>Min boxes/hour</span><input type="number" min="0" step="0.1" data-f="minPerformance" value="' +
-      escapeHtml(f.minPerformance) + '" placeholder="e.g. 15"></label>' +
-      '<label class="pk-fl pk-fl-grow"><span>Search table</span><input type="search" data-f="search" value="' +
-      escapeHtml(f.search) + '" placeholder="Worker, station, SKU…"></label></div>';
-    Array.prototype.forEach.call(els.filters.querySelectorAll('[data-f]'), function (input) {
-      var ev = input.tagName === 'SELECT' ? 'change' : 'input';
-      input.addEventListener(ev, function () {
-        state.filters[input.getAttribute('data-f')] = input.value;
-        state.page = 1;
-        renderKpis(); renderCharts(); renderTable(); renderQuality();
-      });
-    });
   }
 
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
     var k = PA.aggregateKpis(filtered());
-    var cards = [
-      { label: 'Total boxes packed', value: PA.formatNumber(k.totalBoxes), tone: 'cb', sub: 'Sum of filtered rows' },
-      { label: 'Total items packed', value: PA.formatNumber(k.totalItems), tone: 'cb', sub: 'Sum of filtered rows' },
-      { label: 'Avg boxes / hour', value: PA.formatRate(k.averageBoxesPerHour), tone: 'cg', sub: 'Calculated · weighted' },
-      { label: 'Avg efficiency', value: PA.formatPercent(k.averageEfficiency), tone: 'cg', sub: 'Calculated · vs target' },
-      { label: 'Total packing hours', value: PA.formatHours(k.totalPackingHours), tone: 'ca', sub: 'Sum of packing time' },
-      { label: 'Avg idle %', value: PA.formatPercent(k.averageIdlePercentage), tone: 'ca', sub: 'Calculated · weighted' },
-      { label: 'Active workers', value: PA.formatNumber(k.activeWorkers), tone: '', sub: 'Distinct packers' }
+    var stats = [
+      { cls: 'boxes', num: PA.formatNumber(k.totalBoxes), lbl: 'Boxes' },
+      { cls: 'boxes', num: PA.formatNumber(k.totalItems), lbl: 'Items' },
+      { cls: 'rate', num: PA.formatRate(k.averageBoxesPerHour), lbl: 'BPH' },
+      { cls: 'eff', num: PA.formatPercent(k.averageEfficiency), lbl: 'Eff' },
+      { cls: 'hours', num: PA.formatHours(k.totalPackingHours), lbl: 'Hours' },
+      { cls: '', num: PA.formatNumber(k.activeWorkers), lbl: 'People' }
     ];
-    els.kpis.innerHTML = '<div class="pk-kpi-grid">' + cards.map(function (c) {
-      return '<div class="pk-kpi ' + c.tone + '"><div class="pk-kpi-l">' + escapeHtml(c.label) +
-        '</div><div class="pk-kpi-v">' + escapeHtml(c.value) + '</div><div class="pk-kpi-s">' +
-        escapeHtml(c.sub) + '</div></div>';
-    }).join('') + '</div>';
+    els.kpis.innerHTML = stats.map(function (s) {
+      return '<div class="pk-stat ' + s.cls + '"><div class="num">' + escapeHtml(s.num) +
+        '</div><div class="lbl">' + escapeHtml(s.lbl) + '</div></div>';
+    }).join('');
+  }
+
+  function applyView() {
+    var v = state.view || 'table';
+    if (els.tableWrap) els.tableWrap.hidden = v !== 'table';
+    if (els.charts) els.charts.hidden = v !== 'charts';
+    if (els.quality) els.quality.hidden = v !== 'quality';
+    if (els.views) {
+      Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-view') === v);
+      });
+    }
   }
 
   function renderCharts() {
@@ -512,31 +495,26 @@
       return '<tr class="pk-worker-row" data-worker="' + escapeHtml(w.workerKey) + '" tabindex="0">' +
         '<td class="r mn">' + w.rank + '</td><td><button type="button" class="pk-link" data-worker="' +
         escapeHtml(w.workerKey) + '">' + escapeHtml(w.workerName) + '</button></td>' +
-        '<td>' + escapeHtml(w.shift) + '</td><td>' + escapeHtml(w.station) + '</td>' +
+        '<td>' + escapeHtml(w.station) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(w.boxes)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatNumber(w.items)) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatHours(w.packingHours)) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatRate(w.boxesPerHour)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatRate(w.itemsPerHour)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatSeconds(w.secondsPerBox)) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatPercent(w.efficiency)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatPercent(w.idlePercentage)) + '</td>' +
         '<td>' + statusPill(w.status) + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Worker performance</h2>' +
-      '<div class="pk-table-meta">' + page.total + ' workers · weighted boxes/hour</div></div>' +
-      '<div class="tw pk-tw"><table><thead><tr>' +
-      th('rank', 'Rank', 'r') + th('workerName', 'Worker') + th('shift', 'Shift') + th('station', 'Station') +
-      th('boxes', 'Boxes', 'r') + th('items', 'Items', 'r') + th('packingHours', 'Packing hours', 'r') +
-      th('boxesPerHour', 'Boxes/hour', 'r') + th('itemsPerHour', 'Items/hour', 'r') +
-      th('secondsPerBox', 'Sec/box', 'r') + th('efficiency', 'Eff. vs target', 'r') +
-      th('idlePercentage', 'Idle %', 'r') + th('status', 'Performance status') +
-      '</tr></thead><tbody>' + (body || '<tr><td colspan="13" class="empty-td">No workers match filters</td></tr>') +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Workers</h2>' +
+      '<div class="pk-table-meta">' + page.total + ' · ranked by boxes/hour</div></div>' +
+      '<div class="pk-tw"><table><thead><tr>' +
+      th('rank', '#', 'r') + th('workerName', 'Worker') + th('station', 'Station') +
+      th('boxes', 'Boxes', 'r') + th('packingHours', 'Hours', 'r') +
+      th('boxesPerHour', 'BPH', 'r') + th('efficiency', 'Eff', 'r') +
+      th('status', 'Status') +
+      '</tr></thead><tbody>' + (body || '<tr><td colspan="8" class="empty-td">No workers for this day</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
-      '<button type="button" class="btn btn-sm" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Previous</button>' +
-      '<span>Page ' + page.page + ' of ' + page.pages + '</span>' +
-      '<button type="button" class="btn btn-sm" data-page="next"' + (page.page >= page.pages ? ' disabled' : '') + '>Next</button></div></section>';
+      '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
+      '<span>' + page.page + ' / ' + page.pages + '</span>' +
+      '<button type="button" class="btn" data-page="next"' + (page.page >= page.pages ? ' disabled' : '') + '>Next</button></div></section>';
     Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-sort]'), function (btn) {
       btn.addEventListener('click', function () {
         var key = btn.getAttribute('data-sort');
@@ -756,6 +734,7 @@
     renderDetail();
     renderQuality();
     renderPreview();
+    applyView();
     updateHeader();
   }
   function updateHeader() {
@@ -763,11 +742,11 @@
     var recs = currentRecords();
     var files = currentFiles();
     if (!recs.length && !files.length) {
-      els.lastUpdated.textContent = state.showLegacy ? 'Legacy empty' : 'No uploads for this day';
+      els.lastUpdated.textContent = state.showLegacy ? 'Legacy' : (DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
       return;
     }
-    els.lastUpdated.textContent = (state.showLegacy ? 'Legacy · ' : PA.formatDateAU(activeDateKey()) + ' · ' +
-      shiftLabel(state.rosterShift) + ' · ') + recs.length + ' rows · ' + files.length + ' file(s)';
+    els.lastUpdated.textContent = (state.showLegacy ? 'Legacy' : DAY_NAMES[state.dayIdx]) +
+      ' · ' + recs.length + ' rows';
   }
 
   async function saveData() {
@@ -972,6 +951,24 @@
   if (els.weekLabel) {
     els.weekLabel.addEventListener('click', function () {
       if (els.jumpToday) els.jumpToday.click();
+    });
+  }
+  if (els.searchInput) {
+    els.searchInput.addEventListener('input', function () {
+      state.filters.search = els.searchInput.value || '';
+      state.page = 1;
+      renderKpis();
+      renderTable();
+      renderCharts();
+      renderQuality();
+    });
+  }
+  if (els.views) {
+    els.views.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[data-view]') : null;
+      if (!btn) return;
+      state.view = btn.getAttribute('data-view') || 'table';
+      applyView();
     });
   }
 
