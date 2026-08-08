@@ -1,40 +1,30 @@
 # Shift Floor Planner
 
-Single-file warehouse shift tool (`index.html`). Open it in a browser — no server, works offline.
+**Single-file offline app.** Download `index.html` and open it in a browser — no server.
 
-Includes:
+## Live updates
 
-- Floor Plan board (staff, SKUs, stations, annotations)
-- Break Planner (role-based break groups)
-- Shift Tracker (plan vs actual packing rate)
-- Packer CSV import and performance dashboard
-- Roster / week attendance
-
-## Use it live (offline)
-
-1. Download the latest `index.html` from the branch or PR (raw file).
-2. Open that file in Chrome/Edge/Safari (double-click or File → Open).
-3. Data stays in the browser (`localStorage` / host `window.storage` when available).
-
-You only need `index.html`. Optional folders:
-
-- `fixtures/` — sample CSVs for trying Packer upload
-- `js/packer-analytics.js` + `tests/` — for developers running unit tests only
-
-## Latest updates
-
-Branch: `cursor/shift-floor-planner-f7b8`  
-PR: https://github.com/dSFulfilment/SHIFT-TRACKER-/pull/1  
-
-Raw HTML (always current on that branch):
+Always-current file on the working branch:
 
 https://raw.githubusercontent.com/dSFulfilment/SHIFT-TRACKER-/cursor/shift-floor-planner-f7b8/index.html
 
-Save that file and reopen it whenever you want the newest build.
+Save over your local copy and reopen to pick up changes. Browser data (localStorage) is kept on that machine.
 
-## Developer tests (optional)
+PR: https://github.com/dSFulfilment/SHIFT-TRACKER-/pull/1
+
+## Features
+
+- Floor Plan, Breaks, Shift Tracker, Packer (Day/Afternoon × Mon–Fri), Roster
+- Whole-app **Backup** / **Restore** (toolbar on Floor Plan)
+- Packer CSV preview before import (merge or replace per day/shift)
+- Week auto-export before Packer/Roster weekly clear
+- Legacy Packer view preserves pre-calendar imports
+
+## Optional developer tests
 
 ```bash
 npm test
 npm run verify:csv
 ```
+
+`js/packer-analytics.js` is only for Node tests; the browser uses the copy inlined in `index.html`.

@@ -289,6 +289,18 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .card.station.status-training{ border-color:#2563EB; }
 #app .card.station.status-needs_help{ border-color:#DC2626; }
 #app .card.station.status-offline{ border-color:#9CA3AF; background:#F3F4F6; }
+#app .card.station .station-status-lbl{
+  display:none; font-size:8px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  text-align:center; line-height:1.2; padding:1px 3px; border-radius:3px; margin-top:1px;
+}
+#app .card.station.status-break .station-status-lbl,
+#app .card.station.status-training .station-status-lbl,
+#app .card.station.status-needs_help .station-status-lbl,
+#app .card.station.status-offline .station-status-lbl{ display:block; }
+#app .card.station.status-break .station-status-lbl{ color:#92400E; background:#FEF3C7; }
+#app .card.station.status-training .station-status-lbl{ color:#1E40AF; background:#DBEAFE; }
+#app .card.station.status-needs_help .station-status-lbl{ color:#991B1B; background:#FEE2E2; }
+#app .card.station.status-offline .station-status-lbl{ color:#4B5563; background:#E5E7EB; }
 #app .ctrl svg, #app .rm svg{ width:12px; height:12px; }
 #app .rotate-line{ position:absolute; display:none; top:-13px; left:50%; width:1px; height:13px;
     background:#CBCBC5; transform:translateX(-50%); }
@@ -803,7 +815,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabTracker .btn-primary, #tabPacker .btn-primary{background:var(--blu);color:#fff;border-color:var(--blu)}
 #tabTracker .btn-primary:hover, #tabPacker .btn-primary:hover{opacity:.9;background:var(--blu)}
 #tabTracker .btn-sm, #tabPacker .btn-sm{padding:.3rem .6rem;font-size:.7rem}
-#tabTracker .btn-danger-pending, #tabPacker .btn-danger-pending{background:var(--rbg);color:var(--red);border-color:var(--rbd)}
+#tabTracker .btn-danger-pending, #tabPacker .btn-danger-pending, #app .btn-danger-pending{background:var(--rbg);color:var(--red);border-color:var(--rbd)}
 #tabTracker .upl-row, #tabPacker .upl-row{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
 #tabTracker .upl-tag, #tabPacker .upl-tag{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--mut);margin-left:auto;flex-wrap:wrap}
 #tabTracker .upl-tag select, #tabPacker .upl-tag select{padding:.32rem .5rem;border:1px solid var(--bdr2);border-radius:var(--rs);font-family:inherit;font-size:.76rem;background:var(--sur);color:var(--txt)}
@@ -877,11 +889,30 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabPacker .pk-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1280px;width:100%;margin:0 auto}
 #tabPacker .pk-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px;z-index:5}
 #tabPacker.dark .pk-chrome{background:rgba(13,17,23,.92)}
-#tabPacker .pk-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#tabPacker .pk-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 #tabPacker .pk-title{margin:0;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--txt)}
-#tabPacker .pk-sub{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.35}
-#tabPacker .pk-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-#tabPacker .pk-shift-select{height:32px;border:1px solid var(--bdr2);border-radius:var(--rs);padding:0 8px;background:var(--sur);color:var(--txt);font-family:inherit;font-size:.76rem;font-weight:600}
+#tabPacker .pk-sub{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.35}
+#tabPacker .pk-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+#tabPacker .pk-shift{display:inline-flex;border:1px solid var(--bdr2);border-radius:8px;overflow:hidden;background:var(--sur)}
+#tabPacker .pk-shift button{border:0;background:transparent;padding:6px 10px;font:inherit;font-size:12px;font-weight:700;color:var(--mut);cursor:pointer}
+#tabPacker .pk-shift button.active{background:var(--txt);color:var(--sur)}
+#tabPacker .pk-nav{display:inline-flex;align-items:center;gap:4px}
+#tabPacker .pk-nav button{border:1px solid var(--bdr2);background:var(--sur);border-radius:7px;width:28px;height:28px;cursor:pointer;font-size:16px;line-height:1;color:var(--txt)}
+#tabPacker .pk-week-lbl{font-size:12px;font-weight:700;color:var(--txt);min-width:120px;text-align:center;cursor:pointer;line-height:1.25}
+#tabPacker .pk-week-lbl span{display:block;font-size:10px;font-weight:600;color:var(--mut)}
+#tabPacker .pk-days{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px}
+#tabPacker .pk-day{flex:1;min-width:52px;border:1px solid var(--bdr2);background:var(--sur);border-radius:8px;padding:5px 4px;cursor:pointer;text-align:center}
+#tabPacker .pk-day .d{display:block;font-size:10px;font-weight:800;color:var(--mut);text-transform:uppercase}
+#tabPacker .pk-day .n{display:block;font-size:12px;font-weight:700;color:var(--txt);margin-top:1px}
+#tabPacker .pk-day.active{background:var(--txt);border-color:var(--txt)}
+#tabPacker .pk-day.active .d,#tabPacker .pk-day.active .n{color:var(--sur)}
+#tabPacker .pk-day.today{border-color:var(--blu)}
+#tabPacker .pk-legacy-btn.active,#tabPacker #pkLegacyBtn.active{background:var(--bbg);color:var(--blu);border-color:var(--bbd)}
+#tabPacker .pk-preview-card{background:var(--sur);border:1px solid var(--bbd);border-radius:8px;padding:12px;margin-bottom:10px;box-shadow:var(--sh)}
+#tabPacker .pk-preview-targets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
+#tabPacker .pk-preview-file{background:var(--bg);border:1px solid var(--bdr);border-radius:7px;padding:8px;margin-bottom:6px;font-size:12px}
+#tabPacker .pk-preview-file.err{border-color:var(--rbd);background:var(--rbg);color:var(--red)}
+#tabPacker .pk-preview-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 #tabPacker .pk-body{flex:1;min-height:0;overflow:auto;padding:10px 12px calc(76px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
 #tabPacker .pk-filter-bar{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:10px;box-shadow:var(--sh)}
 #tabPacker .pk-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
@@ -1008,6 +1039,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     <button class="btn active" id="toggleRoster" title="Show or hide SKUs">SKUs</button>
     <span class="counts" id="importStatus"></span>
     <button class="btn" id="retryLoadBtn" style="display:none">Retry loading</button>
+    <button class="btn" id="appBackupBtn" type="button" title="Download a JSON backup of all tabs">Backup</button>
+    <button class="btn" id="appRestoreBtn" type="button" title="Restore from a JSON backup">Restore</button>
+    <input type="file" id="appRestoreFile" accept="application/json,.json" style="display:none">
     <span class="counts" id="counts">0 on plates</span>
     <div class="zoomgroup">
       <button class="btn" id="zoomOut" title="Zoom out">–</button>
@@ -1351,7 +1385,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <button class="btn" id="loadExampleBtn" type="button">Example</button>
           <button class="btn" id="clearActualsBtn" type="button">Clear actuals</button>
           <button class="btn" onclick="exportCSV()">CSV</button>
-          <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Toggle dark">Dark</button>
+          <button class="btn btn-ghost" id="darkBtn" onclick="toggleDark()" title="Dark mode for Shift Tracker and Packer tabs">Dark</button>
         </div>
       </div>
 
@@ -1459,19 +1493,30 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   <div class="pk-shell">
     <div class="pk-chrome">
       <div class="pk-bar">
-        <div>
-          <h1 class="pk-title">Packer performance</h1>
-          <div class="pk-sub" id="pkLastUpdated">No uploads yet</div>
+        <h1 class="pk-title">Packer</h1>
+        <div class="pk-shift" id="pkShift" role="group" aria-label="Shift">
+          <button type="button" data-shift="morning" class="active">Day</button>
+          <button type="button" data-shift="afternoon">Afternoon</button>
+        </div>
+        <div class="pk-nav">
+          <button type="button" id="pkPrevWeek" aria-label="Previous week">‹</button>
+          <div class="pk-week-lbl" id="pkWeekLabel">This week<span>—</span></div>
+          <button type="button" id="pkNextWeek" aria-label="Next week">›</button>
         </div>
         <div class="pk-actions">
-          <select id="pkTagSelect" class="pk-shift-select" title="Default shift when CSV has no Shift column" aria-label="Default shift tag"></select>
-          <button class="btn btn-ghost btn-sm" id="pkClearBtn" type="button">Clear data</button>
-          <button class="btn btn-primary" id="pkUploadBtn" type="button">Upload CSV</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="pkJumpToday">Today</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="pkLegacyBtn" style="display:none">Legacy</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="pkExportWeekBtn">Export week</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="pkClearBtn">Clear day</button>
+          <button type="button" class="btn btn-primary" id="pkUploadBtn">Upload CSV</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
         </div>
       </div>
+      <div class="pk-days" id="pkDays"></div>
+      <div class="pk-sub" id="pkLastUpdated">No uploads yet</div>
     </div>
     <div class="pk-body" id="pkPanels">
+      <div id="pkPreview" hidden></div>
       <div id="pkStatus"></div>
       <div class="pk-filter-bar" id="pkFilters"></div>
       <div id="pkKpis"></div>
@@ -1921,6 +1966,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     STATUS_OPTIONS.forEach(function(o){ ref.el.classList.remove('status-'+o.key); });
     var effStatus = entry ? (card.status || 'active') : 'active';
     if(entry && effStatus!=='active') ref.el.classList.add('status-'+effStatus);
+    var statusLbl = ref.el.querySelector('.station-status-lbl');
+    if(statusLbl){
+      var meta = STATUS_OPTIONS.filter(function(o){ return o.key === effStatus; })[0];
+      var show = !!(entry && effStatus !== 'active' && meta);
+      statusLbl.textContent = show ? meta.label : '';
+      statusLbl.hidden = !show;
+      if(show) statusLbl.setAttribute('aria-label', 'Status: ' + meta.label);
+      else statusLbl.removeAttribute('aria-label');
+    }
   }
   function refreshStationVisuals(){
     cards.forEach(function(c){ if(c.type==='station') updateStationCardVisual(c); });
@@ -2767,6 +2821,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         clearStationAssignment(card.id);
       });
       el.appendChild(fName);
+      var fStatus = document.createElement('div');
+      fStatus.className = 'station-status-lbl';
+      fStatus.setAttribute('aria-live', 'polite');
+      el.appendChild(fStatus);
       fLetter.removeAttribute('title');
     } else if(card.type==='floorslot'){
       if(card.slotKind==='sku') normalizeSkuSlotFields(card);
@@ -2860,21 +2918,21 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     // Packing plates never get rotate arrows — use Tools → Move to drag/resize instead
     if(!isPlate){
       line = document.createElement('div'); line.className='rotate-line'; el.appendChild(line);
-      rotCtrl = document.createElement('div'); rotCtrl.className='ctrl rotate'; rotCtrl.title='Rotate'; rotCtrl.innerHTML=iconSvg('rot'); el.appendChild(rotCtrl);
+      rotCtrl = document.createElement('div'); rotCtrl.className='ctrl rotate'; rotCtrl.title='Rotate'; rotCtrl.setAttribute('aria-label','Rotate'); rotCtrl.setAttribute('role','button'); rotCtrl.innerHTML=iconSvg('rot'); el.appendChild(rotCtrl);
     }
-    var dupCtrl = document.createElement('div'); dupCtrl.className='ctrl dup'; dupCtrl.title='Duplicate'; dupCtrl.innerHTML=iconSvg('dup'); el.appendChild(dupCtrl);
-    var delCtrl = document.createElement('div'); delCtrl.className='ctrl del'; delCtrl.title='Delete'; delCtrl.innerHTML=iconSvg('del'); el.appendChild(delCtrl);
-    var resizeCtrl = document.createElement('div'); resizeCtrl.className='ctrl resize'; resizeCtrl.title='Resize'; resizeCtrl.innerHTML=iconSvg('resize'); el.appendChild(resizeCtrl);
+    var dupCtrl = document.createElement('div'); dupCtrl.className='ctrl dup'; dupCtrl.title='Duplicate'; dupCtrl.setAttribute('aria-label','Duplicate'); dupCtrl.setAttribute('role','button'); dupCtrl.innerHTML=iconSvg('dup'); el.appendChild(dupCtrl);
+    var delCtrl = document.createElement('div'); delCtrl.className='ctrl del'; delCtrl.title='Delete'; delCtrl.setAttribute('aria-label','Delete'); delCtrl.setAttribute('role','button'); delCtrl.innerHTML=iconSvg('del'); el.appendChild(delCtrl);
+    var resizeCtrl = document.createElement('div'); resizeCtrl.className='ctrl resize'; resizeCtrl.title='Resize'; resizeCtrl.setAttribute('aria-label','Resize'); resizeCtrl.setAttribute('role','button'); resizeCtrl.innerHTML=iconSvg('resize'); el.appendChild(resizeCtrl);
     var colorCtrl = null;
     if(isColorable(card.type)){
-      colorCtrl = document.createElement('div'); colorCtrl.className='ctrl color'; colorCtrl.title='Change color';
+      colorCtrl = document.createElement('div'); colorCtrl.className='ctrl color'; colorCtrl.title='Change color'; colorCtrl.setAttribute('aria-label','Change colour'); colorCtrl.setAttribute('role','button');
       colorCtrl.innerHTML = iconSvg('color');
       colorCtrl.style.color = card.color || defaultColorFor(card.type);
       el.appendChild(colorCtrl);
     }
     var roleCtrl = null;
     if(isRoleable(card.type)){
-      roleCtrl = document.createElement('div'); roleCtrl.className='ctrl role'; roleCtrl.title='Set role';
+      roleCtrl = document.createElement('div'); roleCtrl.className='ctrl role'; roleCtrl.title='Set role'; roleCtrl.setAttribute('aria-label','Set role'); roleCtrl.setAttribute('role','button');
       roleCtrl.innerHTML = iconSvg('color');
       roleCtrl.style.color = ROLE_COLORS[roleOf(card.rosterId)];
       el.appendChild(roleCtrl);
@@ -4355,6 +4413,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     if(window.SharedSync) scheduleRosterRoleChange(rosterId, entry.role); else saveDebounced();
   }
   function deleteStaffFromRoster(id){
+    var entry = staffRoster.filter(function(s){ return s.id===id; })[0];
+    var label = entry && entry.name ? entry.name : 'this person';
+    if(!confirm('Remove ' + label + ' from the Floor Plan roster?')) return;
     var idx = staffRoster.findIndex(function(s){ return s.id===id; });
     if(idx>=0) staffRoster.splice(idx,1);
     refreshStationVisuals(); // any station assigned to this person becomes VACANT, not broken
@@ -4426,7 +4487,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     row.appendChild(label);
     var count = placedCountFor(entry.id);
     if(count>0){ var badge=document.createElement('span'); badge.className='badge'; badge.textContent='×'+count; row.appendChild(badge); }
-    var rm = document.createElement('span'); rm.className='rm'; rm.title='Remove from roster'; rm.innerHTML=iconSvg('del');
+    var rm = document.createElement('span'); rm.className='rm'; rm.title='Remove from roster';
+    rm.setAttribute('aria-label', kind==='staff' ? ('Remove ' + (entry.name || 'person') + ' from roster') : ('Remove SKU ' + (entry.code || '')));
+    rm.setAttribute('role', 'button');
+    rm.innerHTML=iconSvg('del');
     row.appendChild(rm);
     rm.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
     rm.addEventListener('click', function(e){
@@ -4795,7 +4859,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   }
   if(window.SharedSync){
     window.SharedSync.onExternalChange('planner', function(){ handleExternalPlannerChange(); });
-    setInterval(handleExternalPlannerChange, 4000);
+    setInterval(function(){ if (!document.hidden) handleExternalPlannerChange(); }, 4000);
   }
 
 
@@ -5745,6 +5809,7 @@ if (hasSync()){
   // Light polling fallback in case a broadcast is missed or two separate windows
   // aren't sharing a BroadcastChannel.
   setInterval(function(){
+    if (document.hidden) return;
     handleExternalPlannerChange();
     handleExternalBreakPlannerChange();
   }, 6000);
@@ -5767,17 +5832,31 @@ var lastPlan = null;
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
 window.onload = function() {
-  try { if (localStorage.getItem('dark') === '1') { darkMode = true; document.body.setAttribute('data-dark',''); document.getElementById('darkBtn').textContent = 'Light'; } } catch(e) {}
+  try {
+    if (localStorage.getItem('dark') === '1') {
+      darkMode = true;
+      document.body.setAttribute('data-dark','');
+      var db = document.getElementById('darkBtn');
+      if (db) {
+        db.textContent = 'Light';
+        db.title = 'Switch Tracker/Packer back to light';
+      }
+    }
+  } catch(e) {}
   onInput();
   loadBreakPlannerData();
-  setInterval(liveTick, 1000);
+  setInterval(function(){ if (!document.hidden) liveTick(); }, 1000);
 };
 
 // ── DARK MODE ────────────────────────────────────────────────────────────────
 function toggleDark() {
   darkMode = !darkMode;
   darkMode ? document.body.setAttribute('data-dark','') : document.body.removeAttribute('data-dark');
+  // Label makes scope clear: dark palette currently styles Tracker + Packer (CSS vars on [data-dark]).
   document.getElementById('darkBtn').textContent = darkMode ? 'Light' : 'Dark';
+  document.getElementById('darkBtn').title = darkMode
+    ? 'Switch Tracker/Packer back to light'
+    : 'Dark mode for Shift Tracker and Packer tabs';
   try { localStorage.setItem('dark', darkMode ? '1' : '0'); } catch(e) {}
 }
 
@@ -7805,8 +7884,8 @@ function toast(msg, err) {
 </script>
 <script>
 /**
- * Packer CSV performance dashboard UI.
- * Depends on window.PackerAnalytics and #tabPacker markup.
+ * Packer CSV performance dashboard UI (inlined into index.html for offline use).
+ * Day / Afternoon × Mon–Fri calendar, preview-before-import, week export-before-clear.
  */
 (function () {
   'use strict';
@@ -7819,13 +7898,24 @@ function toast(msg, err) {
 
   var STORAGE_KEY = 'packer-shift-data';
   var PAGE_SIZE = 25;
+  var DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  var SHIFT_KEYS = [
+    { key: 'morning', label: 'Day' },
+    { key: 'afternoon', label: 'Afternoon' }
+  ];
 
   var state = {
-    version: 2,
-    files: [], // { id, name, uploadedAt, text } — raw CSV kept unchanged
-    records: [],
-    quality: PA.emptyQuality(),
-    lastUpdated: null,
+    schemaVersion: 1,
+    revision: 0,
+    version: 3,
+    activeWeekKey: '',
+    weekStart: null,
+    dayIdx: 0,
+    rosterShift: 'morning', // morning | afternoon — mirrors Roster
+    byDate: {},
+    archives: {},
+    legacy: { records: [], files: [], quality: PA.emptyQuality() },
+    showLegacy: false,
     filters: {
       reportDate: '',
       shift: '',
@@ -7842,7 +7932,7 @@ function toast(msg, err) {
     selectedWorker: null,
     loading: false,
     error: null,
-    defaultShift: 'morning_shift'
+    pendingImport: null // { files: [{name,text,result}], targetDate, targetShift, mode }
   };
 
   var els = {
@@ -7850,7 +7940,14 @@ function toast(msg, err) {
     fileInput: document.getElementById('pkFileInput'),
     uploadBtn: document.getElementById('pkUploadBtn'),
     clearBtn: document.getElementById('pkClearBtn'),
-    tagSelect: document.getElementById('pkTagSelect'),
+    exportWeekBtn: document.getElementById('pkExportWeekBtn'),
+    shiftToggle: document.getElementById('pkShift'),
+    daysEl: document.getElementById('pkDays'),
+    weekLabel: document.getElementById('pkWeekLabel'),
+    prevWeek: document.getElementById('pkPrevWeek'),
+    nextWeek: document.getElementById('pkNextWeek'),
+    jumpToday: document.getElementById('pkJumpToday'),
+    legacyBtn: document.getElementById('pkLegacyBtn'),
     filters: document.getElementById('pkFilters'),
     kpis: document.getElementById('pkKpis'),
     charts: document.getElementById('pkCharts'),
@@ -7859,7 +7956,7 @@ function toast(msg, err) {
     detail: document.getElementById('pkDetail'),
     status: document.getElementById('pkStatus'),
     toast: document.getElementById('packerToast'),
-    body: document.getElementById('pkPanels')
+    preview: document.getElementById('pkPreview')
   };
 
   function escapeHtml(s) {
@@ -7867,7 +7964,28 @@ function toast(msg, err) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function startOfWeek(d) {
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var day = x.getDay();
+    var diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+  function addDays(d, n) {
+    var x = new Date(d.getTime());
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+  function weekLabel(ws) {
+    var we = addDays(ws, 4);
+    var opts = { month: 'short', day: 'numeric' };
+    return ws.toLocaleDateString('en-AU', opts) + ' – ' + we.toLocaleDateString('en-AU', opts);
+  }
   function toast(msg, type) {
     if (!els.toast) return;
     els.toast.textContent = msg;
@@ -7875,28 +7993,64 @@ function toast(msg, err) {
     els.toast.style.color = '#fff';
     els.toast.classList.add('show');
     clearTimeout(els.toast._t);
-    els.toast._t = setTimeout(function () {
-      els.toast.classList.remove('show');
-    }, 3200);
+    els.toast._t = setTimeout(function () { els.toast.classList.remove('show'); }, 3200);
   }
-
   function uid() {
     return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
-
+  function downloadTextFile(filename, text, mime) {
+    try {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: mime || 'application/json' }));
+      a.download = filename;
+      a.click();
+      setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 2000);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  }
+  function shiftLabel(key) {
+    return key === 'afternoon' ? 'Afternoon' : 'Day';
+  }
+  function emptyBucket() {
+    return { records: [], files: [], quality: PA.emptyQuality() };
+  }
+  function ensureBucket(dateKey, shiftKey) {
+    if (!state.byDate[dateKey]) state.byDate[dateKey] = {};
+    if (!state.byDate[dateKey][shiftKey]) state.byDate[dateKey][shiftKey] = emptyBucket();
+    return state.byDate[dateKey][shiftKey];
+  }
+  function activeDateKey() {
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    return ymd(addDays(state.weekStart, state.dayIdx));
+  }
+  function activeBucket() {
+    return ensureBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
+  }
+  function currentRecords() {
+    if (state.showLegacy) return state.legacy.records || [];
+    return activeBucket().records || [];
+  }
+  function currentQuality() {
+    if (state.showLegacy) return state.legacy.quality || PA.emptyQuality();
+    return activeBucket().quality || PA.emptyQuality();
+  }
+  function currentFiles() {
+    if (state.showLegacy) return state.legacy.files || [];
+    return activeBucket().files || [];
+  }
   function filtered() {
-    return PA.filterRecords(state.records, state.filters);
+    return PA.filterRecords(currentRecords(), state.filters);
   }
 
   function statusPill(status) {
     if (!status) return '<span class="pk-status pk-status-unknown">No target</span>';
     var cls =
-      status.key === 'excellent'
-        ? 'pk-status-excellent'
-        : status.key === 'on_target'
-          ? 'pk-status-on'
-          : status.key === 'needs_attention'
-            ? 'pk-status-attention'
+      status.key === 'excellent' ? 'pk-status-excellent'
+        : status.key === 'on_target' ? 'pk-status-on'
+          : status.key === 'needs_attention' ? 'pk-status-attention'
             : 'pk-status-unknown';
     return '<span class="pk-status ' + cls + '" title="' + escapeHtml(status.label) + '">' + escapeHtml(status.label) + '</span>';
   }
@@ -7908,65 +8062,209 @@ function toast(msg, err) {
       var v = it[valueKey];
       if (v != null && v > max) max = v;
     });
-    if (!items.length) {
-      return '<div class="pk-empty-inline">No data for this chart</div>';
-    }
+    if (!items.length) return '<div class="pk-empty-inline">No data for this chart</div>';
     if (max <= 0) max = 1;
-    var rows = items
-      .slice(0, opts.limit || 12)
-      .map(function (it) {
-        var v = it[valueKey];
-        var label = it[labelKey];
-        var pct = v == null ? 0 : Math.round((v / max) * 100);
-        var display = opts.format ? opts.format(v) : PA.formatRate(v);
-        return (
-          '<div class="pk-bar-row">' +
-          '<div class="pk-bar-lbl" title="' +
-          escapeHtml(String(label)) +
-          '">' +
-          escapeHtml(String(label)) +
-          '</div>' +
-          '<div class="pk-bar-track" role="img" aria-label="' +
-          escapeHtml(String(label) + ': ' + display) +
-          '"><div class="pk-bar-fill' +
-          (opts.tone ? ' ' + opts.tone : '') +
-          '" style="width:' +
-          pct +
-          '%"></div></div>' +
-          '<div class="pk-bar-val">' +
-          escapeHtml(display) +
-          '</div></div>'
-        );
-      })
-      .join('');
-    return '<div class="pk-bars">' + rows + '</div>';
+    return '<div class="pk-bars">' + items.slice(0, opts.limit || 12).map(function (it) {
+      var v = it[valueKey];
+      var label = it[labelKey];
+      var pct = v == null ? 0 : Math.round((v / max) * 100);
+      var display = opts.format ? opts.format(v) : PA.formatRate(v);
+      return '<div class="pk-bar-row"><div class="pk-bar-lbl" title="' + escapeHtml(String(label)) + '">' +
+        escapeHtml(String(label)) + '</div><div class="pk-bar-track" role="img" aria-label="' +
+        escapeHtml(String(label) + ': ' + display) + '"><div class="pk-bar-fill' +
+        (opts.tone ? ' ' + opts.tone : '') + '" style="width:' + pct + '%"></div></div><div class="pk-bar-val">' +
+        escapeHtml(display) + '</div></div>';
+    }).join('') + '</div>';
   }
-
   function columnChart(items, valueKey, labelFn) {
     if (!items.length) return '<div class="pk-empty-inline">No data for this chart</div>';
     var max = 1;
-    items.forEach(function (it) {
-      if (it[valueKey] != null && it[valueKey] > max) max = it[valueKey];
+    items.forEach(function (it) { if (it[valueKey] != null && it[valueKey] > max) max = it[valueKey]; });
+    return '<div class="pk-cols">' + items.map(function (it) {
+      var v = it[valueKey] || 0;
+      var h = Math.max(4, Math.round((v / max) * 100));
+      var lbl = labelFn(it);
+      return '<div class="pk-col"><div class="pk-col-bar" style="height:' + h + '%" title="' +
+        escapeHtml(lbl + ': ' + PA.formatNumber(v)) + '"></div><div class="pk-col-lbl">' +
+        escapeHtml(lbl) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  function chartCard(title, body) {
+    return '<section class="pk-chart-card"><h3 class="pk-chart-title">' + escapeHtml(title) + '</h3>' + body + '</section>';
+  }
+
+  function buildWeekReport(weekKey, byDateSnap) {
+    var days = [];
+    var ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
+    for (var i = 0; i < 5; i++) {
+      var dk = ymd(addDays(ws, i));
+      var day = byDateSnap[dk] || {};
+      ['morning', 'afternoon'].forEach(function (sk) {
+        var b = day[sk];
+        if (!b || !(b.records && b.records.length)) return;
+        var workers = PA.aggregateWorkers(b.records);
+        var skus = PA.aggregateSkus(b.records);
+        var hourly = PA.aggregateByHour(b.records);
+        days.push({
+          date: dk,
+          shift: sk,
+          shiftLabel: shiftLabel(sk),
+          kpis: PA.aggregateKpis(b.records),
+          workers: workers,
+          skus: skus,
+          hourly: hourly,
+          files: (b.files || []).map(function (f) {
+            return { name: f.name, uploadedAt: f.uploadedAt, rowCount: f.rowCount, format: f.format };
+          }),
+          hourlyCsv: toHourlyCsv(workers, hourly),
+          skuCsv: toSkuCsv(skus, b.records)
+        });
+      });
+    }
+    return {
+      type: 'packer-week-export',
+      schemaVersion: 1,
+      weekKey: weekKey,
+      exportedAt: new Date().toISOString(),
+      days: days
+    };
+  }
+  function toHourlyCsv(workers, hourly) {
+    var hours = (hourly || []).map(function (h) { return h.hour; });
+    var hdr = ['Worker', 'Boxes'].concat(hours.map(function (h) { return PA.formatHourLabel(h); }));
+    var rows = (workers || []).map(function (w) {
+      return [w.workerName, w.boxes].concat(hours.map(function (h) {
+        return w.hours && w.hours[h] != null ? w.hours[h] : '';
+      }));
     });
-    var bars = items
-      .map(function (it) {
-        var v = it[valueKey] || 0;
-        var h = Math.max(4, Math.round((v / max) * 100));
-        var lbl = labelFn(it);
-        return (
-          '<div class="pk-col">' +
-          '<div class="pk-col-bar" style="height:' +
-          h +
-          '%" title="' +
-          escapeHtml(lbl + ': ' + PA.formatNumber(v)) +
-          '"></div>' +
-          '<div class="pk-col-lbl">' +
-          escapeHtml(lbl) +
-          '</div></div>'
-        );
-      })
-      .join('');
-    return '<div class="pk-cols">' + bars + '</div>';
+    return [hdr].concat(rows).map(function (r) {
+      return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\n');
+  }
+  function toSkuCsv(skus, records) {
+    var workers = PA.aggregateWorkers(records || []);
+    var hdr = ['Worker', 'SKU', 'Boxes', 'Boxes/hour', 'Target', 'Efficiency', 'Status'];
+    var rows = [];
+    workers.forEach(function (w) {
+      Object.keys(w.skus || {}).forEach(function (sku) {
+        var t = PA.SKU_TARGETS[sku];
+        var recs = (records || []).filter(function (r) { return r.workerKey === w.workerKey && r.sku === sku; });
+        var boxes = recs.reduce(function (a, r) { return a + (r.boxes || 0); }, 0);
+        var hours = recs.reduce(function (a, r) { return a + (r.packingHours || 0); }, 0);
+        var bph = PA.boxesPerHour(boxes, hours > 0 ? hours : null);
+        var eff = PA.efficiencyVersusTarget(bph, t ? t.target : null);
+        var st = PA.performanceStatus(eff);
+        rows.push([w.workerName, sku, boxes, bph != null ? bph.toFixed(1) : 'N/A', t ? t.target : '', eff != null ? (eff * 100).toFixed(1) + '%' : 'N/A', st.label]);
+      });
+    });
+    if (!rows.length) {
+      (skus || []).forEach(function (s) {
+        rows.push(['(all)', s.label, s.boxes, s.boxesPerHour != null ? s.boxesPerHour.toFixed(1) : 'N/A', '', '', '']);
+      });
+    }
+    return [hdr].concat(rows).map(function (r) {
+      return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\n');
+  }
+
+  function exportActiveWeek(force) {
+    var weekKey = state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date()));
+    var report = buildWeekReport(weekKey, state.byDate);
+    if (!report.days.length && !force) {
+      toast('No Packer data this week to export', 'err');
+      return false;
+    }
+    var ok = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
+    if (ok && report.days.length) {
+      report.days.forEach(function (d) {
+        if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
+        if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
+      });
+    }
+    return ok;
+  }
+
+  function ensureCurrentWeekFresh() {
+    var current = startOfWeek(new Date());
+    var currentKey = ymd(current);
+    if (state.activeWeekKey && state.activeWeekKey !== currentKey) {
+      var oldKey = state.activeWeekKey;
+      var snap = JSON.parse(JSON.stringify(state.byDate || {}));
+      var hasData = Object.keys(snap).some(function (dk) {
+        var day = snap[dk] || {};
+        return ['morning', 'afternoon'].some(function (sk) {
+          return day[sk] && day[sk].records && day[sk].records.length;
+        });
+      });
+      if (hasData) {
+        var report = buildWeekReport(oldKey, snap);
+        var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
+        if (!ok) {
+          state.error = 'Could not export last week’s Packer data — keeping it so nothing is cleared.';
+          toast(state.error, 'err');
+          return;
+        }
+        report.days.forEach(function (d) {
+          if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
+          if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
+        });
+        if (!state.archives) state.archives = {};
+        state.archives[oldKey] = { weekKey: oldKey, byDate: snap, archivedAt: Date.now(), report: report };
+        var aks = Object.keys(state.archives).sort();
+        while (aks.length > 12) { delete state.archives[aks[0]]; aks.shift(); }
+      }
+      state.byDate = {};
+      state.activeWeekKey = currentKey;
+      state.weekStart = current;
+      saveData();
+      if (hasData) toast('New week — exported & archived Packer week of ' + oldKey);
+    } else if (!state.activeWeekKey) {
+      state.activeWeekKey = currentKey;
+      state.weekStart = current;
+    }
+  }
+
+  function renderChrome() {
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    if (els.weekLabel) {
+      els.weekLabel.innerHTML = weekLabel(state.weekStart) + '<span>' +
+        shiftLabel(state.rosterShift) + (state.showLegacy ? ' · Legacy' : '') + '</span>';
+    }
+    if (els.shiftToggle) {
+      Array.prototype.forEach.call(els.shiftToggle.querySelectorAll('button[data-shift]'), function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-shift') === state.rosterShift && !state.showLegacy);
+      });
+    }
+    if (els.daysEl) {
+      var today = ymd(new Date());
+      els.daysEl.innerHTML = '';
+      for (var i = 0; i < 5; i++) {
+        var d = addDays(state.weekStart, i);
+        var key = ymd(d);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pk-day' + (i === state.dayIdx && !state.showLegacy ? ' active' : '') + (key === today ? ' today' : '');
+        var bucket = ensureBucket(key, state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
+        var n = (bucket.records || []).length;
+        btn.innerHTML = '<span class="d">' + DAY_NAMES[i] + '</span><span class="n">' + d.getDate() +
+          (n ? ' · ' + n : '') + '</span>';
+        btn.addEventListener('click', (function (idx) {
+          return function () {
+            state.dayIdx = idx;
+            state.showLegacy = false;
+            state.page = 1;
+            renderAll();
+          };
+        })(i));
+        els.daysEl.appendChild(btn);
+      }
+    }
+    if (els.legacyBtn) {
+      var ln = (state.legacy.records || []).length;
+      els.legacyBtn.style.display = ln ? '' : 'none';
+      els.legacyBtn.classList.toggle('active', state.showLegacy);
+      els.legacyBtn.textContent = 'Legacy (' + ln + ')';
+    }
   }
 
   function renderStatus() {
@@ -7976,16 +8274,19 @@ function toast(msg, err) {
       return;
     }
     if (state.error) {
-      els.status.innerHTML =
-        '<div class="pk-banner pk-banner-err" role="alert">' + escapeHtml(state.error) + '</div>';
+      els.status.innerHTML = '<div class="pk-banner pk-banner-err" role="alert">' + escapeHtml(state.error) + '</div>';
       return;
     }
-    if (!state.records.length) {
-      els.status.innerHTML =
-        '<div class="pk-banner pk-banner-empty">' +
-        '<strong>No packer data yet</strong><br>' +
-        'Upload one or more CSV exports (summary, hourly, end-of-shift, or detailed). ' +
-        'Raw files are kept unchanged; totals rows and malformed workers are skipped.</div>';
+    if (state.showLegacy) {
+      els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>Legacy imports</strong><br>' +
+        'Data from before the Day/Afternoon × Mon–Fri calendar. Kept so nothing was dropped. ' +
+        'New uploads go into the selected weekday.</div>';
+      return;
+    }
+    if (!currentRecords().length) {
+      els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>No packer data for ' +
+        escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift) + ' · ' + PA.formatDateAU(activeDateKey())) +
+        '</strong><br>Upload a CSV — you’ll get a preview before anything is saved.</div>';
       return;
     }
     els.status.innerHTML = '';
@@ -7993,401 +8294,143 @@ function toast(msg, err) {
 
   function renderFilters() {
     if (!els.filters) return;
-    var opts = PA.uniqueOptions(state.records);
+    var opts = PA.uniqueOptions(currentRecords());
     var f = state.filters;
     function options(list, selected, getVal, getLbl, allLabel) {
-      return (
-        '<option value="">' +
-        allLabel +
-        '</option>' +
-        list
-          .map(function (item) {
-            var v = getVal(item);
-            var l = getLbl(item);
-            return (
-              '<option value="' +
-              escapeHtml(String(v)) +
-              '"' +
-              (String(selected) === String(v) ? ' selected' : '') +
-              '>' +
-              escapeHtml(String(l)) +
-              '</option>'
-            );
-          })
-          .join('')
-      );
+      return '<option value="">' + allLabel + '</option>' + list.map(function (item) {
+        var v = getVal(item); var l = getLbl(item);
+        return '<option value="' + escapeHtml(String(v)) + '"' +
+          (String(selected) === String(v) ? ' selected' : '') + '>' + escapeHtml(String(l)) + '</option>';
+      }).join('');
     }
     els.filters.innerHTML =
       '<div class="pk-filter-grid">' +
       '<label class="pk-fl"><span>Report date</span><select data-f="reportDate">' +
-      options(
-        opts.dates,
-        f.reportDate,
-        function (d) {
-          return d;
-        },
-        function (d) {
-          return PA.formatDateAU(d);
-        },
-        'All dates'
-      ) +
-      '</select></label>' +
-      '<label class="pk-fl"><span>Shift</span><select data-f="shift">' +
-      options(
-        opts.shifts,
-        f.shift,
-        function (s) {
-          return s.key;
-        },
-        function (s) {
-          return s.label;
-        },
-        'All shifts'
-      ) +
+      options(opts.dates, f.reportDate, function (d) { return d; }, function (d) { return PA.formatDateAU(d); }, 'All dates') +
       '</select></label>' +
       '<label class="pk-fl"><span>Worker</span><select data-f="worker">' +
-      options(
-        opts.workers,
-        f.worker,
-        function (w) {
-          return w.key;
-        },
-        function (w) {
-          return w.label;
-        },
-        'All workers'
-      ) +
+      options(opts.workers, f.worker, function (w) { return w.key; }, function (w) { return w.label; }, 'All workers') +
       '</select></label>' +
       '<label class="pk-fl"><span>Station</span><select data-f="station">' +
-      options(
-        opts.stations,
-        f.station,
-        function (s) {
-          return s;
-        },
-        function (s) {
-          return s;
-        },
-        'All stations'
-      ) +
+      options(opts.stations, f.station, function (s) { return s; }, function (s) { return s; }, 'All stations') +
       '</select></label>' +
       '<label class="pk-fl"><span>SKU size</span><select data-f="sku">' +
-      options(
-        opts.skus,
-        f.sku,
-        function (s) {
-          return s;
-        },
-        function (s) {
-          return s;
-        },
-        'All SKUs'
-      ) +
+      options(opts.skus, f.sku, function (s) { return s; }, function (s) { return s; }, 'All SKUs') +
       '</select></label>' +
       '<label class="pk-fl"><span>Hour</span><select data-f="hour">' +
-      options(
-        opts.hours,
-        f.hour,
-        function (h) {
-          return h;
-        },
-        function (h) {
-          return PA.formatHourLabel(h);
-        },
-        'All hours'
-      ) +
+      options(opts.hours, f.hour, function (h) { return h; }, function (h) { return PA.formatHourLabel(h); }, 'All hours') +
       '</select></label>' +
       '<label class="pk-fl"><span>Min boxes/hour</span><input type="number" min="0" step="0.1" data-f="minPerformance" value="' +
-      escapeHtml(f.minPerformance) +
-      '" placeholder="e.g. 15"></label>' +
+      escapeHtml(f.minPerformance) + '" placeholder="e.g. 15"></label>' +
       '<label class="pk-fl pk-fl-grow"><span>Search table</span><input type="search" data-f="search" value="' +
-      escapeHtml(f.search) +
-      '" placeholder="Worker, station, SKU…"></label>' +
-      '</div>';
-
+      escapeHtml(f.search) + '" placeholder="Worker, station, SKU…"></label></div>';
     Array.prototype.forEach.call(els.filters.querySelectorAll('[data-f]'), function (input) {
       var ev = input.tagName === 'SELECT' ? 'change' : 'input';
       input.addEventListener(ev, function () {
         state.filters[input.getAttribute('data-f')] = input.value;
         state.page = 1;
-        renderKpis();
-        renderCharts();
-        renderTable();
-        renderQuality();
+        renderKpis(); renderCharts(); renderTable(); renderQuality();
       });
     });
   }
 
   function renderKpis() {
     if (!els.kpis) return;
-    var rows = filtered();
-    if (!state.records.length) {
-      els.kpis.innerHTML = '';
-      return;
-    }
-    var k = PA.aggregateKpis(rows);
+    if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
+    var k = PA.aggregateKpis(filtered());
     var cards = [
       { label: 'Total boxes packed', value: PA.formatNumber(k.totalBoxes), tone: 'cb', sub: 'Sum of filtered rows' },
       { label: 'Total items packed', value: PA.formatNumber(k.totalItems), tone: 'cb', sub: 'Sum of filtered rows' },
-      {
-        label: 'Avg boxes / hour',
-        value: PA.formatRate(k.averageBoxesPerHour),
-        tone: 'cg',
-        sub: 'Calculated · boxes ÷ packing hours'
-      },
-      {
-        label: 'Avg efficiency',
-        value: PA.formatPercent(k.averageEfficiency),
-        tone: 'cg',
-        sub: 'Calculated · weighted vs target'
-      },
-      {
-        label: 'Total packing hours',
-        value: PA.formatHours(k.totalPackingHours),
-        tone: 'ca',
-        sub: 'Sum of packing time'
-      },
-      {
-        label: 'Avg idle %',
-        value: PA.formatPercent(k.averageIdlePercentage),
-        tone: 'ca',
-        sub: 'Calculated · weighted idle ÷ shift hours'
-      },
-      {
-        label: 'Active workers',
-        value: PA.formatNumber(k.activeWorkers),
-        tone: '',
-        sub: 'Distinct packers in filter'
-      }
+      { label: 'Avg boxes / hour', value: PA.formatRate(k.averageBoxesPerHour), tone: 'cg', sub: 'Calculated · weighted' },
+      { label: 'Avg efficiency', value: PA.formatPercent(k.averageEfficiency), tone: 'cg', sub: 'Calculated · vs target' },
+      { label: 'Total packing hours', value: PA.formatHours(k.totalPackingHours), tone: 'ca', sub: 'Sum of packing time' },
+      { label: 'Avg idle %', value: PA.formatPercent(k.averageIdlePercentage), tone: 'ca', sub: 'Calculated · weighted' },
+      { label: 'Active workers', value: PA.formatNumber(k.activeWorkers), tone: '', sub: 'Distinct packers' }
     ];
-    els.kpis.innerHTML =
-      '<div class="pk-kpi-grid">' +
-      cards
-        .map(function (c) {
-          return (
-            '<div class="pk-kpi ' +
-            c.tone +
-            '"><div class="pk-kpi-l">' +
-            escapeHtml(c.label) +
-            '</div><div class="pk-kpi-v">' +
-            escapeHtml(c.value) +
-            '</div><div class="pk-kpi-s">' +
-            escapeHtml(c.sub) +
-            '</div></div>'
-          );
-        })
-        .join('') +
-      '</div>';
+    els.kpis.innerHTML = '<div class="pk-kpi-grid">' + cards.map(function (c) {
+      return '<div class="pk-kpi ' + c.tone + '"><div class="pk-kpi-l">' + escapeHtml(c.label) +
+        '</div><div class="pk-kpi-v">' + escapeHtml(c.value) + '</div><div class="pk-kpi-s">' +
+        escapeHtml(c.sub) + '</div></div>';
+    }).join('') + '</div>';
   }
 
   function renderCharts() {
     if (!els.charts) return;
-    if (!state.records.length) {
-      els.charts.innerHTML = '';
-      return;
-    }
+    if (!currentRecords().length) { els.charts.innerHTML = ''; return; }
     var rows = filtered();
     var workers = PA.aggregateWorkers(rows);
     var byHour = PA.aggregateByHour(rows);
     var stations = PA.aggregateStations(rows);
     var skus = PA.aggregateSkus(rows);
-    var shifts = PA.aggregateShifts(rows);
-
-    var ranking = workers.map(function (w) {
-      return { label: w.workerName, boxesPerHour: w.boxesPerHour };
-    });
-    var eff = workers.map(function (w) {
-      return { label: w.workerName, efficiency: w.efficiency };
-    });
-    var idle = workers
-      .filter(function (w) {
-        return w.idlePercentage != null;
-      })
-      .map(function (w) {
-        return { label: w.workerName, idle: w.idlePercentage };
-      });
-
-    els.charts.innerHTML =
-      '<div class="pk-chart-grid">' +
+    var ranking = workers.map(function (w) { return { label: w.workerName, boxesPerHour: w.boxesPerHour }; });
+    var eff = workers.map(function (w) { return { label: w.workerName, efficiency: w.efficiency }; });
+    var idle = workers.filter(function (w) { return w.idlePercentage != null; })
+      .map(function (w) { return { label: w.workerName, idle: w.idlePercentage }; });
+    els.charts.innerHTML = '<div class="pk-chart-grid">' +
       chartCard('Worker ranking by boxes / hour', barChart(ranking, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
-      chartCard(
-        'Boxes packed by hour',
-        columnChart(byHour, 'boxes', function (it) {
-          return PA.formatHourLabel(it.hour);
-        })
-      ) +
-      chartCard(
-        'Efficiency vs target by worker',
-        barChart(eff, 'efficiency', 'label', {
-          format: PA.formatPercent,
-          tone: 'tone-g'
-        })
-      ) +
-      chartCard(
-        'Idle % by worker',
-        idle.length
-          ? barChart(idle, 'idle', 'label', { format: PA.formatPercent, tone: 'tone-a' })
-          : '<div class="pk-empty-inline">Idle time not present in uploaded CSVs</div>'
-      ) +
-      chartCard(
-        'Station performance',
-        barChart(stations, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })
-      ) +
-      chartCard(
-        'SKU-size performance',
-        barChart(skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' })
-      ) +
-      chartCard(
-        'Shift comparison',
-        barChart(shifts, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-a' })
-      ) +
+      chartCard('Boxes packed by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
+      chartCard('Efficiency vs target by worker', barChart(eff, 'efficiency', 'label', { format: PA.formatPercent, tone: 'tone-g' })) +
+      chartCard('Idle % by worker', idle.length ? barChart(idle, 'idle', 'label', { format: PA.formatPercent, tone: 'tone-a' }) : '<div class="pk-empty-inline">Idle time not in uploaded CSVs</div>') +
+      chartCard('Station performance', barChart(stations, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
+      chartCard('SKU-size performance', barChart(skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' })) +
       '</div>';
-  }
-
-  function chartCard(title, body) {
-    return (
-      '<section class="pk-chart-card"><h3 class="pk-chart-title">' +
-      escapeHtml(title) +
-      '</h3>' +
-      body +
-      '</section>'
-    );
   }
 
   function renderTable() {
     if (!els.tableWrap) return;
-    if (!state.records.length) {
-      els.tableWrap.innerHTML = '';
-      return;
-    }
+    if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
     var workers = PA.aggregateWorkers(filtered());
-    // Re-sort if user chose a column other than default rankScore
     if (state.sortKey !== 'rankScore') {
       workers = PA.sortRows(workers, state.sortKey, state.sortDir);
-      workers.forEach(function (w, i) {
-        w.rank = i + 1;
-      });
+      workers.forEach(function (w, i) { w.rank = i + 1; });
     } else if (state.sortDir === 'asc') {
       workers = workers.slice().reverse();
-      workers.forEach(function (w, i) {
-        w.rank = i + 1;
-      });
+      workers.forEach(function (w, i) { w.rank = i + 1; });
     }
     var page = PA.paginate(workers, state.page, PAGE_SIZE);
-
     function th(key, label, cls) {
       var arrow = state.sortKey === key ? (state.sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-      return (
-        '<th class="' +
-        (cls || '') +
-        '"><button type="button" class="pk-th" data-sort="' +
-        key +
-        '">' +
-        escapeHtml(label + arrow) +
-        '</button></th>'
-      );
+      return '<th class="' + (cls || '') + '"><button type="button" class="pk-th" data-sort="' + key + '">' +
+        escapeHtml(label + arrow) + '</button></th>';
     }
-
-    var body = page.rows
-      .map(function (w) {
-        return (
-          '<tr class="pk-worker-row" data-worker="' +
-          escapeHtml(w.workerKey) +
-          '" tabindex="0">' +
-          '<td class="r mn">' +
-          w.rank +
-          '</td>' +
-          '<td><button type="button" class="pk-link" data-worker="' +
-          escapeHtml(w.workerKey) +
-          '">' +
-          escapeHtml(w.workerName) +
-          '</button></td>' +
-          '<td>' +
-          escapeHtml(w.shift) +
-          '</td>' +
-          '<td>' +
-          escapeHtml(w.station) +
-          '</td>' +
-          '<td class="r mn">' +
-          escapeHtml(PA.formatNumber(w.boxes)) +
-          '</td>' +
-          '<td class="r mn">' +
-          escapeHtml(PA.formatNumber(w.items)) +
-          '</td>' +
-          '<td class="r mn">' +
-          escapeHtml(PA.formatHours(w.packingHours)) +
-          '</td>' +
-          '<td class="r mn" title="Calculated">' +
-          escapeHtml(PA.formatRate(w.boxesPerHour)) +
-          '</td>' +
-          '<td class="r mn" title="Calculated">' +
-          escapeHtml(PA.formatRate(w.itemsPerHour)) +
-          '</td>' +
-          '<td class="r mn" title="Calculated">' +
-          escapeHtml(PA.formatSeconds(w.secondsPerBox)) +
-          '</td>' +
-          '<td class="r mn" title="Calculated">' +
-          escapeHtml(PA.formatPercent(w.efficiency)) +
-          '</td>' +
-          '<td class="r mn" title="Calculated">' +
-          escapeHtml(PA.formatPercent(w.idlePercentage)) +
-          '</td>' +
-          '<td>' +
-          statusPill(w.status) +
-          '</td></tr>'
-        );
-      })
-      .join('');
-
+    var body = page.rows.map(function (w) {
+      return '<tr class="pk-worker-row" data-worker="' + escapeHtml(w.workerKey) + '" tabindex="0">' +
+        '<td class="r mn">' + w.rank + '</td><td><button type="button" class="pk-link" data-worker="' +
+        escapeHtml(w.workerKey) + '">' + escapeHtml(w.workerName) + '</button></td>' +
+        '<td>' + escapeHtml(w.shift) + '</td><td>' + escapeHtml(w.station) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatNumber(w.boxes)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatNumber(w.items)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatHours(w.packingHours)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatRate(w.boxesPerHour)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatRate(w.itemsPerHour)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatSeconds(w.secondsPerBox)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatPercent(w.efficiency)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatPercent(w.idlePercentage)) + '</td>' +
+        '<td>' + statusPill(w.status) + '</td></tr>';
+    }).join('');
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card">' +
-      '<div class="pk-table-hdr"><h2 class="pk-section-title">Worker performance</h2>' +
-      '<div class="pk-table-meta">' +
-      page.total +
-      ' worker' +
-      (page.total === 1 ? '' : 's') +
-      ' · ranked by weighted boxes/hour · calculated fields show N/A when denominator is missing</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Worker performance</h2>' +
+      '<div class="pk-table-meta">' + page.total + ' workers · weighted boxes/hour</div></div>' +
       '<div class="tw pk-tw"><table><thead><tr>' +
-      th('rank', 'Rank', 'r') +
-      th('workerName', 'Worker') +
-      th('shift', 'Shift') +
-      th('station', 'Station') +
-      th('boxes', 'Boxes', 'r') +
-      th('items', 'Items', 'r') +
-      th('packingHours', 'Packing hours', 'r') +
-      th('boxesPerHour', 'Boxes/hour', 'r') +
-      th('itemsPerHour', 'Items/hour', 'r') +
-      th('secondsPerBox', 'Sec/box', 'r') +
-      th('efficiency', 'Eff. vs target', 'r') +
-      th('idlePercentage', 'Idle %', 'r') +
-      th('status', 'Performance status') +
-      '</tr></thead><tbody>' +
-      (body ||
-        '<tr><td colspan="13" class="empty-td">No workers match the current filters</td></tr>') +
-      '</tbody></table></div>' +
-      '<div class="pk-pager">' +
-      '<button type="button" class="btn btn-sm" data-page="prev"' +
-      (page.page <= 1 ? ' disabled' : '') +
-      '>Previous</button>' +
-      '<span>Page ' +
-      page.page +
-      ' of ' +
-      page.pages +
-      '</span>' +
-      '<button type="button" class="btn btn-sm" data-page="next"' +
-      (page.page >= page.pages ? ' disabled' : '') +
-      '>Next</button></div></section>';
-
+      th('rank', 'Rank', 'r') + th('workerName', 'Worker') + th('shift', 'Shift') + th('station', 'Station') +
+      th('boxes', 'Boxes', 'r') + th('items', 'Items', 'r') + th('packingHours', 'Packing hours', 'r') +
+      th('boxesPerHour', 'Boxes/hour', 'r') + th('itemsPerHour', 'Items/hour', 'r') +
+      th('secondsPerBox', 'Sec/box', 'r') + th('efficiency', 'Eff. vs target', 'r') +
+      th('idlePercentage', 'Idle %', 'r') + th('status', 'Performance status') +
+      '</tr></thead><tbody>' + (body || '<tr><td colspan="13" class="empty-td">No workers match filters</td></tr>') +
+      '</tbody></table></div><div class="pk-pager">' +
+      '<button type="button" class="btn btn-sm" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Previous</button>' +
+      '<span>Page ' + page.page + ' of ' + page.pages + '</span>' +
+      '<button type="button" class="btn btn-sm" data-page="next"' + (page.page >= page.pages ? ' disabled' : '') + '>Next</button></div></section>';
     Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-sort]'), function (btn) {
       btn.addEventListener('click', function () {
         var key = btn.getAttribute('data-sort');
         if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
         else {
           state.sortKey = key;
-          state.sortDir = key === 'workerName' || key === 'shift' || key === 'station' || key === 'status' ? 'asc' : 'desc';
+          state.sortDir = key === 'workerName' || key === 'station' || key === 'status' ? 'asc' : 'desc';
         }
-        state.page = 1;
-        renderTable();
+        state.page = 1; renderTable();
       });
     });
     Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-page]'), function (btn) {
@@ -8398,149 +8441,198 @@ function toast(msg, err) {
       });
     });
     Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-worker]'), function (el) {
-      function open() {
-        state.selectedWorker = el.getAttribute('data-worker');
-        renderDetail();
-      }
+      function open() { state.selectedWorker = el.getAttribute('data-worker'); renderDetail(); }
       el.addEventListener('click', open);
       el.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          open();
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
       });
     });
   }
 
   function renderDetail() {
     if (!els.detail) return;
-    if (!state.selectedWorker) {
-      els.detail.innerHTML = '';
-      els.detail.hidden = true;
-      return;
-    }
+    if (!state.selectedWorker) { els.detail.innerHTML = ''; els.detail.hidden = true; return; }
     var detail = PA.workerDetail(filtered(), state.selectedWorker);
-    if (!detail.summary) {
-      els.detail.innerHTML = '';
-      els.detail.hidden = true;
-      return;
-    }
+    if (!detail.summary) { els.detail.innerHTML = ''; els.detail.hidden = true; return; }
     var s = detail.summary;
     els.detail.hidden = false;
-    var trend =
-      detail.daily.length > 1
-        ? columnChart(detail.daily, 'boxes', function (it) {
-            return it.date === 'unknown' ? '?' : PA.formatDateAU(it.date);
-          })
-        : '<div class="pk-empty-inline">Trend needs multiple report dates</div>';
-
+    var trend = detail.daily.length > 1
+      ? columnChart(detail.daily, 'boxes', function (it) { return it.date === 'unknown' ? '?' : PA.formatDateAU(it.date); })
+      : '<div class="pk-empty-inline">Trend needs multiple report dates</div>';
     els.detail.innerHTML =
-      '<div class="pk-detail-panel" role="dialog" aria-label="Worker detail">' +
-      '<div class="pk-detail-hdr">' +
-      '<div><h2 class="pk-section-title">' +
-      escapeHtml(s.workerName) +
-      '</h2>' +
-      '<div class="pk-table-meta">' +
-      escapeHtml(s.shift) +
-      ' · ' +
-      statusPill(s.status) +
-      '</div></div>' +
-      '<button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
+      '<div class="pk-detail-panel"><div class="pk-detail-hdr"><div><h2 class="pk-section-title">' +
+      escapeHtml(s.workerName) + '</h2><div class="pk-table-meta">' + statusPill(s.status) +
+      '</div></div><button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
       '<div class="pk-detail-kpis">' +
       detailMetric('Boxes', PA.formatNumber(s.boxes)) +
       detailMetric('Packing hours', PA.formatHours(s.packingHours)) +
       detailMetric('Boxes / hour', PA.formatRate(s.boxesPerHour)) +
       detailMetric('Idle %', PA.formatPercent(s.idlePercentage)) +
       detailMetric('Efficiency', PA.formatPercent(s.efficiency)) +
-      '</div>' +
-      '<div class="pk-detail-grid">' +
-      '<section><h3 class="pk-chart-title">Daily trend</h3>' +
-      trend +
-      '</section>' +
-      '<section><h3 class="pk-chart-title">Hourly boxes</h3>' +
-      columnChart(detail.hourly, 'boxes', function (it) {
-        return PA.formatHourLabel(it.hour);
-      }) +
-      '</section>' +
-      '<section><h3 class="pk-chart-title">Station history</h3>' +
+      '</div><div class="pk-detail-grid"><section><h3 class="pk-chart-title">Daily trend</h3>' + trend +
+      '</section><section><h3 class="pk-chart-title">Hourly boxes</h3>' +
+      columnChart(detail.hourly, 'boxes', function (it) { return PA.formatHourLabel(it.hour); }) +
+      '</section><section><h3 class="pk-chart-title">Station history</h3>' +
       barChart(detail.stations, 'boxes', 'label', { format: PA.formatNumber, tone: 'tone-b' }) +
-      '</section>' +
-      '<section><h3 class="pk-chart-title">SKU performance</h3>' +
+      '</section><section><h3 class="pk-chart-title">SKU performance</h3>' +
       barChart(detail.skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' }) +
-      '</section>' +
-      '</div></div>';
-
+      '</section></div></div>';
     var close = document.getElementById('pkDetailClose');
-    if (close)
-      close.addEventListener('click', function () {
-        state.selectedWorker = null;
-        renderDetail();
-      });
+    if (close) close.addEventListener('click', function () { state.selectedWorker = null; renderDetail(); });
   }
-
   function detailMetric(label, value) {
-    return (
-      '<div class="pk-detail-metric"><div class="pk-kpi-l">' +
-      escapeHtml(label) +
-      '</div><div class="pk-kpi-v" style="font-size:1.15rem">' +
-      escapeHtml(value) +
-      '</div></div>'
-    );
+    return '<div class="pk-detail-metric"><div class="pk-kpi-l">' + escapeHtml(label) +
+      '</div><div class="pk-kpi-v" style="font-size:1.15rem">' + escapeHtml(value) + '</div></div>';
   }
 
   function renderQuality() {
     if (!els.quality) return;
-    if (!state.records.length && !state.files.length) {
-      els.quality.innerHTML = '';
-      return;
-    }
-    var q = PA.summarizeQuality(state.records, state.quality);
-    // Recount duplicates already removed is in quality.duplicateRows from imports
+    var files = currentFiles();
+    var q = PA.summarizeQuality(currentRecords(), currentQuality());
+    if (!currentRecords().length && !files.length) { els.quality.innerHTML = ''; return; }
     var items = [
-      ['Valid rows', q.validRows],
-      ['Invalid rows', q.invalidRows],
-      ['Missing worker names', q.missingWorkerNames],
-      ['Missing dates', q.missingDates],
-      ['Missing packing time', q.missingPackingTime],
-      ['Duplicate rows skipped', q.duplicateRows],
-      ['Unknown / inconsistent shifts', q.unknownShifts],
-      ['Failed calculated fields', q.failedCalculations],
-      ['Totals rows skipped', q.totalsRowsSkipped],
-      ['Mixed SKU rows (SKU cleared)', q.mixedSkuRows || 0],
-      ['Files kept (raw unchanged)', state.files.length]
+      ['Valid rows', q.validRows], ['Invalid rows', q.invalidRows],
+      ['Missing worker names', q.missingWorkerNames], ['Missing dates', q.missingDates],
+      ['Missing packing time', q.missingPackingTime], ['Duplicate rows skipped', q.duplicateRows],
+      ['Unknown shifts', q.unknownShifts], ['Failed calculated fields', q.failedCalculations],
+      ['Files (raw kept)', files.length]
     ];
-    els.quality.innerHTML =
-      '<section class="pk-quality">' +
-      '<h2 class="pk-section-title">Data quality</h2>' +
-      '<div class="pk-quality-grid">' +
-      items
-        .map(function (it) {
-          return (
-            '<div class="pk-quality-item"><div class="pk-kpi-v" style="font-size:1.1rem">' +
-            escapeHtml(PA.formatNumber(it[1])) +
-            '</div><div class="pk-kpi-l">' +
-            escapeHtml(it[0]) +
-            '</div></div>'
-          );
-        })
-        .join('') +
-      '</div>' +
-      '<div class="pk-file-list">' +
-      state.files
-        .map(function (f) {
-          return (
-            '<div class="pk-file-chip" title="Raw CSV preserved">' +
-            escapeHtml(f.name) +
-            ' · ' +
-            escapeHtml(new Date(f.uploadedAt).toLocaleString('en-AU')) +
-            '</div>'
-          );
-        })
-        .join('') +
-      '</div></section>';
+    els.quality.innerHTML = '<section class="pk-quality"><h2 class="pk-section-title">Data quality</h2>' +
+      '<div class="pk-quality-grid">' + items.map(function (it) {
+        return '<div class="pk-quality-item"><div class="pk-kpi-v" style="font-size:1.1rem">' +
+          escapeHtml(PA.formatNumber(it[1])) + '</div><div class="pk-kpi-l">' + escapeHtml(it[0]) + '</div></div>';
+      }).join('') + '</div><div class="pk-file-list">' + files.map(function (f) {
+        return '<div class="pk-file-chip" title="Raw CSV preserved">' + escapeHtml(f.name) +
+          ' · ' + (f.rowCount != null ? f.rowCount + ' rows · ' : '') +
+          escapeHtml(new Date(f.uploadedAt).toLocaleString('en-AU')) + '</div>';
+      }).join('') + '</div></section>';
+  }
+
+  function renderPreview() {
+    if (!els.preview) return;
+    var p = state.pendingImport;
+    if (!p) { els.preview.hidden = true; els.preview.innerHTML = ''; return; }
+    els.preview.hidden = false;
+    var bucket = ensureBucket(p.targetDate, p.targetShift);
+    var existing = (bucket.records || []).length;
+    var fileBlocks = p.files.map(function (f, idx) {
+      var r = f.result;
+      if (!r.ok) {
+        return '<div class="pk-preview-file err"><strong>' + escapeHtml(f.name) + '</strong><br>' +
+          escapeHtml(r.error || 'Invalid') + '</div>';
+      }
+      var q = r.quality || {};
+      return '<div class="pk-preview-file"><strong>' + escapeHtml(f.name) + '</strong>' +
+        '<div class="pk-table-meta">Format: ' + escapeHtml(r.format || '?') +
+        ' · ' + r.records.length + ' usable row(s)' +
+        (q.invalidRows ? ' · ' + q.invalidRows + ' invalid' : '') +
+        (q.duplicateRows ? ' · ' + q.duplicateRows + ' dupes in file' : '') +
+        (q.totalsRowsSkipped ? ' · ' + q.totalsRowsSkipped + ' totals skipped' : '') +
+        (q.missingWorkerNames ? ' · ' + q.missingWorkerNames + ' missing names' : '') +
+        '</div></div>';
+    }).join('');
+    var anyOk = p.files.some(function (f) { return f.result && f.result.ok; });
+    els.preview.innerHTML =
+      '<div class="pk-preview-card" role="dialog" aria-label="Import preview">' +
+      '<h2 class="pk-section-title">Import preview</h2>' +
+      '<div class="pk-preview-targets">' +
+      '<label class="pk-fl"><span>Day</span><select id="pkPreviewDate">' +
+      dayOptionsHtml(p.targetDate) + '</select></label>' +
+      '<label class="pk-fl"><span>Shift</span><select id="pkPreviewShift">' +
+      '<option value="morning"' + (p.targetShift === 'morning' ? ' selected' : '') + '>Day</option>' +
+      '<option value="afternoon"' + (p.targetShift === 'afternoon' ? ' selected' : '') + '>Afternoon</option>' +
+      '</select></label>' +
+      '<label class="pk-fl"><span>If data already exists</span><select id="pkPreviewMode">' +
+      '<option value="merge"' + (p.mode !== 'replace' ? ' selected' : '') + '>Merge (skip duplicates)</option>' +
+      '<option value="replace"' + (p.mode === 'replace' ? ' selected' : '') + '>Replace this day/shift</option>' +
+      '</select></label></div>' +
+      (existing ? '<div class="pk-banner pk-banner-load">This day/shift already has ' + existing +
+        ' row(s). Choose Merge or Replace above.</div>' : '') +
+      fileBlocks +
+      '<div class="pk-preview-actions">' +
+      '<button type="button" class="btn btn-ghost" id="pkPreviewCancel">Cancel</button>' +
+      '<button type="button" class="btn btn-primary" id="pkPreviewImport"' + (anyOk ? '' : ' disabled') + '>Import</button>' +
+      '</div></div>';
+    document.getElementById('pkPreviewCancel').addEventListener('click', function () {
+      state.pendingImport = null; renderPreview();
+      if (els.fileInput) els.fileInput.value = '';
+    });
+    document.getElementById('pkPreviewImport').addEventListener('click', function () {
+      p.targetDate = document.getElementById('pkPreviewDate').value;
+      p.targetShift = document.getElementById('pkPreviewShift').value;
+      p.mode = document.getElementById('pkPreviewMode').value;
+      commitPendingImport();
+    });
+  }
+  function dayOptionsHtml(selected) {
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    var html = '';
+    for (var i = 0; i < 5; i++) {
+      var d = addDays(state.weekStart, i);
+      var key = ymd(d);
+      html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' +
+        DAY_NAMES[i] + ' ' + PA.formatDateAU(key) + '</option>';
+    }
+    return html;
+  }
+
+  async function commitPendingImport() {
+    var p = state.pendingImport;
+    if (!p) return;
+    var bucket = ensureBucket(p.targetDate, p.targetShift);
+    var messages = [];
+    var anyOk = false;
+    if (p.mode === 'replace') {
+      bucket.records = [];
+      bucket.files = [];
+      bucket.quality = PA.emptyQuality();
+    }
+    p.files.forEach(function (f) {
+      var res = f.result;
+      if (!res || !res.ok) {
+        messages.push(f.name + ': ' + (res && res.error ? res.error : 'failed'));
+        return;
+      }
+      var before = bucket.records.length;
+      var merged = PA.mergeRecords(bucket.records, res.records);
+      var cross = before + res.records.length - merged.records.length;
+      bucket.records = merged.records;
+      res.quality.duplicateRows += Math.max(0, cross);
+      bucket.quality = PA.mergeQuality(bucket.quality, res.quality);
+      bucket.files.push({
+        id: uid(),
+        name: f.name,
+        uploadedAt: Date.now(),
+        text: res.rawText,
+        rowCount: res.records.length,
+        format: res.format,
+        quality: res.quality
+      });
+      anyOk = true;
+      messages.push(f.name + ': ' + res.records.length + ' row(s)' + (cross ? ', ' + cross + ' dupes skipped' : ''));
+    });
+    state.pendingImport = null;
+    // Jump UI to the target day/shift
+    state.showLegacy = false;
+    state.rosterShift = p.targetShift;
+    var ws = startOfWeek(new Date(p.targetDate + 'T00:00:00'));
+    state.weekStart = ws;
+    state.activeWeekKey = ymd(ws);
+    for (var i = 0; i < 5; i++) {
+      if (ymd(addDays(ws, i)) === p.targetDate) { state.dayIdx = i; break; }
+    }
+    var saved = true;
+    if (anyOk) saved = await saveData();
+    if (!saved) messages.push('Could not save — data may be lost on refresh');
+    renderPreview();
+    renderAll();
+    toast(messages.join(' · ') || 'Nothing imported', anyOk && saved ? undefined : 'err');
+    if (els.fileInput) els.fileInput.value = '';
   }
 
   function renderAll() {
+    ensureCurrentWeekFresh();
+    renderChrome();
     renderStatus();
     renderFilters();
     renderKpis();
@@ -8548,32 +8640,33 @@ function toast(msg, err) {
     renderTable();
     renderDetail();
     renderQuality();
+    renderPreview();
     updateHeader();
   }
-
   function updateHeader() {
     if (!els.lastUpdated) return;
-    if (!state.lastUpdated) {
-      els.lastUpdated.textContent = 'No uploads yet';
+    var recs = currentRecords();
+    var files = currentFiles();
+    if (!recs.length && !files.length) {
+      els.lastUpdated.textContent = state.showLegacy ? 'Legacy empty' : 'No uploads for this day';
       return;
     }
-    var opts = PA.uniqueOptions(state.records);
-    var parts = [];
-    if (opts.dates[0]) parts.push('Latest date ' + PA.formatDateAU(opts.dates[0]));
-    parts.push(state.records.length + ' rows');
-    parts.push(state.files.length + ' file' + (state.files.length === 1 ? '' : 's'));
-    els.lastUpdated.textContent = parts.join(' · ');
+    els.lastUpdated.textContent = (state.showLegacy ? 'Legacy · ' : PA.formatDateAU(activeDateKey()) + ' · ' +
+      shiftLabel(state.rosterShift) + ' · ') + recs.length + ' rows · ' + files.length + ' file(s)';
   }
 
   async function saveData() {
     try {
+      state.revision = (state.revision || 0) + 1;
       var payload = {
-        version: 2,
-        files: state.files,
-        records: state.records,
-        quality: state.quality,
-        lastUpdated: state.lastUpdated,
-        defaultShift: state.defaultShift
+        schemaVersion: 1,
+        revision: state.revision,
+        version: 3,
+        activeWeekKey: state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date())),
+        byDate: state.byDate,
+        archives: state.archives || {},
+        legacy: state.legacy || { records: [], files: [], quality: PA.emptyQuality() },
+        updatedAt: Date.now()
       };
       await window.storage.set(STORAGE_KEY, JSON.stringify(payload), false);
       return true;
@@ -8583,156 +8676,191 @@ function toast(msg, err) {
     }
   }
 
+  function migrateV2ToV3(data) {
+    // Preserve all prior flat records in legacy — never drop.
+    var legacyRecords = data.records || [];
+    var legacyFiles = data.files || [];
+    var legacyQuality = data.quality || PA.emptyQuality();
+    var byDate = {};
+    // Also place rows with a reportDate into the matching calendar bucket when possible.
+    legacyRecords.forEach(function (rec) {
+      if (!rec || !rec.reportDate) return;
+      var sk = 'morning';
+      if (rec.shiftKey && /afternoon|evening|night/i.test(rec.shiftKey)) sk = 'afternoon';
+      else if (rec.shiftKey && /morning|day/i.test(rec.shiftKey)) sk = 'morning';
+      var b = ensureBucketIn(byDate, rec.reportDate, sk);
+      b.records.push(rec);
+    });
+    return {
+      byDate: byDate,
+      legacy: { records: legacyRecords, files: legacyFiles, quality: legacyQuality }
+    };
+  }
+  function ensureBucketIn(byDate, dateKey, shiftKey) {
+    if (!byDate[dateKey]) byDate[dateKey] = {};
+    if (!byDate[dateKey][shiftKey]) byDate[dateKey][shiftKey] = emptyBucket();
+    return byDate[dateKey][shiftKey];
+  }
+
   async function loadAll() {
     state.loading = true;
+    state.weekStart = startOfWeek(new Date());
+    state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
+    state.activeWeekKey = ymd(state.weekStart);
     renderStatus();
     try {
       var r = await window.storage.get(STORAGE_KEY, false);
       if (r && r.value) {
         var data = JSON.parse(r.value);
-        if (data && data.version === 2 && Array.isArray(data.records)) {
-          state.files = data.files || [];
-          state.records = data.records || [];
-          state.quality = data.quality || PA.emptyQuality();
-          state.lastUpdated = data.lastUpdated || null;
-          state.defaultShift = data.defaultShift || 'morning_shift';
-        } else {
-          // Legacy shift-keyed object → migrate into flat records; no raw files available
-          state.records = PA.migrateLegacyShifts(data);
-          state.files = [];
-          state.quality = PA.summarizeQuality(state.records, null);
-          state.lastUpdated = Date.now();
+        if (data && data.version === 3 && data.byDate) {
+          state.byDate = data.byDate || {};
+          state.archives = data.archives || {};
+          state.legacy = data.legacy || { records: [], files: [], quality: PA.emptyQuality() };
+          state.activeWeekKey = data.activeWeekKey || state.activeWeekKey;
+          state.revision = data.revision || 0;
+        } else if (data && data.version === 2 && Array.isArray(data.records)) {
+          var m = migrateV2ToV3(data);
+          state.byDate = m.byDate;
+          state.legacy = m.legacy;
           await saveData();
+          toast('Migrated previous Packer data — open Legacy to review older rows');
+        } else if (data && typeof data === 'object') {
+          // Very old shift-keyed object
+          var legacyRecs = PA.migrateLegacyShifts(data);
+          state.legacy = { records: legacyRecs, files: [], quality: PA.summarizeQuality(legacyRecs, null) };
+          state.byDate = {};
+          await saveData();
+          toast('Migrated legacy shift tabs into Legacy view');
         }
       }
     } catch (e) {
-      console.error('packer load failed', e);
-      state.error = 'Could not read saved data — showing an empty dashboard so nothing is overwritten.';
+      console.error(e);
+      state.error = 'Could not read saved Packer data — showing empty day so nothing is overwritten.';
       toast(state.error, 'err');
     }
     state.loading = false;
-    if (els.tagSelect) {
-      // Keep a default shift tag for hourly / EOS uploads that lack a Shift column
-      var shifts = [
-        { key: 'morning_shift', label: 'Morning' },
-        { key: 'afternoon_shift', label: 'Afternoon' },
-        { key: 'evening_shift', label: 'Evening' },
-        { key: 'night_shift', label: 'Night' }
-      ];
-      els.tagSelect.innerHTML = shifts
-        .map(function (s) {
-          return (
-            '<option value="' +
-            s.key +
-            '"' +
-            (s.key === state.defaultShift ? ' selected' : '') +
-            '>' +
-            s.label +
-            '</option>'
-          );
-        })
-        .join('');
-    }
+    ensureCurrentWeekFresh();
     renderAll();
   }
 
-  async function importFiles(fileList) {
+  async function stageFiles(fileList) {
     var files = Array.prototype.slice.call(fileList || []);
     if (!files.length) return;
     state.loading = true;
     state.error = null;
     renderStatus();
-    var messages = [];
-    var anyOk = false;
+    var staged = [];
     for (var i = 0; i < files.length; i++) {
-      var file = files[i];
       try {
-        var text = await file.text();
+        var text = await files[i].text();
         var res = PA.processCsvText(text, {
-          sourceFile: file.name,
-          defaultShift: (els.tagSelect && els.tagSelect.value) || state.defaultShift
+          sourceFile: files[i].name,
+          defaultShift: state.rosterShift === 'afternoon' ? 'afternoon_shift' : 'morning_shift'
         });
-        if (!res.ok) {
-          messages.push(file.name + ': ' + res.error);
-          continue;
-        }
-        // Keep original raw text unchanged
-        state.files.push({
-          id: uid(),
-          name: file.name,
-          uploadedAt: Date.now(),
-          text: res.rawText
-        });
-        var before = state.records.length;
-        var merged = PA.mergeRecords(state.records, res.records);
-        var newDupes = merged.duplicatesRemoved - 0;
-        // duplicatesRemoved counts all dupes in concat; subtract those already in existing
-        var onlyIncomingDupes = PA.mergeRecords([], res.records);
-        var crossDupes = before + onlyIncomingDupes.records.length - merged.records.length;
-        state.records = merged.records;
-        res.quality.duplicateRows += Math.max(0, crossDupes);
-        state.quality = PA.mergeQuality(state.quality, res.quality);
-        state.lastUpdated = Date.now();
-        anyOk = true;
-        messages.push(
-          file.name +
-            ': ' +
-            res.records.length +
-            ' row(s) (' +
-            res.format +
-            ')' +
-            (crossDupes > 0 ? ', ' + crossDupes + ' duplicate(s) skipped' : '')
-        );
+        staged.push({ name: files[i].name, text: text, result: res });
       } catch (err) {
-        messages.push('Failed to read ' + file.name);
-        console.error(err);
+        staged.push({ name: files[i].name, text: '', result: { ok: false, error: 'Failed to read file', records: [], quality: PA.emptyQuality() } });
       }
     }
     state.loading = false;
-    var saved = true;
-    if (anyOk) {
-      saved = await saveData();
-      if (!saved) messages.push('Could not save to storage — data may be lost on refresh');
+    state.pendingImport = {
+      files: staged,
+      targetDate: activeDateKey(),
+      targetShift: state.rosterShift === 'afternoon' ? 'afternoon' : 'morning',
+      mode: 'merge'
+    };
+    renderStatus();
+    renderPreview();
+  }
+
+  var clearArmed = false, clearTimer = null;
+  function resetClearBtn() {
+    clearArmed = false;
+    if (els.clearBtn) {
+      els.clearBtn.textContent = 'Clear day';
+      els.clearBtn.classList.remove('btn-danger-pending');
     }
-    if (!anyOk && messages.length) state.error = messages.join(' · ');
-    renderAll();
-    toast(messages.join(' · ') || 'No files imported', anyOk && saved ? undefined : 'err');
   }
 
-  async function clearAll() {
-    if (!confirm('Clear all imported packer CSV data? Raw copies in storage will be removed from this browser.'))
-      return;
-    state.files = [];
-    state.records = [];
-    state.quality = PA.emptyQuality();
-    state.lastUpdated = null;
-    state.selectedWorker = null;
-    state.error = null;
-    state.page = 1;
-    await saveData();
-    renderAll();
-    toast('Packer data cleared');
-  }
-
-  // Events
   if (els.uploadBtn && els.fileInput) {
-    els.uploadBtn.addEventListener('click', function () {
-      els.fileInput.click();
-    });
-    els.fileInput.addEventListener('change', function (e) {
-      importFiles(e.target.files).then(function () {
-        els.fileInput.value = '';
-      });
+    els.uploadBtn.addEventListener('click', function () { els.fileInput.click(); });
+    els.fileInput.addEventListener('change', function (e) { stageFiles(e.target.files); });
+  }
+  if (els.clearBtn) {
+    els.clearBtn.addEventListener('click', async function () {
+      if (state.showLegacy) {
+        toast('Switch out of Legacy to clear a calendar day', 'err');
+        return;
+      }
+      if (!clearArmed) {
+        clearArmed = true;
+        els.clearBtn.textContent = 'Confirm?';
+        els.clearBtn.classList.add('btn-danger-pending');
+        clearTimeout(clearTimer);
+        clearTimer = setTimeout(resetClearBtn, 3000);
+        return;
+      }
+      clearTimeout(clearTimer);
+      resetClearBtn();
+      var b = activeBucket();
+      b.records = []; b.files = []; b.quality = PA.emptyQuality();
+      await saveData();
+      renderAll();
+      toast('Cleared ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
     });
   }
-  if (els.clearBtn) els.clearBtn.addEventListener('click', clearAll);
-  if (els.tagSelect) {
-    els.tagSelect.addEventListener('change', function () {
-      state.defaultShift = els.tagSelect.value;
-      saveData();
+  if (els.exportWeekBtn) {
+    els.exportWeekBtn.addEventListener('click', function () { exportActiveWeek(true); });
+  }
+  if (els.shiftToggle) {
+    els.shiftToggle.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[data-shift]') : null;
+      if (!btn) return;
+      state.rosterShift = btn.getAttribute('data-shift');
+      state.showLegacy = false;
+      state.page = 1;
+      renderAll();
+    });
+  }
+  if (els.prevWeek) {
+    els.prevWeek.addEventListener('click', function () {
+      state.weekStart = addDays(state.weekStart, -7);
+      state.activeWeekKey = ymd(state.weekStart);
+      state.showLegacy = false;
+      renderAll();
+    });
+  }
+  if (els.nextWeek) {
+    els.nextWeek.addEventListener('click', function () {
+      state.weekStart = addDays(state.weekStart, 7);
+      state.activeWeekKey = ymd(state.weekStart);
+      state.showLegacy = false;
+      renderAll();
+    });
+  }
+  if (els.jumpToday) {
+    els.jumpToday.addEventListener('click', function () {
+      state.weekStart = startOfWeek(new Date());
+      state.activeWeekKey = ymd(state.weekStart);
+      state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
+      state.showLegacy = false;
+      renderAll();
+    });
+  }
+  if (els.legacyBtn) {
+    els.legacyBtn.addEventListener('click', function () {
+      state.showLegacy = !state.showLegacy;
+      state.page = 1;
+      renderAll();
+    });
+  }
+  if (els.weekLabel) {
+    els.weekLabel.addEventListener('click', function () {
+      if (els.jumpToday) els.jumpToday.click();
     });
   }
 
+  window.__packerDashboard = { refresh: renderAll, exportWeek: exportActiveWeek };
   loadAll();
 })();
 
@@ -8756,7 +8884,7 @@ function toast(msg, err) {
     {key:'unassigned', label:'No role'}
   ];
   var LEGACY = { in:'here', leave:'holiday', early:'late' };
-  var state = { weekStart: null, dayIdx: 0, byDate: {}, activeWeekKey: '', search: '', rosterShift: 'morning' };
+  var state = { weekStart: null, dayIdx: 0, byDate: {}, activeWeekKey: '', search: '', rosterShift: 'morning', archives: {}, schemaVersion: 1, revision: 0 };
   var saveTimer = null;
 
   function uid(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -8799,14 +8927,69 @@ function toast(msg, err) {
     state.byDate = keep;
     state.activeWeekKey = ymd(ws);
   }
+  function downloadTextFile(filename, text, mime){
+    try{
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: mime || 'application/json' }));
+      a.download = filename;
+      a.click();
+      setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+      return true;
+    }catch(e){
+      console.error('download failed', e);
+      return false;
+    }
+  }
+  function archiveOutgoingWeek(oldWeekKey, byDateSnap){
+    if (!state.archives) state.archives = {};
+    state.archives[oldWeekKey] = {
+      weekKey: oldWeekKey,
+      byDate: byDateSnap,
+      archivedAt: Date.now()
+    };
+    // Keep a bounded history so localStorage does not grow forever
+    var keys = Object.keys(state.archives).sort();
+    while (keys.length > 12){
+      delete state.archives[keys[0]];
+      keys.shift();
+    }
+  }
+  function exportWeekAttendance(weekKey, byDateSnap){
+    var payload = {
+      type: 'shift-week-attendance-export',
+      schemaVersion: 1,
+      weekKey: weekKey,
+      exportedAt: new Date().toISOString(),
+      byDate: byDateSnap || {}
+    };
+    var ok = downloadTextFile(
+      'roster-week-' + weekKey + '.json',
+      JSON.stringify(payload, null, 2),
+      'application/json'
+    );
+    return ok;
+  }
   function ensureCurrentWeekFresh(){
     var current = startOfWeek(new Date());
     var currentKey = ymd(current);
     if (state.activeWeekKey && state.activeWeekKey !== currentKey){
-      // New week — wipe last week's marks so the roster starts fresh.
+      var oldKey = state.activeWeekKey;
+      var snap = state.byDate || {};
+      var hasMarks = Object.keys(snap).some(function(dk){
+        return snap[dk] && Object.keys(snap[dk]).length > 0;
+      });
+      if (hasMarks){
+        var exported = exportWeekAttendance(oldKey, snap);
+        if (!exported){
+          rosterToast('Could not export last week’s roster — keeping that week’s marks so nothing is lost');
+          return;
+        }
+        archiveOutgoingWeek(oldKey, snap);
+      }
       state.byDate = {};
       state.activeWeekKey = currentKey;
       saveState();
+      if (hasMarks) rosterToast('New week — exported & archived week of ' + oldKey);
     } else if (!state.activeWeekKey){
       state.activeWeekKey = currentKey;
       pruneToWeek(current);
@@ -8822,6 +9005,9 @@ function toast(msg, err) {
         var data = JSON.parse(r.value);
         if (data && data.byDate) state.byDate = data.byDate;
         if (data && data.activeWeekKey) state.activeWeekKey = data.activeWeekKey;
+        if (data && data.archives) state.archives = data.archives;
+        if (typeof data.revision === 'number') state.revision = data.revision;
+        if (typeof data.schemaVersion === 'number') state.schemaVersion = data.schemaVersion;
       }
     }catch(e){}
     ensureCurrentWeekFresh();
@@ -8839,9 +9025,13 @@ function toast(msg, err) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async function(){
       try{
+        state.revision = (state.revision || 0) + 1;
         await window.storage.set(KEY, JSON.stringify({
+          schemaVersion: 1,
+          revision: state.revision,
           byDate: state.byDate,
-          activeWeekKey: state.activeWeekKey || ymd(startOfWeek(new Date()))
+          activeWeekKey: state.activeWeekKey || ymd(startOfWeek(new Date())),
+          archives: state.archives || {}
         }), false);
       }catch(e){}
     }, 200);
@@ -9344,6 +9534,94 @@ function toast(msg, err) {
 </script>
 
 <script>
+/* Whole-app backup / restore — planner, breaks, packer, roster attendance */
+(function(){
+  var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
+  var backupBtn = document.getElementById('appBackupBtn');
+  var restoreBtn = document.getElementById('appRestoreBtn');
+  var restoreFile = document.getElementById('appRestoreFile');
+  var restoreArmed = false, restoreTimer = null;
+
+  function toast(msg, err){
+    var el = document.getElementById('bpToast') || document.getElementById('toast');
+    if(!el){ try{ alert(msg); }catch(e){} return; }
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._bt);
+    el._bt = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+  }
+  function downloadJson(filename, obj){
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'}));
+    a.download = filename;
+    a.click();
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+  }
+  async function exportBackup(){
+    if(!window.storage){ toast('Storage unavailable', true); return; }
+    var data = { type:'shift-floor-planner-backup', schemaVersion:1, exportedAt:new Date().toISOString(), keys:{} };
+    for(var i=0;i<KEYS.length;i++){
+      try{
+        var r = await window.storage.get(KEYS[i], false);
+        data.keys[KEYS[i]] = r && r.value != null ? r.value : null;
+      }catch(e){
+        data.keys[KEYS[i]] = null;
+      }
+    }
+    downloadJson('shift-floor-backup-' + new Date().toISOString().slice(0,10) + '.json', data);
+    toast('Backup downloaded');
+  }
+  async function importBackup(file){
+    try{
+      var text = await file.text();
+      var data = JSON.parse(text);
+      if(!data || data.type !== 'shift-floor-planner-backup' || !data.keys){
+        toast('Not a recognised backup file', true);
+        return;
+      }
+      for(var i=0;i<KEYS.length;i++){
+        var k = KEYS[i];
+        if(data.keys[k] == null) continue;
+        await window.storage.set(k, typeof data.keys[k] === 'string' ? data.keys[k] : JSON.stringify(data.keys[k]), false);
+      }
+      toast('Backup restored — reloading…');
+      setTimeout(function(){ location.reload(); }, 600);
+    }catch(e){
+      console.error(e);
+      toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'), true);
+    }
+  }
+  if(backupBtn) backupBtn.addEventListener('click', exportBackup);
+  if(restoreBtn && restoreFile){
+    restoreBtn.addEventListener('click', function(){
+      if(!restoreArmed){
+        restoreArmed = true;
+        restoreBtn.textContent = 'Confirm?';
+        restoreBtn.classList.add('btn-danger-pending');
+        clearTimeout(restoreTimer);
+        restoreTimer = setTimeout(function(){
+          restoreArmed = false;
+          restoreBtn.textContent = 'Restore';
+          restoreBtn.classList.remove('btn-danger-pending');
+        }, 4000);
+        return;
+      }
+      clearTimeout(restoreTimer);
+      restoreArmed = false;
+      restoreBtn.textContent = 'Restore';
+      restoreBtn.classList.remove('btn-danger-pending');
+      restoreFile.click();
+    });
+    restoreFile.addEventListener('change', function(){
+      var f = restoreFile.files && restoreFile.files[0];
+      restoreFile.value = '';
+      if(f) importBackup(f);
+    });
+  }
+})();
+</script>
+
+<script>
 (function(){
   var panels = {
     floor: document.getElementById('app'),
@@ -9376,6 +9654,9 @@ function toast(msg, err) {
     }
     if (name === 'roster' && window.__rosterTracker && typeof window.__rosterTracker.refresh === 'function'){
       window.__rosterTracker.refresh();
+    }
+    if (name === 'packer' && window.__packerDashboard && typeof window.__packerDashboard.refresh === 'function'){
+      window.__packerDashboard.refresh();
     }
   }
   var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
