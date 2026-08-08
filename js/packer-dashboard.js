@@ -47,7 +47,7 @@
     selectedWorker: null,
     loading: false,
     error: null,
-    view: 'table', // table | charts | quality
+    view: 'strike', // strike | hourly | quality
     pendingImport: null // { files: [{name,text,result}], targetDate, targetShift, mode }
   };
 
@@ -163,19 +163,14 @@
     return PA.filterRecords(currentRecords(), state.filters);
   }
 
-  function statusPill(status) {
-    if (!status) return '<span class="pk-status pk-status-unknown" title="No target">No target</span>';
+  function strikePill(st) {
+    if (!st) return '<span class="pk-status pk-status-unknown">No target</span>';
     var cls =
-      status.key === 'excellent' ? 'pk-status-excellent'
-        : status.key === 'on_target' ? 'pk-status-on'
-          : status.key === 'needs_attention' ? 'pk-status-attention'
+      st.key === 'on' ? 'pk-status-excellent'
+        : st.key === 'below' ? 'pk-status-below'
+          : st.key === 'strike' ? 'pk-status-strike'
             : 'pk-status-unknown';
-    var short =
-      status.key === 'excellent' ? 'Excellent'
-        : status.key === 'on_target' ? 'On target'
-          : status.key === 'needs_attention' ? 'Needs attention'
-            : 'No target';
-    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(status.label) + '">' + escapeHtml(short) + '</span>';
+    return '<span class="pk-status ' + cls + '" title="' + escapeHtml(st.label) + '">' + escapeHtml(st.label) + '</span>';
   }
 
   function barChart(items, valueKey, labelKey, opts) {
@@ -407,9 +402,9 @@
       return;
     }
     if (!currentRecords().length) {
-      els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>No packer data for ' +
-        escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift) + ' · ' + PA.formatDateAU(activeDateKey())) +
-        '</strong><br>Upload a CSV — you’ll get a preview before anything is saved.</div>';
+      els.status.innerHTML = '<div class="pk-banner">No data for ' +
+        escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
+        '. Upload your <b>raw</b> CSV (for strike check) and <b>hourly boxes</b> CSV — you’ll preview before save.</div>';
       return;
     }
     els.status.innerHTML = '';
@@ -425,13 +420,18 @@
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
+    var rows = PA.aggregateStrikeRows(filtered());
+    var counts = { on: 0, below: 0, strike: 0, none: 0 };
+    rows.forEach(function (r) {
+      if (r.strikeStatus && counts[r.strikeStatus.key] != null) counts[r.strikeStatus.key]++;
+      else counts.none++;
+    });
     var k = PA.aggregateKpis(filtered());
     var stats = [
+      { cls: 'on', num: String(counts.on), lbl: 'On target' },
+      { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
+      { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
       { cls: 'boxes', num: PA.formatNumber(k.totalBoxes), lbl: 'Boxes' },
-      { cls: 'boxes', num: PA.formatNumber(k.totalItems), lbl: 'Items' },
-      { cls: 'rate', num: PA.formatRate(k.averageBoxesPerHour), lbl: 'BPH' },
-      { cls: 'eff', num: PA.formatPercent(k.averageEfficiency), lbl: 'Eff' },
-      { cls: 'hours', num: PA.formatHours(k.totalPackingHours), lbl: 'Hours' },
       { cls: '', num: PA.formatNumber(k.activeWorkers), lbl: 'People' }
     ];
     els.kpis.innerHTML = stats.map(function (s) {
@@ -441,91 +441,54 @@
   }
 
   function applyView() {
-    var v = state.view || 'table';
-    if (els.tableWrap) els.tableWrap.hidden = v !== 'table';
-    if (els.charts) els.charts.hidden = v !== 'charts';
+    var v = state.view || 'strike';
+    if (els.tableWrap) els.tableWrap.hidden = v !== 'strike' && v !== 'hourly';
+    if (els.charts) els.charts.hidden = true;
     if (els.quality) els.quality.hidden = v !== 'quality';
     if (els.views) {
       Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-view') === v);
       });
     }
+    if (v === 'strike' || v === 'hourly') renderTable();
   }
 
   function renderCharts() {
-    if (!els.charts) return;
-    if (!currentRecords().length) { els.charts.innerHTML = ''; return; }
-    var rows = filtered();
-    var workers = PA.aggregateWorkers(rows);
-    var byHour = PA.aggregateByHour(rows);
-    var stations = PA.aggregateStations(rows);
-    var skus = PA.aggregateSkus(rows);
-    var ranking = workers.map(function (w) { return { label: w.workerName, boxesPerHour: w.boxesPerHour }; });
-    var eff = workers.map(function (w) { return { label: w.workerName, efficiency: w.efficiency }; });
-    var idle = workers.filter(function (w) { return w.idlePercentage != null; })
-      .map(function (w) { return { label: w.workerName, idle: w.idlePercentage }; });
-    els.charts.innerHTML = '<div class="pk-chart-grid">' +
-      chartCard('Worker ranking by boxes / hour', barChart(ranking, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
-      chartCard('Boxes packed by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
-      chartCard('Efficiency vs target by worker', barChart(eff, 'efficiency', 'label', { format: PA.formatPercent, tone: 'tone-g' })) +
-      chartCard('Idle % by worker', idle.length ? barChart(idle, 'idle', 'label', { format: PA.formatPercent, tone: 'tone-a' }) : '<div class="pk-empty-inline">Idle time not in uploaded CSVs</div>') +
-      chartCard('Station performance', barChart(stations, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-b' })) +
-      chartCard('SKU-size performance', barChart(skus, 'boxesPerHour', 'label', { format: PA.formatRate, tone: 'tone-g' })) +
-      '</div>';
+    if (els.charts) els.charts.innerHTML = '';
   }
 
-  function renderTable() {
-    if (!els.tableWrap) return;
-    if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
-    var workers = PA.aggregateWorkers(filtered());
-    if (state.sortKey !== 'rankScore') {
-      workers = PA.sortRows(workers, state.sortKey, state.sortDir);
-      workers.forEach(function (w, i) { w.rank = i + 1; });
-    } else if (state.sortDir === 'asc') {
-      workers = workers.slice().reverse();
-      workers.forEach(function (w, i) { w.rank = i + 1; });
-    }
-    var page = PA.paginate(workers, state.page, PAGE_SIZE);
-    function th(key, label, cls) {
-      var arrow = state.sortKey === key ? (state.sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-      return '<th class="' + (cls || '') + '"><button type="button" class="pk-th" data-sort="' + key + '">' +
-        escapeHtml(label + arrow) + '</button></th>';
-    }
-    var body = page.rows.map(function (w) {
-      return '<tr class="pk-worker-row" data-worker="' + escapeHtml(w.workerKey) + '" tabindex="0">' +
-        '<td class="r mn">' + w.rank + '</td><td><button type="button" class="pk-link" data-worker="' +
-        escapeHtml(w.workerKey) + '">' + escapeHtml(w.workerName) + '</button></td>' +
-        '<td>' + escapeHtml(w.station) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatNumber(w.boxes)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatHours(w.packingHours)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatRate(w.boxesPerHour)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(PA.formatPercent(w.efficiency)) + '</td>' +
-        '<td>' + statusPill(w.status) + '</td></tr>';
+  function renderStrikeTable() {
+    var rows = PA.aggregateStrikeRows(filtered());
+    // Prefer rows that have hours (raw/EOS) — hourly-only uploads won't have BPH
+    var withHours = rows.filter(function (r) { return r.packingHours != null && r.packingHours > 0; });
+    var list = withHours.length ? withHours : rows;
+    var page = PA.paginate(list, state.page, PAGE_SIZE);
+    var body = page.rows.map(function (r, i) {
+      return '<tr>' +
+        '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
+        '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
+        '<td>' + escapeHtml(r.sku) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(r.target != null ? String(r.target) : 'N/A') + '</td>' +
+        '<td class="r mn">' + escapeHtml(r.strike != null ? String(r.strike) : 'N/A') + '</td>' +
+        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
+    var note = withHours.length
+      ? 'Boxes/hour vs SKU target & strike line'
+      : 'Upload your raw CSV (with packing hours + SKU) for strike check. Hourly file alone can’t compute BPH.';
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Workers</h2>' +
-      '<div class="pk-table-meta">' + page.total + ' · ranked by boxes/hour</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Strike check</h2>' +
+      '<div class="pk-table-meta">' + escapeHtml(note) + '</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      th('rank', '#', 'r') + th('workerName', 'Worker') + th('station', 'Station') +
-      th('boxes', 'Boxes', 'r') + th('packingHours', 'Hours', 'r') +
-      th('boxesPerHour', 'BPH', 'r') + th('efficiency', 'Eff', 'r') +
-      th('status', 'Status') +
-      '</tr></thead><tbody>' + (body || '<tr><td colspan="8" class="empty-td">No workers for this day</td></tr>') +
+      '<th class="r">#</th><th>Worker</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
+      '<th class="r">Target</th><th class="r">Strike</th><th>Status</th>' +
+      '</tr></thead><tbody>' +
+      (body || '<tr><td colspan="8" class="empty-td">No strike rows yet — upload raw + hourly CSVs</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
       '<button type="button" class="btn" data-page="next"' + (page.page >= page.pages ? ' disabled' : '') + '>Next</button></div></section>';
-    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-sort]'), function (btn) {
-      btn.addEventListener('click', function () {
-        var key = btn.getAttribute('data-sort');
-        if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-        else {
-          state.sortKey = key;
-          state.sortDir = key === 'workerName' || key === 'station' || key === 'status' ? 'asc' : 'desc';
-        }
-        state.page = 1; renderTable();
-      });
-    });
     Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-page]'), function (btn) {
       btn.addEventListener('click', function () {
         if (btn.disabled) return;
@@ -533,13 +496,48 @@
         renderTable();
       });
     });
-    Array.prototype.forEach.call(els.tableWrap.querySelectorAll('[data-worker]'), function (el) {
-      function open() { state.selectedWorker = el.getAttribute('data-worker'); renderDetail(); }
-      el.addEventListener('click', open);
-      el.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-      });
+  }
+
+  function renderHourlyTable() {
+    var byHour = PA.aggregateByHour(filtered());
+    var workers = PA.aggregateWorkers(filtered());
+    if (!byHour.length) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No hourly rows for this day. Upload the boxes-per-hour CSV.</div></section>';
+      return;
+    }
+    var hourKeys = byHour.map(function (h) { return h.hour; });
+    var head = hourKeys.map(function (h) { return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + '</th>'; }).join('');
+    // Rebuild per-worker hour map from records
+    var map = {};
+    filtered().forEach(function (r) {
+      if (r.hour == null || !r.workerKey) return;
+      if (!map[r.workerKey]) map[r.workerKey] = { name: r.workerName, hours: {}, total: 0 };
+      map[r.workerKey].hours[r.hour] = (map[r.workerKey].hours[r.hour] || 0) + (r.boxes || 0);
+      map[r.workerKey].total += r.boxes || 0;
     });
+    var names = Object.keys(map).sort(function (a, b) { return map[b].total - map[a].total; });
+    var body = names.map(function (wk) {
+      var w = map[wk];
+      var cells = hourKeys.map(function (h) {
+        var v = w.hours[h];
+        return '<td class="r mn">' + (v != null ? v : '—') + '</td>';
+      }).join('');
+      return '<tr><td>' + escapeHtml(w.name) + '</td>' + cells +
+        '<td class="r mn bold">' + w.total + '</td></tr>';
+    }).join('');
+    els.tableWrap.innerHTML =
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Boxes / hour</h2>' +
+      '<div class="pk-table-meta">' + names.length + ' workers</div></div>' +
+      chartCard('Boxes by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
+      '<div class="pk-tw" style="margin-top:8px"><table><thead><tr><th>Worker</th>' + head +
+      '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
+  }
+
+  function renderTable() {
+    if (!els.tableWrap) return;
+    if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
+    if (state.view === 'hourly') renderHourlyTable();
+    else renderStrikeTable();
   }
 
   function renderDetail() {
@@ -554,8 +552,8 @@
       : '<div class="pk-empty-inline">Trend needs multiple report dates</div>';
     els.detail.innerHTML =
       '<div class="pk-detail-panel"><div class="pk-detail-hdr"><div><h2 class="pk-section-title">' +
-      escapeHtml(s.workerName) + '</h2><div class="pk-table-meta">' + statusPill(s.status) +
-      '</div></div><button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
+      escapeHtml(s.workerName) + '</h2></div>' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="pkDetailClose">Close</button></div>' +
       '<div class="pk-detail-kpis">' +
       detailMetric('Boxes', PA.formatNumber(s.boxes)) +
       detailMetric('Packing hours', PA.formatHours(s.packingHours)) +
@@ -967,7 +965,8 @@
     els.views.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-view]') : null;
       if (!btn) return;
-      state.view = btn.getAttribute('data-view') || 'table';
+      state.view = btn.getAttribute('data-view') || 'strike';
+      state.page = 1;
       applyView();
     });
   }

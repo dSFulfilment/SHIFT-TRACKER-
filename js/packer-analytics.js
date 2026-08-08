@@ -299,6 +299,68 @@
     return { key: 'needs_attention', label: 'Needs attention (<95%)', rank: 2 };
   }
 
+  /** Boxes/hour vs SKU target and strike line (warehouse strike check). */
+  function strikeStatus(bph, sku) {
+    var t = sku && SKU_TARGETS[sku] ? SKU_TARGETS[sku] : null;
+    if (!t || bph == null || !isFinite(bph)) {
+      return { key: 'none', label: 'No target set', rank: 99, target: t ? t.target : null, strike: t ? t.strike : null };
+    }
+    if (bph >= t.target) return { key: 'on', label: 'On target', rank: 0, target: t.target, strike: t.strike };
+    if (bph >= t.strike) return { key: 'below', label: 'Below target', rank: 1, target: t.target, strike: t.strike };
+    return { key: 'strike', label: 'Below strike line', rank: 2, target: t.target, strike: t.strike };
+  }
+
+  /**
+   * One row per worker+SKU for strike-line checking.
+   * Uses packing hours when present (raw/EOS); skips mixed/blank SKUs for status.
+   */
+  function aggregateStrikeRows(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (!r.workerKey) return;
+      var sku = r.sku || '';
+      var k = r.workerKey + '|' + sku;
+      if (!by[k]) {
+        by[k] = {
+          workerKey: r.workerKey,
+          workerName: r.workerName,
+          sku: sku,
+          boxes: 0,
+          packingHours: 0,
+          stations: {}
+        };
+      }
+      by[k].boxes += r.boxes || 0;
+      if (r.packingHours != null) by[k].packingHours += r.packingHours;
+      if (r.station) by[k].stations[r.station] = true;
+    });
+    return Object.keys(by)
+      .map(function (k) {
+        var g = by[k];
+        var hours = g.packingHours > 0 ? g.packingHours : null;
+        var bph = boxesPerHour(g.boxes, hours);
+        var st = strikeStatus(bph, g.sku);
+        return {
+          workerKey: g.workerKey,
+          workerName: g.workerName,
+          sku: g.sku || '—',
+          station: Object.keys(g.stations).join(', ') || '—',
+          boxes: g.boxes,
+          packingHours: hours,
+          boxesPerHour: bph,
+          target: st.target,
+          strike: st.strike,
+          strikeStatus: st
+        };
+      })
+      .sort(function (a, b) {
+        if (a.strikeStatus.rank !== b.strikeStatus.rank) return a.strikeStatus.rank - b.strikeStatus.rank;
+        var ab = a.boxesPerHour != null ? a.boxesPerHour : -1;
+        var bb = b.boxesPerHour != null ? b.boxesPerHour : -1;
+        return ab - bb;
+      });
+  }
+
   function hoursFromSeconds(sec) {
     if (sec == null || !isFinite(sec)) return null;
     return sec / 3600;
@@ -1263,6 +1325,8 @@
     efficiencyVersusTarget: efficiencyVersusTarget,
     idlePercentage: idlePercentage,
     performanceStatus: performanceStatus,
+    strikeStatus: strikeStatus,
+    aggregateStrikeRows: aggregateStrikeRows,
     processCsvText: processCsvText,
     recordFingerprint: recordFingerprint,
     mergeRecords: mergeRecords,

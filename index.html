@@ -926,6 +926,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabPacker .pk-stat.rate .num{color:#1A6B30}
 #tabPacker .pk-stat.eff .num{color:#1A6B30}
 #tabPacker .pk-stat.hours .num{color:#A05D00}
+#tabPacker .pk-stat.on .num{color:#1A6B30}
+#tabPacker .pk-stat.below .num{color:#A05D00}
+#tabPacker .pk-stat.strike .num{color:#B8251C}
+#tabPacker .pk-status-strike{background:#FEE2E2;color:#B8251C;border-color:#F1A8A4}
+#tabPacker .pk-status-strike::before{content:"";width:6px;height:6px;border-radius:50%;background:#B8251C}
+#tabPacker .pk-status-below{background:#FEF3C7;color:#A05D00;border-color:#F5D78E}
+#tabPacker .pk-status-below::before{content:"";width:6px;height:6px;border-radius:50%;background:#A05D00}
+#tabRoster .ro-add #roUploadCsv{background:#1C2430;color:#fff;border-color:#1C2430}
 #tabPacker .pk-views{display:inline-flex;border:1px solid #D8DCE3;border-radius:8px;overflow:hidden;background:#fff;margin-left:auto}
 #tabPacker .pk-views button{border:0;background:#fff;padding:5px 9px;font:inherit;font-size:10px;font-weight:800;color:#6E6E73;cursor:pointer}
 #tabPacker .pk-views button.active{background:#1C2430;color:#fff}
@@ -1376,6 +1384,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <option value="unassigned">No role yet</option>
         </select>
         <button type="button" id="roAddStaff">Add</button>
+        <button type="button" id="roUploadCsv" title="Upload a roster CSV to add names for this shift">Upload roster</button>
+        <input type="file" id="roCsvInput" accept=".csv,text/csv" style="display:none">
       </div>
     </div>
     <div class="ro-list-wrap">
@@ -1529,8 +1539,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="pk-daily-lbl" id="pkLastUpdated">No data</div>
         <div class="pk-stats" id="pkKpis"></div>
         <div class="pk-views" id="pkViews" role="tablist" aria-label="Packer views">
-          <button type="button" data-view="table" class="active">Table</button>
-          <button type="button" data-view="charts">Charts</button>
+          <button type="button" data-view="strike" class="active">Strike check</button>
+          <button type="button" data-view="hourly">Hourly</button>
           <button type="button" data-view="quality">Quality</button>
         </div>
       </div>
@@ -9389,6 +9399,131 @@ function toast(msg, err) {
     if (addBtn) addBtn.addEventListener('click', function(){ addStaffFromTab(); });
     if (nameInput) nameInput.addEventListener('keydown', function(e){
       if (e.key === 'Enter'){ e.preventDefault(); addStaffFromTab(); }
+    });
+  })();
+
+  // ── Roster CSV upload (add people for this shift; optional mark On today) ──
+  function parseSimpleCsv(text){
+    var rows = [], field = '', row = [], inQ = false;
+    text = String(text || '').replace(/^\uFEFF/, '');
+    for (var i = 0; i < text.length; i++){
+      var c = text[i];
+      if (inQ){
+        if (c === '"'){ if (text[i+1] === '"'){ field += '"'; i++; } else inQ = false; }
+        else field += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ','){ row.push(field); field = ''; }
+        else if (c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+        else if (c === '\r'){ /* skip */ }
+        else field += c;
+      }
+    }
+    if (field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return r.some(function(cell){ return String(cell||'').trim() !== ''; }); });
+  }
+  function mapRosterRole(raw){
+    var s = String(raw || '').trim().toLowerCase();
+    if (!s) return 'packer';
+    if (/box/.test(s)) return 'boxmaker';
+    if (/run/.test(s)) return 'runner';
+    if (/pack/.test(s)) return 'packer';
+    if (/unassigned|none|no role/.test(s)) return 'unassigned';
+    return 'packer';
+  }
+  function parseRosterCsvPeople(text){
+    var rows = parseSimpleCsv(text);
+    if (!rows.length) return { ok:false, error:'File looks empty', people:[] };
+    var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+    var nameIdx = -1, roleIdx = -1;
+    var nameAliases = ['name','employee name','worker name','staff name','full name','employee','person'];
+    var roleAliases = ['role','job','position','job title'];
+    headers.forEach(function(h, i){
+      if (nameIdx === -1 && nameAliases.indexOf(h) !== -1) nameIdx = i;
+      if (roleIdx === -1 && roleAliases.indexOf(h) !== -1) roleIdx = i;
+    });
+    // Single-column file with no header that looks like names
+    var start = 1;
+    if (nameIdx === -1){
+      if (headers.length === 1){ nameIdx = 0; start = 0; }
+      else if (headers.some(function(h){ return /name/.test(h); })){
+        headers.forEach(function(h, i){ if (nameIdx === -1 && /name/.test(h)) nameIdx = i; });
+      } else {
+        return { ok:false, error:'No name column found (expected Name / Employee Name / Worker Name)', people:[] };
+      }
+    }
+    // If first data-looking row was treated as header but is actually a name
+    if (start === 1 && nameIdx === 0 && !nameAliases.some(function(a){ return a === headers[0]; }) && !/name/.test(headers[0])){
+      start = 0;
+    }
+    var people = [];
+    var seen = {};
+    for (var r = start; r < rows.length; r++){
+      var name = String(rows[r][nameIdx] != null ? rows[r][nameIdx] : '').trim().replace(/\s+/g, ' ');
+      if (!name) continue;
+      if (/^(total|name|employee name|worker name)$/i.test(name)) continue;
+      var key = normalizeStaffName(name);
+      if (!key || seen[key]) continue;
+      seen[key] = true;
+      var role = roleIdx >= 0 ? mapRosterRole(rows[r][roleIdx]) : 'packer';
+      people.push({ name: name, role: role });
+    }
+    if (!people.length) return { ok:false, error:'No usable names found in that CSV', people:[] };
+    return { ok:true, people: people };
+  }
+  async function importRosterCsv(file){
+    var text = await file.text();
+    var parsed = parseRosterCsvPeople(text);
+    if (!parsed.ok){ rosterToast(parsed.error); return; }
+    var existing = {};
+    rosterStaff().forEach(function(p){ existing[normalizeStaffName(p.name)] = true; });
+    var toAdd = parsed.people.filter(function(p){ return !existing[normalizeStaffName(p.name)]; });
+    var skipped = parsed.people.length - toAdd.length;
+    if (!toAdd.length){
+      rosterToast('Everyone in that file is already on ' + shiftLabel(state.rosterShift) +
+        (skipped ? ' (' + skipped + ' skipped)' : ''));
+      return;
+    }
+    if (!confirm('Add ' + toAdd.length + ' people to the ' + shiftLabel(state.rosterShift) + ' roster' +
+      (skipped ? ' (' + skipped + ' already there)' : '') + '?')) return;
+
+    var addedIds = [];
+    var ok = await writeRoster(function(latest){
+      ensurePlannerShift(latest, state.rosterShift);
+      var roster = latest.shiftData[state.rosterShift].staffRoster;
+      var have = {};
+      roster.forEach(function(p){ have[normalizeStaffName(p.name)] = true; });
+      toAdd.forEach(function(p){
+        var key = normalizeStaffName(p.name);
+        if (have[key]) return;
+        var entry = { id: uid(), name: p.name, role: p.role || 'packer' };
+        roster.push(entry);
+        addedIds.push(entry.id);
+        have[key] = true;
+      });
+      return latest;
+    });
+    if (!ok){ rosterToast('Could not save roster'); return; }
+    await refresh();
+    var dateKey = ymd(addDays(state.weekStart || startOfWeek(new Date()), state.dayIdx));
+    if (addedIds.length && confirm('Mark the ' + addedIds.length + ' new people as On for ' + DAY_NAMES[state.dayIdx] + '?')){
+      addedIds.forEach(function(id){ setStatus(dateKey, id, 'here'); });
+      render();
+      rosterToast('Added ' + addedIds.length + ' · marked On for ' + DAY_NAMES[state.dayIdx]);
+    } else {
+      rosterToast('Added ' + addedIds.length + ' to ' + shiftLabel(state.rosterShift) +
+        (skipped ? ' · ' + skipped + ' already there' : ''));
+    }
+  }
+  (function bindRosterCsv(){
+    var btn = document.getElementById('roUploadCsv');
+    var input = document.getElementById('roCsvInput');
+    if (!btn || !input) return;
+    btn.addEventListener('click', function(){ input.click(); });
+    input.addEventListener('change', function(){
+      var f = input.files && input.files[0];
+      input.value = '';
+      if (f) importRosterCsv(f);
     });
   })();
 
