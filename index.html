@@ -503,63 +503,204 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 .bp-fab-btn .fab-full{ display:none; }
 .bp-fab-btn .fab-short{ display:inline; }
 
-/* Desktop-only: wider shells, roomier chrome, fuller nav labels */
-@media (min-width:1101px) and (pointer:fine){
-  #app #viewport{ padding:28px 28px 80px; }
-  #app #rosterPanel{ width:280px; flex-basis:280px; }
-  #floorToolsDock{ left:20px; bottom:20px; }
+/* Desktop-only layout: left nav rail + full-width work areas */
+@media (min-width:1101px){
+  :root{ --desk-nav:172px; }
+
+  /* Left rail nav (replaces bottom pill on desktop) */
   .bp-fab-group{
-    bottom:20px; right:20px; left:auto;
-    border-radius:14px;
-    box-shadow:0 8px 28px rgba(28,36,48,.16);
+    top:0; bottom:0; left:0; right:auto;
+    width:var(--desk-nav);
+    flex-direction:column;
+    justify-content:flex-start;
+    align-items:stretch;
+    gap:4px;
+    padding:14px 10px;
+    border-radius:0;
+    border:none;
+    border-right:1px solid #E1E4EA;
+    box-shadow:none;
+    background:#FBFBFC;
+    overflow:auto;
   }
-  .bp-fab-btn{ padding:11px 18px; font-size:13px; }
+  .bp-fab-btn{
+    width:100%;
+    border-radius:10px;
+    text-align:left;
+    padding:11px 12px;
+    font-size:13px;
+    flex:0 0 auto;
+  }
   .bp-fab-btn .fab-short{ display:none; }
   .bp-fab-btn .fab-full{ display:inline; }
-  .bp-toast, #tabTracker .toast, #tabPacker .toast{ bottom:78px; }
 
+  /* Shift every surface right of the rail */
+  #app{
+    margin-left:var(--desk-nav);
+    width:auto;
+  }
+  #breakPlannerTab,
+  #tabTracker,
+  #tabPacker,
+  #tabRoster,
+  #tabSettings{
+    left:var(--desk-nav);
+  }
+
+  /* Floor */
+  #app header#toolbar{ padding:8px 16px; }
+  #app #rosterPanel{ width:300px; flex-basis:300px; }
+  #app #viewport{ padding:20px 24px 24px; }
+  #floorToolsDock{ left:calc(var(--desk-nav) + 16px); bottom:20px; }
+  #app #floorToolChip{ left:calc(var(--desk-nav) + 76px); }
+
+  /* Shared shells fill the remaining width */
   #breakPlannerTab .bp-shell,
   #tabTracker .st-shell,
   #tabPacker .pk-shell,
-  #tabRoster .ro-shell{ max-width:1280px; }
-  #tabSettings .stn-shell{ max-width:960px; }
+  #tabRoster .ro-shell,
+  #tabSettings .stn-shell{
+    max-width:none;
+    width:100%;
+  }
 
+  /* Chrome / body padding — no bottom-nav clearance needed */
   #breakPlannerTab .bp-chrome,
   #tabPacker .pk-chrome,
-  #tabRoster .ro-chrome{ padding:10px 16px 12px; }
-  #tabTracker .st-chrome{ padding:12px 16px; }
-  #tabSettings .stn-chrome{ padding:14px 18px; }
+  #tabRoster .ro-chrome{ padding:12px 20px 14px; }
+  #tabTracker .st-chrome{ padding:14px 20px; }
+  #tabSettings .stn-chrome{ padding:16px 22px; }
   #tabSettings .stn-title{ font-size:17px; }
-  #tabSettings .stn-body{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:0 10px;
-    align-content:start;
-    padding:14px 18px calc(88px + env(safe-area-inset-bottom,0px));
-  }
-  #tabSettings .stn-sec{ grid-column:1 / -1; margin-top:14px; }
-  #tabSettings .stn-sec:first-child{ margin-top:0; }
-  #tabSettings .stn-note{ grid-column:1 / -1; }
-  #tabSettings .stn-card{ margin-bottom:10px; padding:12px 14px; }
-  #tabSettings .stn-card:has(#stnBackupAll){ grid-column:1 / -1; }
 
   #breakPlannerTab .bp-list-wrap,
   #tabPacker .pk-body,
   #tabRoster .ro-list-wrap,
-  #tabTracker .st-body{ padding-left:16px; padding-right:16px; padding-bottom:88px; }
+  #tabTracker .st-body{
+    padding:12px 20px 24px;
+  }
+  #tabSettings .stn-body{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 12px;
+    align-content:start;
+    padding:16px 22px 28px;
+  }
+  #tabSettings .stn-sec{ grid-column:1 / -1; margin-top:16px; }
+  #tabSettings .stn-sec:first-child{ margin-top:0; }
+  #tabSettings .stn-note{ grid-column:1 / -1; }
+  #tabSettings .stn-card{ margin-bottom:10px; padding:14px 16px; }
+  #tabSettings .stn-card:has(#stnBackupAll){ grid-column:1 / -1; }
 
-  #tabPacker .pk-search{ max-width:240px; }
-  #tabPacker .pk-actions button,
-  #tabRoster .ro-actions button{ padding:6px 11px; font-size:11px; }
-  #tabPacker .pk-day:hover:not(.active),
-  #tabRoster .ro-day:hover:not(.active){ background:#F5F6FA; border-color:#C5CAD3; }
-  #tabPacker .pk-tw tbody tr:hover{ background:#F3F6FB; }
+  /* Breaks: pool left + groups right (pool is a shell sibling) */
+  #breakPlannerTab .bp-shell{
+    display:grid;
+    grid-template-columns:minmax(240px,320px) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);
+    column-gap:0;
+  }
+  #breakPlannerTab .bp-chrome{
+    grid-column:1 / -1;
+    border-bottom:1px solid #E1E4EA;
+  }
+  #breakPlannerTab .bp-pool{
+    grid-column:1;
+    grid-row:2;
+    margin:12px 0 12px 20px;
+    min-height:0;
+    max-height:calc(100dvh - 120px);
+    overflow:auto;
+    align-self:start;
+  }
+  #breakPlannerTab .bp-pool-list{ align-content:flex-start; }
+  #breakPlannerTab .bp-list-wrap{
+    grid-column:2;
+    grid-row:2;
+    margin:0;
+    padding:12px 20px 24px 12px;
+    border-left:1px solid #E1E4EA;
+    background:#F3F5F8;
+  }
+  /* When nobody is unassigned, give groups the full width */
+  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
+    grid-template-columns:minmax(0,1fr);
+  }
+  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
+    grid-column:1;
+    border-left:none;
+    padding-left:20px;
+    background:transparent;
+  }
+  #breakPlannerTab .bp-sheet-scrim,
+  #breakPlannerTab .bp-sheet{
+    left:var(--desk-nav);
+    width:auto;
+  }
+
+  /* Tracker: live metrics left, plan table right */
+  #tabTracker .st-body{
+    display:grid;
+    grid-template-columns:minmax(300px,400px) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);
+    gap:14px;
+    align-items:start;
+  }
+  #tabTracker .st-live{
+    grid-column:1;
+    grid-row:1 / -1;
+    margin-bottom:0;
+    position:sticky;
+    top:0;
+    align-self:start;
+    max-height:calc(100dvh - 160px);
+    overflow:auto;
+  }
+  #tabTracker .st-body .sec{
+    grid-column:2;
+    grid-row:1;
+    margin:0;
+  }
+  #tabTracker .st-body .tw{
+    grid-column:2;
+    grid-row:2;
+    min-height:0;
+    max-height:calc(100dvh - 200px);
+    overflow:auto;
+  }
   #tabTracker .st-setup{ gap:8px; }
   #tabTracker .st-field input{ height:34px; }
+
+  /* Packer / Roster denser desktop chrome */
+  #tabPacker .pk-search{ max-width:280px; }
+  #tabPacker .pk-actions button,
+  #tabRoster .ro-actions button{ padding:6px 12px; font-size:11px; }
+  #tabPacker .pk-day:hover:not(.active),
+  #tabRoster .ro-day:hover:not(.active){ background:#F5F6FA; border-color:#C5CAD3; }
+  #tabPacker .pk-tw{ max-height:calc(100dvh - 220px); }
+  #tabPacker .pk-tw tbody tr:hover{ background:#F3F6FB; }
+  #tabRoster .ro-list-wrap{ padding-top:10px; }
+  #tabRoster .ro-search{ max-width:280px; }
+
+  /* Toasts sit clear of content, not over a bottom bar */
+  .bp-toast, #tabTracker .toast, #tabPacker .toast{
+    left:calc(50% + (var(--desk-nav) / 2));
+    bottom:28px;
+  }
+}
+
+@media (min-width:1101px) and (pointer:fine){
+  .bp-fab-btn:hover{ background:#EEF1F6; color:var(--ink); }
+  .bp-fab-btn.active{ box-shadow:inset 3px 0 0 #2554C7; }
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
   #tabSettings .stn-actions button:hover{ background:#F5F6FA; }
   #tabSettings .stn-actions button.primary:hover{ background:#2A3444; }
   #tabSettings .stn-actions button.danger:hover{ background:#FEECEC; }
+}
+
+/* Very wide desktops: give Tracker / Breaks more room */
+@media (min-width:1440px){
+  :root{ --desk-nav:188px; }
+  #tabTracker .st-body{ grid-template-columns:minmax(340px,440px) minmax(0,1fr); }
+  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,360px) minmax(0,1fr); }
 }
 
 #breakPlannerTab{
@@ -1218,13 +1359,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <button class="bp-btn" id="bpAddGroup">+ Group</button>
         </div>
       </div>
-      <div class="bp-pool" id="bpPool">
-        <div class="bp-pool-head">
-          <span class="bp-pool-lbl">Not on a break</span>
-          <span class="bp-pool-hint" id="bpPoolHint">Tap a name → pick a group</span>
-        </div>
-        <div class="bp-pool-list" id="bpRosterSections"></div>
+    </div>
+    <div class="bp-pool" id="bpPool">
+      <div class="bp-pool-head">
+        <span class="bp-pool-lbl">Not on a break</span>
+        <span class="bp-pool-hint" id="bpPoolHint">Tap a name → pick a group</span>
       </div>
+      <div class="bp-pool-list" id="bpRosterSections"></div>
     </div>
     <div class="bp-list-wrap">
       <div class="bp-groups" id="bpGroups"></div>
