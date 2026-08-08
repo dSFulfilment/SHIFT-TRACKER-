@@ -1,28 +1,20 @@
 # Shift Floor Planner
 
-**Single-file offline app.** Download `index.html` and open it in a browser — no server.
+**Single-file offline app.** Download `index.html` and open it in your browser (double-click / File → Open). No server.
 
-## Live updates
-
-Always-current file on the working branch:
+## Download
 
 https://raw.githubusercontent.com/dSFulfilment/SHIFT-TRACKER-/cursor/shift-floor-planner-f7b8/index.html
 
-Save over your local copy and reopen to pick up changes. Browser data (localStorage) is kept on that machine.
-
-PR: https://github.com/dSFulfilment/SHIFT-TRACKER-/pull/1
+Save that file, then open it. Your data stays in the browser on that computer (use **Backup** on Floor Plan if you want a copy).
 
 ## Features
 
 - Floor Plan, Breaks, Shift Tracker, Packer (Day/Afternoon × Mon–Fri), Roster
 - Whole-app **Backup** / **Restore** (toolbar on Floor Plan)
 - Packer end-of-shift: Boxes Packed by Worker + Intra Hour CSVs
+- **Week review** export: dates + boxes packed on each SKU
 - People view merges duplicate names, lists SKUs, shows BPH target hit
-- CSV rows route by report date and Day/Afternoon (hour ≥14 → Afternoon)
-
-## App file
-
-**Use only `index.html`.** Open it in a browser — Floor Plan, Breaks, Shift Tracker, Packer, and Roster are all inside that one file. No server and no other app files needed.
 
 ## Optional developer tests
 

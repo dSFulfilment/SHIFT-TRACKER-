@@ -334,6 +334,107 @@
     }).join('\n');
   }
 
+  function csvEscapeRow(r) {
+    return r.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(',');
+  }
+
+  /** Weekly review: dates + boxes packed per SKU (and per worker). */
+  function buildWeeklySkuReview(byDateSnap, weekKey) {
+    var BOARD_SKUS = ['125', '150', '200', '250', '300', '400', '500', '600', '700'];
+    var ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
+    var summaryRows = [];
+    var detailRows = [];
+    var usedSkus = {};
+    var weekSkuTotals = {};
+    BOARD_SKUS.forEach(function (s) { weekSkuTotals[s] = 0; });
+
+    for (var i = 0; i < 5; i++) {
+      var dk = ymd(addDays(ws, i));
+      var day = byDateSnap[dk] || {};
+      ['morning', 'afternoon'].forEach(function (sk) {
+        var b = day[sk];
+        if (!b || !(b.records && b.records.length)) return;
+        var skuTotals = {};
+        var workerSku = {};
+        (b.records || []).forEach(function (r) {
+          if (!r || !r.sku || !r.boxes) return;
+          // Prefer Boxes Packed rows (have packing time). Skip pure Intra Hour.
+          if (r.hour != null && (r.packingHours == null || r.packingHours <= 0)) return;
+          skuTotals[r.sku] = (skuTotals[r.sku] || 0) + (r.boxes || 0);
+          usedSkus[r.sku] = true;
+          weekSkuTotals[r.sku] = (weekSkuTotals[r.sku] || 0) + (r.boxes || 0);
+          var wk = r.workerKey || r.workerName || '';
+          if (!wk) return;
+          if (!workerSku[wk]) workerSku[wk] = { name: r.workerName || wk, skus: {} };
+          workerSku[wk].skus[r.sku] = (workerSku[wk].skus[r.sku] || 0) + (r.boxes || 0);
+        });
+        var skuKeys = Object.keys(skuTotals);
+        if (!skuKeys.length) return;
+        var rowTotal = skuKeys.reduce(function (n, s) { return n + skuTotals[s]; }, 0);
+        var sumLine = [PA.formatDateAU(dk), shiftLabel(sk)];
+        BOARD_SKUS.forEach(function (s) { sumLine.push(skuTotals[s] || ''); });
+        sumLine.push(rowTotal);
+        var other = skuKeys.filter(function (s) { return BOARD_SKUS.indexOf(s) === -1; })
+          .sort(function (a, b) { return Number(a) - Number(b); })
+          .map(function (s) { return s + ':' + skuTotals[s]; }).join('; ');
+        sumLine.push(other);
+        summaryRows.push(sumLine);
+
+        Object.keys(workerSku).sort(function (a, b) {
+          return (workerSku[a].name || '').localeCompare(workerSku[b].name || '');
+        }).forEach(function (wk) {
+          var w = workerSku[wk];
+          Object.keys(w.skus).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (sku) {
+            detailRows.push([PA.formatDateAU(dk), shiftLabel(sk), w.name, sku, w.skus[sku]]);
+          });
+        });
+      });
+    }
+
+    var skuCols = BOARD_SKUS.slice();
+    var summaryHdr = ['Date', 'Shift'].concat(skuCols).concat(['Total', 'Other SKUs']);
+    var weekTotalLine = ['WEEK TOTAL', ''];
+    var weekAll = 0;
+    skuCols.forEach(function (s) {
+      weekTotalLine.push(weekSkuTotals[s] || '');
+      weekAll += weekSkuTotals[s] || 0;
+    });
+    weekTotalLine.push(weekAll);
+    weekTotalLine.push('');
+    if (summaryRows.length) summaryRows.push(weekTotalLine);
+
+    var summaryCsv = [summaryHdr].concat(summaryRows).map(csvEscapeRow).join('\n');
+    var detailCsv = [['Date', 'Shift', 'Worker', 'SKU', 'Boxes Packed']]
+      .concat(detailRows).map(csvEscapeRow).join('\n');
+
+    return {
+      weekKey: weekKey,
+      hasData: summaryRows.length > 0,
+      summaryCsv: summaryCsv,
+      detailCsv: detailCsv,
+      dayCount: summaryRows.length ? summaryRows.length - 1 : 0
+    };
+  }
+
+  function downloadWeeklySkuReview(byDateSnap, weekKey, force) {
+    var review = buildWeeklySkuReview(byDateSnap || {}, weekKey);
+    if (!review.hasData && !force) return { ok: false, review: review };
+    var ok1 = downloadTextFile(
+      'weekly-review-' + weekKey + '-skus.csv',
+      review.summaryCsv,
+      'text/csv'
+    );
+    var ok2 = true;
+    if (review.hasData) {
+      ok2 = downloadTextFile(
+        'weekly-review-' + weekKey + '-by-worker.csv',
+        review.detailCsv,
+        'text/csv'
+      );
+    }
+    return { ok: !!(ok1 && ok2), review: review };
+  }
+
   function exportActiveWeek(force) {
     var weekKey = state.activeWeekKey || ymd(state.weekStart || startOfWeek(new Date()));
     var report = buildWeekReport(weekKey, state.byDate);
@@ -341,14 +442,11 @@
       toast('No Packer data this week to export', 'err');
       return false;
     }
-    var ok = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-    if (ok && report.days.length) {
-      report.days.forEach(function (d) {
-        if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
-        if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
-      });
-    }
-    return ok;
+    var weekly = downloadWeeklySkuReview(state.byDate, weekKey, force);
+    var okJson = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
+    if (weekly.ok) toast('Weekly review exported (SKUs by date + by worker)');
+    else if (!report.days.length) toast('No Packer data this week to export', 'err');
+    return !!(weekly.ok || okJson);
   }
 
   function ensureCurrentWeekFresh() {
@@ -365,16 +463,13 @@
       });
       if (hasData) {
         var report = buildWeekReport(oldKey, snap);
+        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
         var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-        if (!ok) {
+        if (!ok && !(weekly && weekly.ok)) {
           state.error = 'Could not export last week’s Packer data — keeping it so nothing is cleared.';
           toast(state.error, 'err');
           return;
         }
-        report.days.forEach(function (d) {
-          if (d.hourlyCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-hourly.csv', d.hourlyCsv, 'text/csv');
-          if (d.skuCsv) downloadTextFile('packer-' + d.date + '-' + d.shift + '-sku.csv', d.skuCsv, 'text/csv');
-        });
         if (!state.archives) state.archives = {};
         state.archives[oldKey] = { weekKey: oldKey, byDate: snap, archivedAt: Date.now(), report: report };
         var aks = Object.keys(state.archives).sort();
@@ -1097,6 +1192,13 @@
     });
   }
 
-  window.__packerDashboard = { refresh: renderAll, exportWeek: exportActiveWeek };
+  window.__packerDashboard = {
+    refresh: renderAll,
+    exportWeek: exportActiveWeek,
+    buildWeeklySkuReview: buildWeeklySkuReview,
+    downloadWeeklySkuReview: downloadWeeklySkuReview,
+    getByDate: function () { return state.byDate; },
+    getWeekStart: function () { return state.weekStart || startOfWeek(new Date()); }
+  };
   loadAll();
 })();
