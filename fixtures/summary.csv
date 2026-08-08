@@ -1,0 +1,7 @@
+Shift,Pnp Worker Name,Station Name,Total Boxes Packed,Items Packed,Pouches Packed,Packing Time Seconds,Box SKU Sizes
+morning_shift,Jane Doe,Station 1,120,2400,0,14400,250
+morning_shift,John Smith,Station 2,100,2000,0,12600,250
+morning_shift,Jane  Doe,Station 3,30,600,0,3600,250
+afternoon_shift,Alex Brown,Station 1,90,1800,0,10800,500
+afternoon_shift,TOTAL,Station 1,340,6800,0,41400,250
+morning_shift,,Station 4,10,200,0,1200,250

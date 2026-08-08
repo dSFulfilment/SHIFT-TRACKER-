@@ -1,0 +1,5 @@
+Worker Name,Shift,Station,SKU Size,Report Date,Hour,Total Boxes Packed,Items Packed,Packing Time Hours,Idle Time Hours,Shift Hours,Target
+Priya Nair,Morning,Station 4,300,08/08/2026,11,55,1100,3.0,0.4,8,18
+Priya Nair,Morning,Station 4,300,09/08/2026,11,60,1200,3.2,0.3,8,18
+Chris Ong,Afternoon,Station 2,500,08/08/2026,15,70,1400,3.5,0.8,8,23
+Chris Ong,Afternoon,Station 2,500,08/08/2026,16,22,440,1.0,0.2,8,23
