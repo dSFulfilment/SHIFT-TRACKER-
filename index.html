@@ -531,79 +531,88 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #breakPlannerTab .bp-btn.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
 #breakPlannerTab .bp-btn.bp-btn-warn{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
 #breakPlannerTab .bp-pool{
-  display:flex; align-items:flex-start; gap:6px; margin-top:5px; min-width:0;
+  margin-top:6px; min-width:0; background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:6px 8px;
 }
 #breakPlannerTab .bp-pool.is-empty{ display:none; }
+#breakPlannerTab .bp-pool-head{
+  display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;
+}
 #breakPlannerTab .bp-pool-lbl{
-  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
-  color:#8E8E93; flex:0 0 auto; padding-top:5px; white-space:nowrap;
+  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93;
 }
-#breakPlannerTab .bp-pool-list{
-  display:flex; flex-wrap:wrap; gap:3px; flex:1; min-width:0;
-}
-#breakPlannerTab .bp-pool-empty{
-  font-size:11px; color:#B9BEC7; padding:3px 0;
-}
+#breakPlannerTab .bp-pool-hint{ font-size:10px; color:#8E8E93; }
+#breakPlannerTab .bp-pool.picking{ border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7; }
+#breakPlannerTab .bp-pool.picking .bp-pool-hint{ color:#2554C7; font-weight:700; }
+#breakPlannerTab .bp-pool-list{ display:flex; flex-wrap:wrap; gap:4px; min-width:0; }
 #breakPlannerTab .bp-list-wrap{
   flex:1; min-height:0; overflow:auto; padding:8px 10px calc(76px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling:touch;
 }
-#breakPlannerTab .bp-groups{ display:flex; flex-direction:column; gap:6px; }
+#breakPlannerTab .bp-groups{ display:flex; flex-direction:column; gap:4px; }
 #breakPlannerTab .bp-empty{
   text-align:center; color:#8E8E93; font-size:12px; padding:28px 12px;
   background:#fff; border:1px dashed #D8DCE3; border-radius:10px;
 }
 #breakPlannerTab .bp-group-card{
-  background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:5px 8px 4px;
+  background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:6px 8px;
+  transition:border-color .12s, box-shadow .12s, background .12s;
 }
-#breakPlannerTab .bp-group-hdr{
-  display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:2px;
+#breakPlannerTab .bp-pool.picking .bp-group-card{
+  border-color:#9FB5F5; cursor:pointer; background:#F7F9FF;
+}
+#breakPlannerTab .bp-pool.picking .bp-group-card:hover,
+#breakPlannerTab .bp-group-card.drop-target{
+  border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7;
+}
+#breakPlannerTab .bp-group-top{
+  display:flex; align-items:center; gap:5px; flex-wrap:wrap;
 }
 #breakPlannerTab .bp-group-label{
   font-size:12px; font-weight:800; border:1px solid transparent; background:transparent;
-  padding:2px 5px; border-radius:6px; font-family:inherit; width:88px; color:#1D1D1F;
+  padding:2px 5px; border-radius:6px; font-family:inherit; width:78px; color:#1D1D1F;
 }
 #breakPlannerTab .bp-group-label:focus{ outline:none; background:#F5F6FA; border-color:#D8DCE3; }
 #breakPlannerTab .bp-group-stations{
   font-size:11px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:6px;
-  padding:3px 6px; font-family:inherit; width:110px; background:#fff;
+  padding:3px 6px; font-family:inherit; width:96px; background:#fff;
 }
-#breakPlannerTab .bp-times{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1; min-width:0; }
+#breakPlannerTab .bp-times{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; flex:1; min-width:0; }
 #breakPlannerTab .bp-time-block{ display:flex; align-items:center; gap:3px; }
 #breakPlannerTab .bp-time-block label{
   font-size:9px; color:#8E8E93; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
 }
 #breakPlannerTab .bp-time-block input[type=time]{
   font-size:11px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 4px;
-  font-family:inherit; background:#fff; width:6.6em;
+  font-family:inherit; background:#fff; width:6.4em;
 }
+#breakPlannerTab .bp-group-rm,
+#breakPlannerTab .bp-add-people{
+  border:1px solid #D8DCE3; border-radius:7px; background:#fff; color:#1D1D1F;
+  font-size:11px; font-weight:800; font-family:inherit; cursor:pointer; padding:4px 8px;
+}
+#breakPlannerTab .bp-add-people{ background:#1C2430; color:#fff; border-color:#1C2430; }
 #breakPlannerTab .bp-group-rm{
-  margin-left:auto; cursor:pointer; color:#C7C7CC; font-size:16px; font-weight:700;
-  width:24px; height:24px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;
-  line-height:1; border:none; background:transparent; font-family:inherit; padding:0;
+  width:28px; height:28px; padding:0; color:#C7C7CC; border:none; background:transparent; font-size:16px;
 }
 #breakPlannerTab .bp-group-rm:hover{ color:#FF3B30; background:#FFF5F4; }
-#breakPlannerTab .bp-role-lane{
-  display:grid; grid-template-columns:58px 1fr auto; gap:2px 6px; align-items:center;
-  padding:1px 0;
-}
-#breakPlannerTab .bp-role-lbl{
-  display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; color:#6E6E73;
+#breakPlannerTab .bp-people{
+  display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:5px; min-height:26px;
 }
 #breakPlannerTab .bp-role-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
 #breakPlannerTab .bp-role-dot.packer{ background:var(--staff); }
 #breakPlannerTab .bp-role-dot.runner{ background:var(--runner); }
 #breakPlannerTab .bp-role-dot.boxmaker{ background:var(--boxmaker); }
 #breakPlannerTab .bp-role-dot.unassigned{ background:#B9BEC7; }
-#breakPlannerTab .bp-roster-list{ display:flex; flex-wrap:wrap; gap:3px; min-width:0; }
 #breakPlannerTab .bp-chip{
   display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700;
-  border-radius:6px; padding:2px 5px 2px 7px; border:1px solid transparent; line-height:1.25;
+  border-radius:7px; padding:4px 7px; border:1px solid transparent; line-height:1.25; cursor:pointer;
+  user-select:none; -webkit-tap-highlight-color:transparent;
 }
 #breakPlannerTab .bp-chip.packer{ background:var(--staff-bg); color:var(--staff); }
 #breakPlannerTab .bp-chip.runner{ background:var(--runner-bg); color:var(--runner); }
 #breakPlannerTab .bp-chip.boxmaker{ background:var(--boxmaker-bg); color:var(--boxmaker); }
 #breakPlannerTab .bp-chip.unassigned{ background:#F0F0EE; color:#8E8E93; }
+#breakPlannerTab .bp-chip.selected{ outline:2px solid #2554C7; outline-offset:1px; }
 #breakPlannerTab .bp-st-badge{
   display:inline-block; font-size:9px; font-weight:800; letter-spacing:.02em;
   background:rgba(37,84,199,.14); color:var(--staff); border-radius:4px; padding:0 3px;
@@ -612,14 +621,29 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   cursor:pointer; color:inherit; opacity:.45; font-weight:700; line-height:1; padding:0 1px; font-size:12px;
 }
 #breakPlannerTab .bp-chip .x:hover{ opacity:1; }
-#breakPlannerTab .bp-empty-hint{ font-size:10.5px; color:#C7C7CC; }
-#breakPlannerTab .bp-lane-select{
-  font-size:10.5px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 4px;
-  font-family:inherit; max-width:132px; background:#fff; color:#1D1D1F;
+#breakPlannerTab .bp-empty-hint{ font-size:11px; color:#C7C7CC; }
+#breakPlannerTab .bp-sheet-scrim{
+  display:none; position:fixed; inset:0; background:rgba(15,23,42,.35); z-index:80;
 }
-#breakPlannerTab .bp-warn{
-  display:inline-block; font-size:9px; font-weight:800; color:#B8251C; background:#FFF5F4;
-  border-radius:5px; padding:1px 5px; margin-left:3px;
+#breakPlannerTab .bp-sheet-scrim.open{ display:block; }
+#breakPlannerTab .bp-sheet{
+  display:none; position:fixed; left:50%; bottom:0; transform:translateX(-50%);
+  width:min(520px, 100%); max-height:70dvh; overflow:auto; z-index:81;
+  background:#fff; border-radius:16px 16px 0 0; padding:12px 12px calc(18px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -8px 30px rgba(0,0,0,.18);
+}
+#breakPlannerTab .bp-sheet.open{ display:block; }
+#breakPlannerTab .bp-sheet-title{ font-size:14px; font-weight:800; margin:0 0 4px; }
+#breakPlannerTab .bp-sheet-sub{ font-size:11px; color:#8E8E93; margin:0 0 10px; }
+#breakPlannerTab .bp-sheet-section{ margin-bottom:10px; }
+#breakPlannerTab .bp-sheet-section-lbl{
+  font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#8E8E93; margin-bottom:5px;
+}
+#breakPlannerTab .bp-sheet-list{ display:flex; flex-wrap:wrap; gap:5px; }
+#breakPlannerTab .bp-sheet-empty{ font-size:12px; color:#B9BEC7; padding:8px 0; }
+#breakPlannerTab .bp-sheet-close{
+  position:absolute; top:10px; right:10px; border:none; background:#F2F2F7; border-radius:8px;
+  width:28px; height:28px; font-size:16px; cursor:pointer; color:#6E6E73;
 }
 .bp-toast{ position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#1C2430; color:#fff;
   padding:.45rem 1rem; border-radius:100px; font-size:12px; font-weight:600; opacity:0; pointer-events:none;
@@ -627,9 +651,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   overflow:hidden; text-overflow:ellipsis; }
 .bp-toast.show{ opacity:1; }
 @media (max-width:720px){
-  #breakPlannerTab .bp-role-lane{ grid-template-columns:1fr auto; }
-  #breakPlannerTab .bp-role-lbl{ grid-column:1 / -1; }
-  #breakPlannerTab .bp-group-stations{ width:90px; }
+  #breakPlannerTab .bp-group-stations{ width:84px; }
+  #breakPlannerTab .bp-group-label{ width:70px; }
 }
 #tabTracker *, #tabTracker *::before, #tabTracker *::after, #tabPacker *, #tabPacker *::before, #tabPacker *::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -787,7 +810,24 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabTracker .hbar-lbls, #tabPacker .hbar-lbls{display:flex;gap:3px;padding:.3rem .1rem 0}
 #tabTracker .hbar-lbl, #tabPacker .hbar-lbl{flex:1;text-align:center;font-size:.55rem;color:var(--fnt);font-family:monospace;white-space:nowrap}
 #tabTracker .sku-block, #tabPacker .sku-block{margin-bottom:.8rem}
-#tabTracker .sku-block-hdr, #tabPacker .sku-block-hdr{font-size:.68rem;font-weight:700;color:var(--mut);margin-bottom:.35rem}</style>
+#tabTracker .sku-block-hdr, #tabPacker .sku-block-hdr{font-size:.68rem;font-weight:700;color:var(--mut);margin-bottom:.35rem}
+#tabPacker{display:flex;flex-direction:column;height:100dvh;max-height:100dvh;overflow:hidden;padding-bottom:0}
+#tabPacker .pk-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1100px;width:100%;margin:0 auto}
+#tabPacker .pk-chrome{flex:0 0 auto;background:rgba(240,242,245,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr);padding:8px 12px 6px;z-index:5}
+#tabPacker .pk-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+#tabPacker .pk-title{margin:0;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--txt)}
+#tabPacker .pk-sub{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.35}
+#tabPacker .pk-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#tabPacker .pk-shift-select{height:32px;border:1px solid var(--bdr2);border-radius:var(--rs);padding:0 8px;background:var(--sur);color:var(--txt);font-family:inherit;font-size:.76rem;font-weight:600}
+#tabPacker .pk-tabs{display:flex;gap:4px;margin:.2rem 0 0;flex-wrap:wrap}
+#tabPacker .pk-tab-btn{padding:.35rem .75rem;border-radius:8px;border:1px solid var(--bdr2);background:var(--sur);color:var(--mut);font-size:.74rem;font-weight:700}
+#tabPacker .pk-tab-btn.active{background:var(--blu);border-color:var(--blu);color:#fff}
+#tabPacker .pk-body{flex:1;min-height:0;overflow:auto;padding:10px 12px calc(76px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
+#tabPacker .pk-body .kgrid{margin-bottom:.75rem}
+#tabPacker .pk-body .panel-hdr{margin-bottom:.65rem}
+#tabPacker .pk-date-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bbg);color:var(--blu);border:1px solid var(--bbd);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;margin-left:6px}
+#tabPacker .pk-merge-note{font-size:11px;color:var(--mut);margin:.35rem 0 .7rem}
+</style>
 </head>
 <body>
 <script>
@@ -926,8 +966,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
           <button class="bp-btn" id="bpAddGroup">+ Group</button>
         </div>
       </div>
-      <div class="bp-pool">
-        <span class="bp-pool-lbl">Still free</span>
+      <div class="bp-pool" id="bpPool">
+        <div class="bp-pool-head">
+          <span class="bp-pool-lbl">Tap to add</span>
+          <span class="bp-pool-hint" id="bpPoolHint">Choose a person, then a group</span>
+        </div>
         <div class="bp-pool-list" id="bpRosterSections"></div>
       </div>
     </div>
@@ -935,6 +978,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       <div class="bp-groups" id="bpGroups"></div>
     </div>
   </div>
+  <div class="bp-sheet-scrim" id="bpSheetScrim" aria-hidden="true"></div>
+  <div class="bp-sheet" id="bpAssignSheet" aria-hidden="true"></div>
 </div>
 
 <div class="bp-fab-group" id="bpFabGroup">
@@ -1302,18 +1347,18 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 </div>
 
 <div id="tabPacker" style="display:none">
-  <div class="wrap">
-    <div class="sec" style="margin-top:1rem">Packer CSV Data</div>
-    <div class="hdr-sub" id="pkLastUpdated" style="margin-bottom:.9rem">No uploads yet</div>
-
-    <div class="card" style="margin-bottom:1rem">
-      <div class="upl-row">
-        <button class="btn btn-primary" id="pkUploadBtn">&#11014; Upload CSV</button>
-        <input type="file" id="pkFileInput" accept=".csv" multiple style="display:none">
-        <div class="upl-tag">
-          <label for="pkTagSelect">Hourly / end-of-shift uploads go to</label>
-          <select id="pkTagSelect"></select>
-          <button class="btn btn-ghost btn-sm" id="pkAddShiftBtn">+ New shift</button>
+  <div class="pk-shell">
+    <div class="pk-chrome">
+      <div class="pk-bar">
+        <div>
+          <h1 class="pk-title">Packer CSV</h1>
+          <div class="pk-sub" id="pkLastUpdated">No uploads yet</div>
+        </div>
+        <div class="pk-actions">
+          <select id="pkTagSelect" class="pk-shift-select" title="Shift for hourly / end-of-shift uploads"></select>
+          <button class="btn btn-ghost btn-sm" id="pkAddShiftBtn">+ Shift</button>
+          <button class="btn btn-primary" id="pkUploadBtn">Upload CSV</button>
+          <input type="file" id="pkFileInput" accept=".csv" multiple style="display:none">
         </div>
       </div>
       <div class="new-shift-row" id="pkNewShiftRow">
@@ -1321,11 +1366,9 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <button class="btn btn-primary btn-sm" id="pkConfirmAddShift">Add</button>
         <button class="btn btn-ghost btn-sm" id="pkCancelAddShift">Cancel</button>
       </div>
-      <div class="upl-hint">Three file types work here: the shift summary export (auto-splits by shift, logs what each packer packed since your last upload), the hourly performance export (builds the hour-by-hour trend), and the end-of-shift raw data export (compares each packer's actual boxes/hour per SKU against your Target BPH and Strike line sheet). The last two get tagged with whatever shift is selected above.</div>
+      <div class="pk-tabs" id="pkTabs"></div>
     </div>
-
-    <div class="pk-tabs" id="pkTabs"></div>
-    <div id="pkPanels"></div>
+    <div class="pk-body" id="pkPanels"></div>
   </div>
   <div class="toast" id="packerToast"></div>
 </div>
@@ -4816,6 +4859,11 @@ var autoAssignBtn = document.getElementById('bpAutoAssign');
 var shiftMorningBtn = document.getElementById('bpShiftMorning');
 var shiftAfternoonBtn = document.getElementById('bpShiftAfternoon');
 var toastEl = document.getElementById('bpToast');
+var poolEl = document.getElementById('bpPool');
+var poolHintEl = document.getElementById('bpPoolHint');
+var sheetEl = document.getElementById('bpAssignSheet');
+var sheetScrimEl = document.getElementById('bpSheetScrim');
+var pendingAssign = null; // { id, role, name } when tapping from Still free / Tap to add
 
 // ── UTIL ─────────────────────────────────────────────────────────────
 function uid(){ return 'bp' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -5171,22 +5219,86 @@ function allAssignedIds(sd){
   });
   return ids;
 }
-function renderRosterSections(){
+function clearPendingAssign(){
+  pendingAssign = null;
+  if (poolEl) poolEl.classList.remove('picking');
+  if (poolHintEl) poolHintEl.textContent = 'Choose a person, then a group';
+}
+function setPendingAssign(person){
+  pendingAssign = person ? { id: person.id, role: person.role, name: person.name } : null;
+  if (poolEl) poolEl.classList.toggle('picking', !!pendingAssign);
+  if (poolHintEl) {
+    poolHintEl.textContent = pendingAssign
+      ? ('Tap a group for ' + pendingAssign.name)
+      : 'Choose a person, then a group';
+  }
+  Array.prototype.forEach.call(rosterSectionsEl.querySelectorAll('.bp-chip'), function(chip){
+    chip.classList.toggle('selected', !!(pendingAssign && chip.getAttribute('data-pool-pick') === pendingAssign.id));
+  });
+}
+function assignPersonToGroup(groupId, personId, role){
+  var sd = ensureShiftData(currentShift);
+  var g = sd.groups.filter(function(x){ return x.id === groupId; })[0];
+  if (!g || !role || ROLE_KEYS.indexOf(role) === -1) return false;
+  removeStaffFromAllLanes(sd, personId);
+  if (!g[role]) g[role] = [];
+  if (g[role].indexOf(personId) === -1) g[role].push(personId);
+  return true;
+}
+function freePeopleForShift(){
   var sd = ensureShiftData(currentShift);
   var people = personsForShift(currentShift).filter(function(p){ return ROLE_KEYS.indexOf(p.role) !== -1; });
   var assigned = allAssignedIds(sd);
-  var free = people.filter(function(p){ return !assigned[p.id]; });
-  var pool = rosterSectionsEl.closest ? rosterSectionsEl.closest('.bp-pool') : null;
+  return people.filter(function(p){ return !assigned[p.id]; });
+}
+function closeAssignSheet(){
+  if (sheetEl){ sheetEl.classList.remove('open'); sheetEl.setAttribute('aria-hidden', 'true'); sheetEl.innerHTML = ''; }
+  if (sheetScrimEl){ sheetScrimEl.classList.remove('open'); sheetScrimEl.setAttribute('aria-hidden', 'true'); }
+}
+function openAssignSheet(groupId){
+  var sd = ensureShiftData(currentShift);
+  var g = sd.groups.filter(function(x){ return x.id === groupId; })[0];
+  if (!g) return;
+  var free = freePeopleForShift();
+  var sections = ROLE_KEYS.map(function(role){
+    var list = free.filter(function(p){ return p.role === role; });
+    var chips = list.map(function(p){
+      return '<button type="button" class="bp-chip ' + role + '" data-sheet-add="' + g.id + '|' + role + '|' + p.id + '">' +
+        escapeHtml(p.name) + '</button>';
+    }).join('');
+    var shortRole = role === 'boxmaker' ? 'Box makers' : ROLE_LABELS[role] + 's';
+    return '<div class="bp-sheet-section"><div class="bp-sheet-section-lbl"><span class="bp-role-dot ' + role + '"></span> ' +
+      shortRole + '</div><div class="bp-sheet-list">' +
+      (chips || '<span class="bp-sheet-empty">None free</span>') + '</div></div>';
+  }).join('');
+  sheetEl.innerHTML =
+    '<button type="button" class="bp-sheet-close" id="bpSheetClose" aria-label="Close">&times;</button>' +
+    '<div class="bp-sheet-title">Add to ' + escapeHtml(g.label || 'group') + '</div>' +
+    '<div class="bp-sheet-sub">Tap a person to put them on this break</div>' +
+    (free.length ? sections : '<div class="bp-sheet-empty">Everyone with a role is already scheduled</div>');
+  sheetEl.classList.add('open');
+  sheetEl.setAttribute('aria-hidden', 'false');
+  sheetScrimEl.classList.add('open');
+  sheetScrimEl.setAttribute('aria-hidden', 'false');
+  clearPendingAssign();
+}
+function renderRosterSections(){
+  var free = freePeopleForShift();
   if (!free.length){
     rosterSectionsEl.innerHTML = '';
-    if (pool) pool.classList.add('is-empty');
+    if (poolEl) poolEl.classList.add('is-empty');
+    clearPendingAssign();
     return;
   }
-  if (pool) pool.classList.remove('is-empty');
+  if (poolEl) poolEl.classList.remove('is-empty');
   rosterSectionsEl.innerHTML = free.map(function(p){
-    return '<span class="bp-chip ' + p.role + '" title="' + escapeHtml(ROLE_LABELS[p.role] || p.role) + '">' +
-      escapeHtml(p.name) + '</span>';
+    var selected = pendingAssign && pendingAssign.id === p.id ? ' selected' : '';
+    return '<button type="button" class="bp-chip ' + p.role + selected + '" data-pool-pick="' + p.id + '" title="' +
+      escapeHtml(ROLE_LABELS[p.role] || p.role) + ' — tap, then tap a group">' +
+      escapeHtml(p.name) + '</button>';
   }).join('');
+  if (pendingAssign && !free.some(function(p){ return p.id === pendingAssign.id; })) clearPendingAssign();
+  if (poolEl) poolEl.classList.toggle('picking', !!pendingAssign);
 }
 function renderSummary(){
   var sd = ensureShiftData(currentShift);
@@ -5212,49 +5324,37 @@ function renderGroups(){
     groupsEl.innerHTML = '<div class="bp-empty">No break groups yet — tap + Group to start.</div>';
     return;
   }
+  var stationByRoster = {};
+  var sm = floorStationMap(currentShift);
+  Object.keys(sm).forEach(function(L){ stationByRoster[sm[L]] = L; });
   var html = sd.groups.map(function(g){
-    var lanes = ROLE_KEYS.map(function(role){
-      var roleRoster = people.filter(function(p){ return p.role === role; });
-      var assignedIds = g[role] || [];
-      var stationByRoster = {};
-      if (role === 'packer'){
-        var sm = floorStationMap(currentShift);
-        Object.keys(sm).forEach(function(L){ stationByRoster[sm[L]] = L; });
-      }
-      var chips = assignedIds.map(function(pid){
+    var chips = [];
+    ROLE_KEYS.forEach(function(role){
+      (g[role] || []).forEach(function(pid){
         var p = people.filter(function(x){ return x.id === pid; })[0];
-        if (!p) return '';
-        var stLetter = stationByRoster[pid];
+        if (!p) return;
+        var stLetter = role === 'packer' ? stationByRoster[pid] : null;
         var stBadge = stLetter ? ' <span class="bp-st-badge" title="Station ' + stLetter + '">' + stLetter + '</span>' : '';
-        return '<span class="bp-chip ' + role + '">' + escapeHtml(p.name) + stBadge +
-          '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>';
-      }).join('');
-      var available = roleRoster.filter(function(p){ return assignedIds.indexOf(p.id) === -1; });
-      var opts = '<option value="">+ add</option>' +
-        available.map(function(p){ return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
-      var allOnBreak = roleRoster.length > 0 && assignedIds.length >= roleRoster.length;
-      var warn = allOnBreak ? '<span class="bp-warn">all</span>' : '';
-      var shortRole = role === 'boxmaker' ? 'Box' : ROLE_LABELS[role];
-      return '<div class="bp-role-lane">' +
-        '<span class="bp-role-lbl"><span class="bp-role-dot ' + role + '"></span>' + shortRole + warn + '</span>' +
-        '<div class="bp-roster-list">' + chips + (chips ? '' : '<span class="bp-empty-hint">—</span>') + '</div>' +
-        '<select class="bp-lane-select" data-lane-add="' + g.id + '|' + role + '">' + opts + '</select>' +
-        '</div>';
-    }).join('');
+        chips.push('<span class="bp-chip ' + role + '">' + escapeHtml(p.name) + stBadge +
+          '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>');
+      });
+    });
     return '<div class="bp-group-card" data-group-card="' + g.id + '">' +
-      '<div class="bp-group-hdr">' +
+      '<div class="bp-group-top">' +
       '<input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '">' +
-      '<input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="Stations A–D" value="' + escapeHtml(g.stations || '') + '">' +
+      '<input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="Stations" value="' + escapeHtml(g.stations || '') + '">' +
       '<div class="bp-times">' +
       '<div class="bp-time-block"><label>Tea</label><input type="time" data-time="' + g.id + '|teaStart" value="' + g.teaStart + '">' +
       '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|teaEnd" value="' + g.teaEnd + '"></div>' +
       '<div class="bp-time-block"><label>Meal</label><input type="time" data-time="' + g.id + '|mealStart" value="' + g.mealStart + '">' +
       '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|mealEnd" value="' + g.mealEnd + '"></div>' +
       '</div>' +
+      '<button type="button" class="bp-add-people" data-open-add="' + g.id + '">+ Add</button>' +
       '<button type="button" class="bp-group-rm" data-remove-group="' + g.id + '" title="Remove group">&times;</button>' +
       '</div>' +
-      lanes +
-      '</div>';
+      '<div class="bp-people" data-drop-group="' + g.id + '">' +
+      (chips.join('') || '<span class="bp-empty-hint">' + (pendingAssign ? 'Tap here to add ' + escapeHtml(pendingAssign.name) : 'No one on this break yet') + '</span>') +
+      '</div></div>';
   }).join('');
   groupsEl.innerHTML = html;
 }
@@ -5288,8 +5388,12 @@ addGroupBtn.addEventListener('click', function(){
   scheduleOwnSave();
 });
 
-shiftMorningBtn.addEventListener('click', async function(){ currentShift = 'morning'; await loadPlannerCache(); renderAll(); });
-shiftAfternoonBtn.addEventListener('click', async function(){ currentShift = 'afternoon'; await loadPlannerCache(); renderAll(); });
+shiftMorningBtn.addEventListener('click', async function(){
+  currentShift = 'morning'; clearPendingAssign(); closeAssignSheet(); await loadPlannerCache(); renderAll();
+});
+shiftAfternoonBtn.addEventListener('click', async function(){
+  currentShift = 'afternoon'; clearPendingAssign(); closeAssignSheet(); await loadPlannerCache(); renderAll();
+});
 
 function hasAnyAssignments(sd){
   return sd.groups.some(function(g){ return ROLE_KEYS.some(function(rk){ return (g[rk]||[]).length > 0; }); });
@@ -5353,7 +5457,23 @@ autoAssignBtn.addEventListener('click', async function(){
   }
 });
 
-// groups: label edits, time edits, lane add/remove, remove group
+// Tap someone in the free pool, then tap a group to place them.
+rosterSectionsEl.addEventListener('click', function(e){
+  var chip = e.target.closest ? e.target.closest('[data-pool-pick]') : null;
+  if (!chip) return;
+  var id = chip.getAttribute('data-pool-pick');
+  var person = personsForShift(currentShift).filter(function(p){ return p.id === id; })[0];
+  if (!person) return;
+  if (pendingAssign && pendingAssign.id === id){
+    clearPendingAssign();
+    renderRosterSections();
+    return;
+  }
+  setPendingAssign(person);
+  renderGroups();
+});
+
+// groups: label/time edits, remove, open add sheet, drop pending person
 groupsEl.addEventListener('input', function(e){
   var t = e.target;
   var sd = ensureShiftData(currentShift);
@@ -5379,32 +5499,31 @@ groupsEl.addEventListener('input', function(e){
     scheduleOwnSave();
   }
 });
-groupsEl.addEventListener('change', function(e){
-  var t = e.target;
-  var laneAttr = t.getAttribute('data-lane-add');
-  if (laneAttr && t.value){
-    var parts = laneAttr.split('|');
-    var sd = ensureShiftData(currentShift);
-    var g = sd.groups.filter(function(x){ return x.id === parts[0]; })[0];
-    if (g){
-      var role = parts[1];
-      if (!g[role]) g[role] = [];
-      if (g[role].indexOf(t.value) === -1) g[role].push(t.value);
-    }
-    renderAll();
-    scheduleOwnSave();
-  }
-});
 groupsEl.addEventListener('click', function(e){
   var t = e.target;
+  if (t.classList && t.classList.contains('x')) {
+    // keep using attribute on the x itself
+  } else if (t.closest) {
+    var x = t.closest('.x');
+    if (x) t = x;
+  }
+
+  var openAdd = t.getAttribute('data-open-add') || (t.closest && t.closest('[data-open-add]') && t.closest('[data-open-add]').getAttribute('data-open-add'));
+  if (openAdd){
+    openAssignSheet(openAdd);
+    return;
+  }
+
   var rmGroup = t.getAttribute('data-remove-group');
   if (rmGroup){
     var sd = ensureShiftData(currentShift);
     sd.groups = sd.groups.filter(function(g){ return g.id !== rmGroup; });
+    clearPendingAssign();
     renderAll();
     scheduleOwnSave();
     return;
   }
+
   var laneRemove = t.getAttribute('data-lane-remove');
   if (laneRemove){
     var parts = laneRemove.split('|');
@@ -5413,6 +5532,41 @@ groupsEl.addEventListener('click', function(e){
     if (g2 && g2[parts[1]]) g2[parts[1]] = g2[parts[1]].filter(function(id){ return id !== parts[2]; });
     renderAll();
     scheduleOwnSave();
+    return;
+  }
+
+  if (pendingAssign){
+    var card = t.closest ? t.closest('[data-group-card]') : null;
+    if (card && !t.matches('input,button,.x')){
+      var gid = card.getAttribute('data-group-card');
+      if (assignPersonToGroup(gid, pendingAssign.id, pendingAssign.role)){
+        bpToast(pendingAssign.name + ' → ' + ((ensureShiftData(currentShift).groups.filter(function(g){ return g.id === gid; })[0] || {}).label || 'group'));
+        clearPendingAssign();
+        renderAll();
+        scheduleOwnSave();
+      }
+    }
+  }
+});
+
+sheetScrimEl.addEventListener('click', closeAssignSheet);
+sheetEl.addEventListener('click', function(e){
+  var t = e.target;
+  if (t.id === 'bpSheetClose'){ closeAssignSheet(); return; }
+  var addAttr = t.getAttribute('data-sheet-add');
+  if (!addAttr && t.closest) {
+    var btn = t.closest('[data-sheet-add]');
+    if (btn) addAttr = btn.getAttribute('data-sheet-add');
+  }
+  if (!addAttr) return;
+  var parts = addAttr.split('|');
+  var person = personsForShift(currentShift).filter(function(p){ return p.id === parts[2]; })[0];
+  if (assignPersonToGroup(parts[0], parts[2], parts[1])){
+    bpToast((person ? person.name : 'Added') + ' added');
+    scheduleOwnSave();
+    renderAll();
+    // Keep sheet open so several people can be added quickly.
+    openAssignSheet(parts[0]);
   }
 });
 
@@ -6180,14 +6334,59 @@ function shortName(w) {
     return p.length ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p;
   }).join(' ');
 }
+// Collapse case / spacing variants so "JANE  DOE" and "Jane Doe" become one packer.
+function normWorkerKey(w) {
+  return String(w || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
 function hourLabel(hk) {
-  var parts = hk.split(' ');
-  var timePart = parts[1] || parts[0];
-  var hh = parseInt(timePart.split(':')[0], 10);
+  var parts = String(hk || '').trim().split(/\s+/);
+  var timePart = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+  var hh = parseInt(String(timePart).split(':')[0], 10);
   if (isNaN(hh)) return hk;
   var ap = hh >= 12 ? 'p' : 'a';
   var h12 = hh % 12; if (h12 === 0) h12 = 12;
   return h12 + ap + 'm';
+}
+function parseReportDateFromHourKey(hk) {
+  var s = String(hk || '').trim();
+  var iso = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+  var us = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (us) {
+    var a = parseInt(us[1], 10), b = parseInt(us[2], 10), y = parseInt(us[3], 10);
+    if (y < 100) y += 2000;
+    // Prefer YMD when first part looks like a year already handled; otherwise assume D/M/Y for AU/NZ style,
+    // falling back to M/D/Y only when day > 12.
+    var day, month;
+    if (a > 12) { day = a; month = b; }
+    else if (b > 12) { day = b; month = a; }
+    else { day = a; month = b; } // default D/M/Y
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return y + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
+    }
+  }
+  return null;
+}
+function formatReportDate(iso) {
+  if (!iso) return '';
+  var p = iso.split('-');
+  if (p.length !== 3) return iso;
+  var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+function inferReportDate(s) {
+  if (s && s.reportDate) return s.reportDate;
+  var dates = {};
+  Object.keys((s && s.hourly) || {}).forEach(function(hk) {
+    var d = parseReportDateFromHourKey(hk);
+    if (d) dates[d] = (dates[d] || 0) + 1;
+  });
+  var best = null, bestN = 0;
+  Object.keys(dates).forEach(function(d) {
+    if (dates[d] > bestN) { best = d; bestN = dates[d]; }
+  });
+  return best;
 }
 function timeAgo(ts) {
   var diff = Math.max(0, Date.now() - ts);
@@ -6318,17 +6517,19 @@ function importEndOfShift(dataRows, quality) {
   var s = ensureShift(tag);
 
   var groups = {};
-  var mixedCount = 0, invalidNumericCount = 0;
+  var mixedCount = 0, invalidNumericCount = 0, mergedRows = 0;
   dataRows.forEach(function(r) {
-    var worker = r['__workerName']; if (!worker) return;
+    var workerRaw = r['__workerName']; if (!workerRaw) return;
+    var workerKey = normWorkerKey(workerRaw); if (!workerKey) return;
     var skuRaw = (r['__sku'] || '').trim();
     if (!skuRaw || skuRaw.indexOf(',') !== -1) { mixedCount++; return; }
     var sku = skuRaw.replace(/[^0-9]/g, '');
     if (!sku) { mixedCount++; return; }
     var boxesP = parseNum(r['__boxes']); if (!boxesP.valid) invalidNumericCount++;
     var hoursP = parseNum(r['__hours']); if (!hoursP.valid) invalidNumericCount++;
-    var k = worker + '|' + sku;
-    if (!groups[k]) groups[k] = {worker:worker, sku:sku, boxes:0, hours:0};
+    var k = workerKey + '|' + sku;
+    if (!groups[k]) groups[k] = {worker:shortName(workerRaw), workerKey:workerKey, sku:sku, boxes:0, hours:0};
+    else mergedRows++;
     groups[k].boxes += boxesP.value;
     groups[k].hours += hoursP.value;
   });
@@ -6343,27 +6544,125 @@ function importEndOfShift(dataRows, quality) {
       else if (bph >= t.strike) status = 'below';
       else status = 'strike';
     }
-    return {worker:g.worker, sku:g.sku, boxes:g.boxes, bph:bph, target: t ? t.target : null, strike: t ? t.strike : null, status:status};
+    return {worker:g.worker, workerKey:g.workerKey, sku:g.sku, boxes:g.boxes, bph:bph, target: t ? t.target : null, strike: t ? t.strike : null, status:status};
   });
 
   if (!results.length && !mixedCount) return {ok:false, msg:'No single-SKU sessions found'};
 
-  s.endOfShift = {ts: Date.now(), results: results, mixedCount: mixedCount};
+  // Also keep one row per packer with boxes summed across SKUs for the leaderboard.
+  var byPacker = {};
+  results.forEach(function(r) {
+    var k = r.workerKey || normWorkerKey(r.worker);
+    if (!byPacker[k]) byPacker[k] = {worker:r.worker, boxes:0, hours:0, skus:0};
+    byPacker[k].boxes += r.boxes;
+    byPacker[k].hours += (r.bph > 0 && r.boxes > 0 ? r.boxes / r.bph : 0);
+    byPacker[k].skus++;
+  });
+
+  s.endOfShift = {ts: Date.now(), results: results, byPacker: byPacker, mixedCount: mixedCount};
   s.lastUpdated = Date.now();
-  return {ok:true, msg: qualityMsg('End-of-shift comparison for ' + shiftLabel(tag) + ' \u2014 ' + results.length + ' packer/SKU combos', quality, invalidNumericCount), touched:[tag]};
+  var base = 'End-of-shift for ' + shiftLabel(tag) + ' \u2014 ' + Object.keys(byPacker).length + ' packer(s), ' + results.length + ' SKU row(s)';
+  if (mergedRows) base += ', merged ' + mergedRows + ' duplicate row(s)';
+  return {ok:true, msg: qualityMsg(base, quality, invalidNumericCount), touched:[tag]};
 }
 
 function ensureShift(key) {
   if (!shiftsData[key]) {
-    shiftsData[key] = {summary:{}, hourly:{}, skuSnapshot:{}, skuLog:[], lastUpdated:null};
+    shiftsData[key] = {summary:{}, hourly:{}, skuSnapshot:{}, skuLog:[], lastUpdated:null, reportDate:null};
   } else {
     var s = shiftsData[key];
     if (!s.summary) s.summary = {};
     if (!s.hourly) s.hourly = {};
     if (!s.skuSnapshot) s.skuSnapshot = {};
     if (!s.skuLog) s.skuLog = [];
+    if (s.reportDate === undefined) s.reportDate = null;
+    coalesceShiftWorkers(s);
   }
   return shiftsData[key];
+}
+
+// Merge any already-saved duplicate name keys (case / spacing) and sum their boxes.
+function coalesceShiftWorkers(s) {
+  if (!s) return;
+  var newSummary = {};
+  Object.keys(s.summary || {}).forEach(function(raw) {
+    var key = normWorkerKey(raw);
+    if (!key) return;
+    var row = s.summary[raw] || {};
+    if (!newSummary[key]) {
+      newSummary[key] = {
+        boxes:0, items:0, pouches:0, timeSec:0, stations:[],
+        name: shortName(row.name || raw)
+      };
+    }
+    var w = newSummary[key];
+    w.boxes += row.boxes || 0;
+    w.items += row.items || 0;
+    w.pouches += row.pouches || 0;
+    w.timeSec += row.timeSec || 0;
+    (row.stations || []).forEach(function(st) {
+      if (st && w.stations.indexOf(st) === -1) w.stations.push(st);
+    });
+  });
+  s.summary = newSummary;
+
+  var newHourly = {};
+  Object.keys(s.hourly || {}).forEach(function(hk) {
+    newHourly[hk] = {};
+    Object.keys(s.hourly[hk] || {}).forEach(function(raw) {
+      var key = normWorkerKey(raw);
+      if (!key) return;
+      newHourly[hk][key] = (newHourly[hk][key] || 0) + (s.hourly[hk][raw] || 0);
+    });
+  });
+  s.hourly = newHourly;
+
+  var newSnap = {};
+  Object.keys(s.skuSnapshot || {}).forEach(function(k) {
+    var cur = s.skuSnapshot[k];
+    if (!cur) return;
+    var workerKey = normWorkerKey(cur.worker || k.split('|')[0]);
+    var nk = workerKey + '|' + (cur.station || '') + '|' + (cur.sku || '');
+    if (!newSnap[nk]) newSnap[nk] = {worker:shortName(cur.worker || workerKey), station:cur.station || '', sku:cur.sku || '', boxes:0, items:0, pouches:0};
+    newSnap[nk].boxes += cur.boxes || 0;
+    newSnap[nk].items += cur.items || 0;
+    newSnap[nk].pouches += cur.pouches || 0;
+  });
+  s.skuSnapshot = newSnap;
+
+  if (s.endOfShift && s.endOfShift.results) {
+    var groups = {};
+    s.endOfShift.results.forEach(function(r) {
+      var workerKey = r.workerKey || normWorkerKey(r.worker);
+      var k = workerKey + '|' + r.sku;
+      if (!groups[k]) groups[k] = {worker:shortName(r.worker), workerKey:workerKey, sku:r.sku, boxes:0, hours:0, target:r.target, strike:r.strike};
+      groups[k].boxes += r.boxes || 0;
+      // Reconstruct hours from bph when present
+      if (r.bph > 0) groups[k].hours += (r.boxes || 0) / r.bph;
+      else groups[k].hours += 0;
+    });
+    var results = Object.keys(groups).map(function(k) {
+      var g = groups[k];
+      var bph = g.hours > 0 ? g.boxes / g.hours : 0;
+      var t = SKU_TARGETS[g.sku];
+      var status = 'none';
+      if (t) {
+        if (bph >= t.target) status = 'on';
+        else if (bph >= t.strike) status = 'below';
+        else status = 'strike';
+      }
+      return {worker:g.worker, workerKey:g.workerKey, sku:g.sku, boxes:g.boxes, bph:bph, target:t ? t.target : g.target, strike:t ? t.strike : g.strike, status:status};
+    });
+    var byPacker = {};
+    results.forEach(function(r) {
+      var k = r.workerKey;
+      if (!byPacker[k]) byPacker[k] = {worker:r.worker, boxes:0, skus:0};
+      byPacker[k].boxes += r.boxes;
+      byPacker[k].skus++;
+    });
+    s.endOfShift.results = results;
+    s.endOfShift.byPacker = byPacker;
+  }
 }
 
 function importSummary(dataRows, quality) {
@@ -6373,6 +6672,7 @@ function importSummary(dataRows, quality) {
 
   var now = Date.now();
   var invalidNumericCount = 0;
+  var mergedRows = 0;
 
   shiftsInFile.forEach(function(shift) {
     var s = ensureShift(shift);
@@ -6380,9 +6680,11 @@ function importSummary(dataRows, quality) {
 
     var newSummary = {};
     rowsForShift.forEach(function(r) {
-      var worker = r['__workerName']; if (!worker) return;
-      if (!newSummary[worker]) newSummary[worker] = {boxes:0, items:0, pouches:0, timeSec:0, stations:[]};
-      var w = newSummary[worker];
+      var workerRaw = r['__workerName']; if (!workerRaw) return;
+      var key = normWorkerKey(workerRaw); if (!key) return;
+      if (!newSummary[key]) newSummary[key] = {name:shortName(workerRaw), boxes:0, items:0, pouches:0, timeSec:0, stations:[]};
+      else mergedRows++;
+      var w = newSummary[key];
       var bp = parseNum(r['__boxes']);   if (!bp.valid) invalidNumericCount++;
       var ip = parseNum(r['__items']);   if (!ip.valid) invalidNumericCount++;
       var pp = parseNum(r['__pouches']); if (!pp.valid) invalidNumericCount++;
@@ -6398,11 +6700,12 @@ function importSummary(dataRows, quality) {
 
     var newSnap = {};
     rowsForShift.forEach(function(r) {
-      var worker = r['__workerName']; if (!worker) return;
+      var workerRaw = r['__workerName']; if (!workerRaw) return;
+      var workerKey = normWorkerKey(workerRaw); if (!workerKey) return;
       var station = r['__station'] || '';
       var sku = r['__sku'] || '';
-      var k = worker + '|' + station + '|' + sku;
-      if (!newSnap[k]) newSnap[k] = {worker:worker, station:station, sku:sku, boxes:0, items:0, pouches:0};
+      var k = workerKey + '|' + station + '|' + sku;
+      if (!newSnap[k]) newSnap[k] = {worker:shortName(workerRaw), station:station, sku:sku, boxes:0, items:0, pouches:0};
       newSnap[k].boxes += parseNum(r['__boxes']).value;
       newSnap[k].items += parseNum(r['__items']).value;
       newSnap[k].pouches += parseNum(r['__pouches']).value;
@@ -6424,7 +6727,9 @@ function importSummary(dataRows, quality) {
     s.lastUpdated = now;
   });
 
-  return {ok:true, msg: qualityMsg('Imported summary \u2014 ' + shiftsInFile.map(shiftLabel).join(', '), quality, invalidNumericCount), touched: shiftsInFile};
+  var base = 'Imported summary \u2014 ' + shiftsInFile.map(shiftLabel).join(', ');
+  if (mergedRows) base += ' (merged ' + mergedRows + ' duplicate name row(s))';
+  return {ok:true, msg: qualityMsg(base, quality, invalidNumericCount), touched: shiftsInFile};
 }
 
 function importHourly(dataRows, quality) {
@@ -6433,18 +6738,32 @@ function importHourly(dataRows, quality) {
   var s = ensureShift(tag);
   var hoursAdded = {};
   var invalidNumericCount = 0;
+  var mergedRows = 0;
+  var dateVotes = {};
   dataRows.forEach(function(r) {
-    var worker = r['__workerName']; if (!worker) return;
+    var workerRaw = r['__workerName']; if (!workerRaw) return;
+    var key = normWorkerKey(workerRaw); if (!key) return;
     var hourKey = r['__hourKey']; if (!hourKey) return;
     if (!s.hourly[hourKey]) s.hourly[hourKey] = {};
     var bp = parseNum(r['__boxes']); if (!bp.valid) invalidNumericCount++;
-    s.hourly[hourKey][worker] = bp.value;
+    if (s.hourly[hourKey][key] != null) mergedRows++;
+    s.hourly[hourKey][key] = (s.hourly[hourKey][key] || 0) + bp.value;
     hoursAdded[hourKey] = true;
+    var rd = parseReportDateFromHourKey(hourKey);
+    if (rd) dateVotes[rd] = (dateVotes[rd] || 0) + 1;
   });
+  var bestDate = null, bestN = 0;
+  Object.keys(dateVotes).forEach(function(d) {
+    if (dateVotes[d] > bestN) { bestDate = d; bestN = dateVotes[d]; }
+  });
+  if (bestDate) s.reportDate = bestDate;
   s.lastUpdated = Date.now();
   var n = Object.keys(hoursAdded).length;
   if (!n) return {ok:false, msg:'No hourly rows found'};
-  return {ok:true, msg: qualityMsg('Imported ' + n + ' hour(s) for ' + shiftLabel(tag), quality, invalidNumericCount), touched:[tag]};
+  var base = 'Imported ' + n + ' hour(s) for ' + shiftLabel(tag);
+  if (bestDate) base += ' \u00b7 report date ' + formatReportDate(bestDate);
+  if (mergedRows) base += ' \u00b7 merged ' + mergedRows + ' duplicate row(s)';
+  return {ok:true, msg: qualityMsg(base, quality, invalidNumericCount), touched:[tag]};
 }
 
 // ── STORAGE ──────────────────────────────────────────────────────────
@@ -6463,6 +6782,7 @@ async function loadAll() {
     console.error('load failed', e);
     pkToast('Could not read saved data (' + (e && e.message ? e.message : 'unknown error') + ') \u2014 showing a blank board so nothing gets overwritten', 'err');
   }
+  Object.keys(shiftsData || {}).forEach(function(k){ ensureShift(k); });
   ensureShift('morning_shift');
   ensureShift('afternoon_shift');
 }
@@ -6478,10 +6798,14 @@ function orderedShiftKeys() {
     return shiftLabel(a).localeCompare(shiftLabel(b));
   });
 }
+function workerDisplayName(s, key) {
+  if (s && s.summary && s.summary[key] && s.summary[key].name) return s.summary[key].name;
+  return shortName(key);
+}
 function shiftTotals(key) {
   var s = shiftsData[key] || {summary:{}, hourly:{}};
   var totals = {};
-  Object.keys(s.summary || {}).forEach(function(w){ totals[w] = s.summary[w].boxes; });
+  Object.keys(s.summary || {}).forEach(function(w){ totals[w] = s.summary[w].boxes || 0; });
   var summaryWorkers = Object.keys(s.summary || {});
   var hourlySums = {};
   Object.keys(s.hourly || {}).forEach(function(hk) {
@@ -6495,6 +6819,19 @@ function shiftTotals(key) {
   return totals;
 }
 function workerCount(key) { return Object.keys(shiftTotals(key)).length; }
+function renderPackerTotalsTable(s, totals) {
+  var workers = Object.keys(totals).sort(function(a,b){ return totals[b] - totals[a]; });
+  if (!workers.length) return '';
+  var rows = workers.map(function(w, i) {
+    var st = (s.summary[w] && s.summary[w].stations) ? s.summary[w].stations.join(', ') : '';
+    return '<tr><td class="r mn">' + (i + 1) + '</td><td>' + escapeHtml(workerDisplayName(s, w)) + '</td>' +
+      '<td class="r mn bold">' + totals[w].toLocaleString() + '</td>' +
+      '<td>' + escapeHtml(st || '\u2014') + '</td></tr>';
+  }).join('');
+  return '<div class="sec">Packers (duplicates merged, boxes added up)</div>' +
+    '<div class="tw"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th>Stations</th></tr></thead><tbody>' +
+    rows + '</tbody></table></div>';
+}
 
 // ── RENDER ───────────────────────────────────────────────────────────
 function renderTabs() {
@@ -6538,11 +6875,15 @@ function renderHourlySection(s, hourKeys) {
       var v = s.hourly[hk][w];
       return '<td class="r mn">' + (v != null ? v : '\u2014') + '</td>';
     }).join('');
-    return '<tr><td>' + escapeHtml(shortName(w)) + '</td>' + cells + '<td class="r mn bold">' + workerHourTotals[w] + '</td></tr>';
+    return '<tr><td>' + escapeHtml(workerDisplayName(s, w)) + '</td>' + cells + '<td class="r mn bold">' + workerHourTotals[w] + '</td></tr>';
   }).join('');
   var headCells = hourKeys.map(function(hk){ return '<th class="r">' + escapeHtml(hourLabel(hk)) + '</th>'; }).join('');
+  var reportDate = inferReportDate(s);
+  var dateNote = reportDate
+    ? '<span class="pk-date-pill">Report date ' + escapeHtml(formatReportDate(reportDate)) + '</span>'
+    : '';
 
-  return '<div class="sec">Hourly trend (from CSV)</div>' +
+  return '<div class="sec">Hourly trend ' + dateNote + '</div>' +
     '<div class="card"><div class="hbar-wrap">' + bars + '</div><div class="hbar-lbls">' + lbls + '</div></div>' +
     '<div class="sec">Boxes per hour by packer</div>' +
     '<div class="tw"><table><thead><tr><th>Packer</th>' + headCells + '<th class="r">Total</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
@@ -6565,6 +6906,21 @@ function renderSkuLogSection(s) {
 function renderEndOfShiftSection(s) {
   var eos = s.endOfShift;
   if (!eos) return '';
+  var byPacker = eos.byPacker || {};
+  if (!Object.keys(byPacker).length && eos.results) {
+    eos.results.forEach(function(r) {
+      var k = r.workerKey || normWorkerKey(r.worker);
+      if (!byPacker[k]) byPacker[k] = {worker:shortName(r.worker), boxes:0, skus:0};
+      byPacker[k].boxes += r.boxes || 0;
+      byPacker[k].skus++;
+    });
+  }
+  var packerRows = Object.keys(byPacker).sort(function(a,b){ return byPacker[b].boxes - byPacker[a].boxes; }).map(function(k, i) {
+    var p = byPacker[k];
+    return '<tr><td class="r mn">' + (i + 1) + '</td><td>' + escapeHtml(shortName(p.worker)) + '</td>' +
+      '<td class="r mn bold">' + p.boxes.toLocaleString() + '</td><td class="r mn">' + (p.skus || 1) + '</td></tr>';
+  }).join('');
+
   var results = eos.results.slice().sort(function(a,b) {
     var ga = a.target != null ? a.bph - a.target : 999;
     var gb = b.target != null ? b.bph - b.target : 999;
@@ -6587,8 +6943,10 @@ function renderEndOfShiftSection(s) {
   var mixedNote = eos.mixedCount
     ? '<div class="panel-sub" style="margin:.5rem 0 0">' + eos.mixedCount + ' session(s) packed a mixed batch of SKU sizes and are left out of this comparison.</div>'
     : '';
-  return '<div class="sec">End-of-shift performance vs target (' +
-    escapeHtml(new Date(eos.ts).toLocaleString([], {hour:'2-digit', minute:'2-digit', month:'short', day:'numeric'})) + ')</div>' +
+  return '<div class="sec">End-of-shift totals (one row per packer)</div>' +
+    '<div class="tw" style="margin-bottom:.85rem"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th class="r">SKUs</th></tr></thead><tbody>' +
+    packerRows + '</tbody></table></div>' +
+    '<div class="sec">Performance vs target by SKU</div>' +
     '<div class="kgrid" style="margin-bottom:.9rem">' +
     '<div class="kc cg"><div class="kc-l">On target</div><div class="kc-v">' + counts.on + '</div></div>' +
     '<div class="kc ca"><div class="kc-l">Below target</div><div class="kc-v">' + counts.below + '</div></div>' +
@@ -6609,27 +6967,38 @@ function renderPanels() {
   var avg = active ? Math.round(totalBoxes / active) : 0;
   var top = null;
   workers.forEach(function(w){ if (top === null || totals[w] > totals[top]) top = w; });
+  var reportDate = inferReportDate(s);
+  var subParts = [];
+  if (reportDate) subParts.push('Report date ' + formatReportDate(reportDate));
+  if (s.lastUpdated) subParts.push('Imported ' + timeAgo(s.lastUpdated));
+  if (!subParts.length) subParts.push('No CSV uploads yet');
 
   var html = '<div class="panel-hdr"><div>' +
-    '<div class="panel-title">' + escapeHtml(shiftLabel(key)) + ' shift</div>' +
-    '<div class="panel-sub">' + (s.lastUpdated ? 'Last CSV import ' + timeAgo(s.lastUpdated) : 'No CSV uploads yet') + '</div>' +
-    '</div><button class="btn btn-ghost btn-sm" id="pkResetBtn" data-key="' + escapeHtml(key) + '" data-pending="0">Reset shift</button></div>';
+    '<div class="panel-title">' + escapeHtml(shiftLabel(key)) +
+    (reportDate ? ' <span class="pk-date-pill">' + escapeHtml(formatReportDate(reportDate)) + '</span>' : '') +
+    '</div>' +
+    '<div class="panel-sub">' + escapeHtml(subParts.join(' · ')) + '</div>' +
+    '</div><button class="btn btn-ghost btn-sm" id="pkResetBtn" data-key="' + escapeHtml(key) + '" data-pending="0">Reset</button></div>';
 
-  if (active === 0) {
-    html += '<div class="empty-state"><span class="ic">&#128237;</span>No CSV uploaded yet for this shift.<br>Upload a CSV above to get started.</div>';
+  if (active === 0 && !(s.endOfShift && s.endOfShift.results && s.endOfShift.results.length)) {
+    html += '<div class="empty-state">No CSV uploaded yet for this shift.<br>Upload a summary, hourly, or end-of-shift export.</div>';
   } else {
-    html += '<div class="kgrid">' +
-      '<div class="kc cb"><div class="kc-l">Total boxes</div><div class="kc-v">' + totalBoxes.toLocaleString() + '</div></div>' +
-      '<div class="kc cg"><div class="kc-l">Active packers</div><div class="kc-v">' + active + '</div></div>' +
-      '<div class="kc ca"><div class="kc-l">Avg per packer</div><div class="kc-v">' + avg.toLocaleString() + '</div></div>' +
-      '<div class="kc"><div class="kc-l">Top packer</div><div class="kc-v" style="font-size:1rem">' + (top ? escapeHtml(shortName(top)) : '\u2014') + '</div>' +
-      '<div class="kc-s">' + (top ? totals[top].toLocaleString() + ' boxes' : '') + '</div></div>' +
-      '</div>';
+    if (active) {
+      html += '<div class="kgrid">' +
+        '<div class="kc cb"><div class="kc-l">Total boxes</div><div class="kc-v">' + totalBoxes.toLocaleString() + '</div></div>' +
+        '<div class="kc cg"><div class="kc-l">Packers</div><div class="kc-v">' + active + '</div></div>' +
+        '<div class="kc ca"><div class="kc-l">Avg / packer</div><div class="kc-v">' + avg.toLocaleString() + '</div></div>' +
+        '<div class="kc"><div class="kc-l">Top packer</div><div class="kc-v" style="font-size:1rem">' + (top ? escapeHtml(workerDisplayName(s, top)) : '\u2014') + '</div>' +
+        '<div class="kc-s">' + (top ? totals[top].toLocaleString() + ' boxes' : '') + '</div></div>' +
+        '</div>';
+      html += '<div class="pk-merge-note">Same name (any capitalisation) is merged into one packer and boxes are added up.</div>';
+      html += renderPackerTotalsTable(s, totals);
+    }
 
     var hourKeys = Object.keys(s.hourly || {}).sort();
     if (hourKeys.length) html += renderHourlySection(s, hourKeys);
-    html += renderSkuLogSection(s);
     html += renderEndOfShiftSection(s);
+    html += renderSkuLogSection(s);
   }
 
   panelsEl.innerHTML = html;
@@ -6638,11 +7007,17 @@ function renderPanels() {
 }
 function updateLastUpdatedLabel() {
   var latest = null;
+  var latestDate = null;
   Object.keys(shiftsData).forEach(function(k) {
     var s = shiftsData[k];
     if (s.lastUpdated && (!latest || s.lastUpdated > latest)) latest = s.lastUpdated;
+    var rd = inferReportDate(s);
+    if (rd && (!latestDate || rd > latestDate)) latestDate = rd;
   });
-  lastUpdatedEl.textContent = latest ? 'Last CSV import ' + timeAgo(latest) : 'No CSV uploads yet';
+  var parts = [];
+  if (latestDate) parts.push('Report date ' + formatReportDate(latestDate));
+  if (latest) parts.push('Last import ' + timeAgo(latest));
+  lastUpdatedEl.textContent = parts.length ? parts.join(' · ') : 'Upload a CSV to get started';
 }
 function refreshTagSelect() {
   var keys = orderedShiftKeys();
