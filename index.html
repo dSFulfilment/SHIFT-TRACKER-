@@ -10643,9 +10643,9 @@ function toast(msg, err) {
     if (fab) fab.style.visibility = '';
     if (name !== 'breaks'){
       var sheet = document.getElementById('bpAssignSheet');
-      var scrim = document.getElementById('bpSheetScrim');
+      var bpScrim = document.getElementById('bpSheetScrim');
       if (sheet){ sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true'); }
-      if (scrim){ scrim.classList.remove('open'); scrim.setAttribute('aria-hidden', 'true'); }
+      if (bpScrim){ bpScrim.classList.remove('open'); bpScrim.setAttribute('aria-hidden', 'true'); }
     }
     if (name === 'breaks' && window.__breakPlanner && typeof window.__breakPlanner.refresh === 'function'){
       window.__breakPlanner.refresh();
