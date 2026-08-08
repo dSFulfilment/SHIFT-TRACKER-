@@ -16,9 +16,9 @@ PR: https://github.com/dSFulfilment/SHIFT-TRACKER-/pull/1
 
 - Floor Plan, Breaks, Shift Tracker, Packer (Day/Afternoon × Mon–Fri), Roster
 - Whole-app **Backup** / **Restore** (toolbar on Floor Plan)
-- Packer CSV preview before import (merge or replace per day/shift)
-- Week auto-export before Packer/Roster weekly clear
-- Legacy Packer view preserves pre-calendar imports
+- Packer end-of-shift: Boxes Packed by Worker + Intra Hour CSVs
+- People view merges duplicate names, lists SKUs, shows BPH target hit
+- CSV rows route by report date and Day/Afternoon (hour ≥14 → Afternoon)
 
 ## Optional developer tests
 

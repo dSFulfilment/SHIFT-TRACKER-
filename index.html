@@ -907,7 +907,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabPacker .pk-actions{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
 #tabPacker .pk-actions button{border:1px solid #D8DCE3;border-radius:7px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;background:#fff;color:#1D1D1F;font-family:inherit}
 #tabPacker .pk-actions button.pk-primary,#tabPacker .pk-actions #pkUploadBtn{background:#1C2430;color:#fff;border-color:#1C2430}
-#tabPacker .pk-actions button.active,#tabPacker #pkLegacyBtn.active{background:#E8EEF9;color:#2554C7;border-color:#9DB7E8}
+#tabPacker .pk-actions button.active{background:#E8EEF9;color:#2554C7;border-color:#9DB7E8}
 #tabPacker .pk-actions button.btn-danger-pending{background:#FEE2E2;color:#B8251C;border-color:#F1A8A4}
 #tabPacker .pk-days{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin-bottom:5px}
 #tabPacker .pk-day{border:1px solid #D8DCE3;border-radius:8px;background:#fff;padding:3px 2px 4px;cursor:pointer;text-align:center;font-family:inherit}
@@ -937,6 +937,13 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #tabPacker .pk-views{display:inline-flex;border:1px solid #D8DCE3;border-radius:8px;overflow:hidden;background:#fff;margin-left:auto}
 #tabPacker .pk-views button{border:0;background:#fff;padding:5px 9px;font:inherit;font-size:10px;font-weight:800;color:#6E6E73;cursor:pointer}
 #tabPacker .pk-views button.active{background:#1C2430;color:#fff}
+#tabPacker .pk-sku-cell{line-height:1.55;max-width:280px}
+#tabPacker .pk-sku-hit{display:inline-block;margin:1px 4px 1px 0;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:800;border:1px solid #D8DCE3;background:#F0F2F5;color:#3A3A3C;white-space:nowrap}
+#tabPacker .pk-sku-hit.on{background:#E5F5EA;color:#1A6B30;border-color:#A8D5B5}
+#tabPacker .pk-sku-hit.below{background:#FEF3C7;color:#A05D00;border-color:#F5D78E}
+#tabPacker .pk-sku-hit.strike{background:#FEE2E2;color:#B8251C;border-color:#F1A8A4}
+#tabPacker .pk-sku-hit.none{background:#F0F2F5;color:#6E6E73;border-color:#D8DCE3}
+#tabPacker .pk-muted{color:#8E8E93}
 #tabPacker .pk-body{flex:1;min-height:0;overflow:auto;padding:8px 10px calc(76px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
 #tabPacker .pk-banner{border-radius:8px;padding:12px 14px;margin-bottom:8px;font-size:12px;line-height:1.45;background:#fff;border:1px dashed #D8DCE3;color:#6E6E73}
 #tabPacker .pk-banner-err{background:#FEE2E2;border:1px solid #F1A8A4;color:#B8251C;border-style:solid}
@@ -1527,7 +1534,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="pk-search"><input type="search" id="pkSearchInput" placeholder="Search…" aria-label="Search workers"></div>
         <div class="pk-actions">
           <button type="button" id="pkJumpToday">Today</button>
-          <button type="button" id="pkLegacyBtn" style="display:none">Legacy</button>
           <button type="button" id="pkExportWeekBtn">Export</button>
           <button type="button" id="pkClearBtn">Clear</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
@@ -1539,9 +1545,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
         <div class="pk-daily-lbl" id="pkLastUpdated">No data</div>
         <div class="pk-stats" id="pkKpis"></div>
         <div class="pk-views" id="pkViews" role="tablist" aria-label="Packer views">
-          <button type="button" data-view="strike" class="active">Strike check</button>
-          <button type="button" data-view="hourly">Hourly</button>
-          <button type="button" data-view="quality">Quality</button>
+          <button type="button" data-view="people" class="active">People</button>
+          <button type="button" data-view="hours">Hours</button>
         </div>
       </div>
     </div>
@@ -6915,6 +6920,168 @@ function toast(msg, err) {
     return { key: 'needs_attention', label: 'Needs attention (<95%)', rank: 2 };
   }
 
+  /** Boxes/hour vs SKU target and strike line (warehouse strike check). */
+  function strikeStatus(bph, sku) {
+    var t = sku && SKU_TARGETS[sku] ? SKU_TARGETS[sku] : null;
+    if (!t || bph == null || !isFinite(bph)) {
+      return { key: 'none', label: 'No target set', rank: 99, target: t ? t.target : null, strike: t ? t.strike : null };
+    }
+    if (bph >= t.target) return { key: 'on', label: 'On target', rank: 0, target: t.target, strike: t.strike };
+    if (bph >= t.strike) return { key: 'below', label: 'Below target', rank: 1, target: t.target, strike: t.strike };
+    return { key: 'strike', label: 'Below strike line', rank: 2, target: t.target, strike: t.strike };
+  }
+
+  /**
+   * One row per worker+SKU for strike-line checking.
+   * Uses packing hours when present (raw/EOS); skips mixed/blank SKUs for status.
+   */
+  function aggregateStrikeRows(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (!r.workerKey) return;
+      if (r.packingHours == null || r.packingHours <= 0) return;
+      var sku = r.sku || '';
+      var k = r.workerKey + '|' + sku;
+      if (!by[k]) {
+        by[k] = {
+          workerKey: r.workerKey,
+          workerName: r.workerName,
+          sku: sku,
+          boxes: 0,
+          packingHours: 0,
+          stations: {}
+        };
+      }
+      by[k].boxes += r.boxes || 0;
+      if (r.packingHours != null) by[k].packingHours += r.packingHours;
+      if (r.station) by[k].stations[r.station] = true;
+    });
+    return Object.keys(by)
+      .map(function (k) {
+        var g = by[k];
+        var hours = g.packingHours > 0 ? g.packingHours : null;
+        var bph = boxesPerHour(g.boxes, hours);
+        var st = strikeStatus(bph, g.sku);
+        return {
+          workerKey: g.workerKey,
+          workerName: g.workerName,
+          sku: g.sku || '—',
+          station: Object.keys(g.stations).join(', ') || '—',
+          boxes: g.boxes,
+          packingHours: hours,
+          boxesPerHour: bph,
+          target: st.target,
+          strike: st.strike,
+          strikeStatus: st
+        };
+      })
+      .sort(function (a, b) {
+        if (a.strikeStatus.rank !== b.strikeStatus.rank) return a.strikeStatus.rank - b.strikeStatus.rank;
+        var ab = a.boxesPerHour != null ? a.boxesPerHour : -1;
+        var bb = b.boxesPerHour != null ? b.boxesPerHour : -1;
+        return ab - bb;
+      });
+  }
+
+  /**
+   * One row per packer (duplicate names merged). Includes SKUs worked and
+   * whether each / overall hit the BPH target from the warehouse board.
+   * Uses Boxes Packed by Worker rows (packing time). Hourly-only rows are ignored here.
+   */
+  function aggregatePeopleRows(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (!r.workerKey) return;
+      if (r.packingHours == null || r.packingHours <= 0) return;
+      if (!by[r.workerKey]) {
+        by[r.workerKey] = {
+          workerKey: r.workerKey,
+          workerName: r.workerName,
+          boxes: 0,
+          packingHours: 0,
+          skus: {},
+          stations: {}
+        };
+      }
+      var g = by[r.workerKey];
+      g.boxes += r.boxes || 0;
+      g.packingHours += r.packingHours || 0;
+      if (r.station) g.stations[r.station] = true;
+      var sku = r.sku || '';
+      if (!g.skus[sku]) g.skus[sku] = { sku: sku, boxes: 0, packingHours: 0 };
+      g.skus[sku].boxes += r.boxes || 0;
+      g.skus[sku].packingHours += r.packingHours || 0;
+    });
+
+    return Object.keys(by)
+      .map(function (wk) {
+        var g = by[wk];
+        var hours = g.packingHours > 0 ? g.packingHours : null;
+        var overallBph = boxesPerHour(g.boxes, hours);
+        var skuRows = Object.keys(g.skus)
+          .filter(function (s) { return s; })
+          .sort(function (a, b) { return Number(a) - Number(b); })
+          .map(function (s) {
+            var sg = g.skus[s];
+            var sh = sg.packingHours > 0 ? sg.packingHours : null;
+            var bph = boxesPerHour(sg.boxes, sh);
+            var st = strikeStatus(bph, s);
+            return {
+              sku: s,
+              boxes: sg.boxes,
+              packingHours: sh,
+              boxesPerHour: bph,
+              target: st.target,
+              strike: st.strike,
+              strikeStatus: st,
+              hitTarget: st.key === 'on'
+            };
+          });
+        var blankSku = g.skus[''];
+        if (blankSku && !skuRows.length) {
+          var st0 = strikeStatus(overallBph, '');
+          skuRows.push({
+            sku: '',
+            boxes: blankSku.boxes,
+            packingHours: hours,
+            boxesPerHour: overallBph,
+            target: null,
+            strike: null,
+            strikeStatus: st0,
+            hitTarget: false
+          });
+        }
+        var ranked = skuRows.filter(function (s) { return s.strikeStatus && s.strikeStatus.rank < 99; });
+        var overallStatus;
+        if (!ranked.length) {
+          overallStatus = { key: 'none', label: 'No target set', rank: 99 };
+        } else {
+          overallStatus = ranked.reduce(function (worst, s) {
+            return s.strikeStatus.rank > worst.rank ? s.strikeStatus : worst;
+          }, ranked[0].strikeStatus);
+        }
+        var hitCount = ranked.filter(function (s) { return s.hitTarget; }).length;
+        return {
+          workerKey: g.workerKey,
+          workerName: g.workerName,
+          boxes: g.boxes,
+          packingHours: hours,
+          boxesPerHour: overallBph,
+          stations: Object.keys(g.stations).sort(),
+          skus: skuRows,
+          skuLabels: skuRows.map(function (s) { return s.sku || '—'; }),
+          hitTarget: ranked.length > 0 && hitCount === ranked.length,
+          hitCount: hitCount,
+          skuCount: ranked.length,
+          strikeStatus: overallStatus
+        };
+      })
+      .sort(function (a, b) {
+        if (a.strikeStatus.rank !== b.strikeStatus.rank) return a.strikeStatus.rank - b.strikeStatus.rank;
+        return (a.boxesPerHour != null ? a.boxesPerHour : -1) - (b.boxesPerHour != null ? b.boxesPerHour : -1);
+      });
+  }
+
   function hoursFromSeconds(sec) {
     if (sec == null || !isFinite(sec)) return null;
     return sec / 3600;
@@ -7879,6 +8046,9 @@ function toast(msg, err) {
     efficiencyVersusTarget: efficiencyVersusTarget,
     idlePercentage: idlePercentage,
     performanceStatus: performanceStatus,
+    strikeStatus: strikeStatus,
+    aggregateStrikeRows: aggregateStrikeRows,
+    aggregatePeopleRows: aggregatePeopleRows,
     processCsvText: processCsvText,
     recordFingerprint: recordFingerprint,
     mergeRecords: mergeRecords,
@@ -7961,15 +8131,18 @@ function toast(msg, err) {
     selectedWorker: null,
     loading: false,
     error: null,
-    view: 'strike', // strike | hourly | quality
+    view: 'people', // people | hours
     pendingImport: null // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
   };
 
-  /** Map CSV shiftKey → calendar morning|afternoon. */
+  /** Map CSV shiftKey → calendar morning|afternoon. Intra hour has no shift — use hour (≥14 = Afternoon). */
   function rosterShiftFromRecord(rec, fallback) {
     var sk = (rec && rec.shiftKey) || '';
     if (/afternoon|evening|night/i.test(sk)) return 'afternoon';
     if (/morning|day|^am$/i.test(sk)) return 'morning';
+    if (rec && rec.hour != null && isFinite(rec.hour)) {
+      return rec.hour >= 14 ? 'afternoon' : 'morning';
+    }
     return fallback === 'afternoon' ? 'afternoon' : 'morning';
   }
 
@@ -8010,9 +8183,9 @@ function toast(msg, err) {
 
   function preferViewFromFormats(formats) {
     var hasHourly = !!(formats && formats.hourly);
-    var hasStrike = !!(formats && (formats.summary || formats.detailed || formats.endOfShift));
-    if (hasHourly && !hasStrike) return 'hourly';
-    return 'strike';
+    var hasPeople = !!(formats && (formats.summary || formats.detailed || formats.endOfShift));
+    if (hasHourly && !hasPeople) return 'hours';
+    return 'people';
   }
 
   var els = {
@@ -8027,7 +8200,6 @@ function toast(msg, err) {
     prevWeek: document.getElementById('pkPrevWeek'),
     nextWeek: document.getElementById('pkNextWeek'),
     jumpToday: document.getElementById('pkJumpToday'),
-    legacyBtn: document.getElementById('pkLegacyBtn'),
     searchInput: document.getElementById('pkSearchInput'),
     views: document.getElementById('pkViews'),
     filters: document.getElementById('pkFilters'),
@@ -8112,15 +8284,12 @@ function toast(msg, err) {
     return ensureBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
   }
   function currentRecords() {
-    if (state.showLegacy) return state.legacy.records || [];
     return activeBucket().records || [];
   }
   function currentQuality() {
-    if (state.showLegacy) return state.legacy.quality || PA.emptyQuality();
     return activeBucket().quality || PA.emptyQuality();
   }
   function currentFiles() {
-    if (state.showLegacy) return state.legacy.files || [];
     return activeBucket().files || [];
   }
   function filtered() {
@@ -8310,11 +8479,11 @@ function toast(msg, err) {
     if (!state.weekStart) state.weekStart = startOfWeek(new Date());
     if (els.weekLabel) {
       els.weekLabel.innerHTML = weekLabel(state.weekStart) + '<span>' +
-        shiftLabel(state.rosterShift) + (state.showLegacy ? ' · Legacy' : '') + '</span>';
+        shiftLabel(state.rosterShift) + '</span>';
     }
     if (els.shiftToggle) {
       Array.prototype.forEach.call(els.shiftToggle.querySelectorAll('button[data-shift]'), function (btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-shift') === state.rosterShift && !state.showLegacy);
+        btn.classList.toggle('active', btn.getAttribute('data-shift') === state.rosterShift);
       });
     }
     if (els.daysEl) {
@@ -8325,7 +8494,7 @@ function toast(msg, err) {
         var key = ymd(d);
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'pk-day' + (i === state.dayIdx && !state.showLegacy ? ' active' : '') + (key === today ? ' today' : '');
+        btn.className = 'pk-day' + (i === state.dayIdx ? ' active' : '') + (key === today ? ' today' : '');
         var bucket = ensureBucket(key, state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
         var n = (bucket.records || []).length;
         btn.innerHTML = '<span class="d">' + DAY_NAMES[i] + '</span><span class="n">' + d.getDate() +
@@ -8341,12 +8510,6 @@ function toast(msg, err) {
         els.daysEl.appendChild(btn);
       }
     }
-    if (els.legacyBtn) {
-      var ln = (state.legacy.records || []).length;
-      els.legacyBtn.style.display = ln ? '' : 'none';
-      els.legacyBtn.classList.toggle('active', state.showLegacy);
-      els.legacyBtn.textContent = 'Legacy (' + ln + ')';
-    }
   }
 
   function renderStatus() {
@@ -8359,23 +8522,17 @@ function toast(msg, err) {
       els.status.innerHTML = '<div class="pk-banner pk-banner-err" role="alert">' + escapeHtml(state.error) + '</div>';
       return;
     }
-    if (state.showLegacy) {
-      els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>Legacy imports</strong><br>' +
-        'Data from before the Day/Afternoon × Mon–Fri calendar. Kept so nothing was dropped. ' +
-        'New uploads use each row’s report date and Day/Afternoon.</div>';
-      return;
-    }
     if (!currentRecords().length) {
       els.status.innerHTML = '<div class="pk-banner">No data for ' +
         escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-        '. At end of shift upload <b>Boxes Packed by Worker</b> (strike check) and/or <b>Inter hour</b> (boxes per hour). Rows go into the report date and Day/Afternoon from the CSV.</div>';
+        '. End of shift: upload <b>Boxes Packed by Worker</b> and <b>Intra Hour</b> CSVs. ' +
+        'Same names are merged; SKUs and BPH target hit show on People.</div>';
       return;
     }
     els.status.innerHTML = '';
   }
 
   function renderFilters() {
-    // Search lives in chrome; advanced filters stay unused in the compact layout.
     if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
       els.searchInput.value = state.filters.search || '';
     }
@@ -8384,19 +8541,22 @@ function toast(msg, err) {
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
-    var rows = PA.aggregateStrikeRows(filtered());
+    var rows = PA.aggregatePeopleRows(filtered());
     var counts = { on: 0, below: 0, strike: 0, none: 0 };
     rows.forEach(function (r) {
       if (r.strikeStatus && counts[r.strikeStatus.key] != null) counts[r.strikeStatus.key]++;
       else counts.none++;
     });
-    var k = PA.aggregateKpis(filtered());
+    var hourRows = filtered().filter(function (r) { return r.hour != null; });
+    var hourSet = {};
+    hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
     var stats = [
-      { cls: 'on', num: String(counts.on), lbl: 'On target' },
+      { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
-      { cls: 'boxes', num: PA.formatNumber(k.totalBoxes), lbl: 'Boxes' },
-      { cls: '', num: PA.formatNumber(k.activeWorkers), lbl: 'People' }
+      { cls: 'boxes', num: PA.formatNumber(rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0)), lbl: 'Boxes' },
+      { cls: '', num: String(rows.length), lbl: 'People' },
+      { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Hours' }
     ];
     els.kpis.innerHTML = stats.map(function (s) {
       return '<div class="pk-stat ' + s.cls + '"><div class="num">' + escapeHtml(s.num) +
@@ -8405,50 +8565,66 @@ function toast(msg, err) {
   }
 
   function applyView() {
-    var v = state.view || 'strike';
-    if (els.tableWrap) els.tableWrap.hidden = v !== 'strike' && v !== 'hourly';
+    var v = state.view || 'people';
+    if (v !== 'people' && v !== 'hours') v = 'people';
+    state.view = v;
+    if (els.tableWrap) els.tableWrap.hidden = false;
     if (els.charts) els.charts.hidden = true;
-    if (els.quality) els.quality.hidden = v !== 'quality';
+    if (els.quality) els.quality.hidden = true;
     if (els.views) {
       Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-view') === v);
       });
     }
-    if (v === 'strike' || v === 'hourly') renderTable();
+    renderTable();
   }
 
   function renderCharts() {
     if (els.charts) els.charts.innerHTML = '';
   }
 
-  function renderStrikeTable() {
-    var rows = PA.aggregateStrikeRows(filtered());
-    // Prefer rows that have hours (raw/EOS) — hourly-only uploads won't have BPH
-    var withHours = rows.filter(function (r) { return r.packingHours != null && r.packingHours > 0; });
-    var list = withHours.length ? withHours : rows;
-    var page = PA.paginate(list, state.page, PAGE_SIZE);
+  function skuHitsHtml(skus) {
+    if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
+    return skus.map(function (s) {
+      var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
+      var mark = st.key === 'on' ? '✓' : (st.key === 'none' ? '·' : '✗');
+      var tip = (s.sku || '?') + ': ' + PA.formatRate(s.boxesPerHour) + ' BPH' +
+        (st.target != null ? ' (target ' + st.target + ')' : '') + ' — ' + st.label;
+      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
+        escapeHtml(s.sku || '—') + ' ' + mark + '</span>';
+    }).join('');
+  }
+
+  function renderPeopleTable() {
+    var rows = PA.aggregatePeopleRows(filtered());
+    if (!rows.length) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">' +
+        'No Boxes Packed by Worker rows for this day/shift. Upload that CSV for SKUs and BPH target.</div></section>';
+      return;
+    }
+    var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
+      var hitLbl = r.skuCount
+        ? (r.hitTarget ? 'Hit target' : (r.hitCount + '/' + r.skuCount + ' hit'))
+        : 'No target';
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
-        '<td>' + escapeHtml(r.sku) + '</td>' +
+        '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatHours(r.packingHours)) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(r.target != null ? String(r.target) : 'N/A') + '</td>' +
-        '<td class="r mn">' + escapeHtml(r.strike != null ? String(r.strike) : 'N/A') + '</td>' +
-        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
+        '<td>' + strikePill(r.strikeStatus) +
+        '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
     }).join('');
-    var note = withHours.length
-      ? 'Boxes/hour vs SKU target & strike line'
-      : 'Upload Boxes Packed by Worker (needs packing time + SKU). Inter hour alone can’t compute BPH.';
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Strike check</h2>' +
-      '<div class="pk-table-meta">' + escapeHtml(note) + '</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
+      '<div class="pk-table-meta">Duplicate names merged · SKU ✓ = hit BPH target · ✗ = below</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
-      '<th class="r">Target</th><th class="r">Strike</th><th>Status</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th class="r">BPH</th><th>Target</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="8" class="empty-td">No strike rows yet — upload Boxes Packed by Worker</td></tr>') +
+      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -8463,17 +8639,16 @@ function toast(msg, err) {
   }
 
   function renderHourlyTable() {
-    var byHour = PA.aggregateByHour(filtered());
-    var workers = PA.aggregateWorkers(filtered());
-    if (!byHour.length) {
-      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No hourly rows for this day/shift. Upload the Inter hour CSV.</div></section>';
+    var hourRecs = filtered().filter(function (r) { return r.hour != null; });
+    if (!hourRecs.length) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No Intra Hour rows for this day/shift. Upload Intra Hour Floor Performance CSV(s).</div></section>';
       return;
     }
+    var byHour = PA.aggregateByHour(hourRecs);
     var hourKeys = byHour.map(function (h) { return h.hour; });
     var head = hourKeys.map(function (h) { return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + '</th>'; }).join('');
-    // Rebuild per-worker hour map from records
     var map = {};
-    filtered().forEach(function (r) {
+    hourRecs.forEach(function (r) {
       if (r.hour == null || !r.workerKey) return;
       if (!map[r.workerKey]) map[r.workerKey] = { name: r.workerName, hours: {}, total: 0 };
       map[r.workerKey].hours[r.hour] = (map[r.workerKey].hours[r.hour] || 0) + (r.boxes || 0);
@@ -8486,12 +8661,12 @@ function toast(msg, err) {
         var v = w.hours[h];
         return '<td class="r mn">' + (v != null ? v : '—') + '</td>';
       }).join('');
-      return '<tr><td>' + escapeHtml(w.name) + '</td>' + cells +
+      return '<tr><td class="bold">' + escapeHtml(w.name) + '</td>' + cells +
         '<td class="r mn bold">' + w.total + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Boxes / hour</h2>' +
-      '<div class="pk-table-meta">' + names.length + ' workers</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Hours</h2>' +
+      '<div class="pk-table-meta">' + names.length + ' workers · ' + hourKeys.length + ' hour(s)</div></div>' +
       chartCard('Boxes by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
       '<div class="pk-tw" style="margin-top:8px"><table><thead><tr><th>Worker</th>' + head +
       '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
@@ -8500,8 +8675,8 @@ function toast(msg, err) {
   function renderTable() {
     if (!els.tableWrap) return;
     if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
-    if (state.view === 'hourly') renderHourlyTable();
-    else renderStrikeTable();
+    if (state.view === 'hours') renderHourlyTable();
+    else renderPeopleTable();
   }
 
   function renderDetail() {
@@ -8590,7 +8765,7 @@ function toast(msg, err) {
           escapeHtml(r.error || 'Invalid') + '</div>';
       }
       var q = r.quality || {};
-      var label = r.format === 'hourly' ? 'Inter hour'
+      var label = r.format === 'hourly' ? 'Intra Hour'
         : (r.format === 'summary' ? 'Boxes Packed by Worker' : (r.format || '?'));
       return '<div class="pk-preview-file"><strong>' + escapeHtml(f.name) + '</strong>' +
         '<div class="pk-table-meta">' + escapeHtml(label) +
@@ -8735,11 +8910,10 @@ function toast(msg, err) {
     var recs = currentRecords();
     var files = currentFiles();
     if (!recs.length && !files.length) {
-      els.lastUpdated.textContent = state.showLegacy ? 'Legacy' : (DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
+      els.lastUpdated.textContent = DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift);
       return;
     }
-    els.lastUpdated.textContent = (state.showLegacy ? 'Legacy' : DAY_NAMES[state.dayIdx]) +
-      ' · ' + recs.length + ' rows';
+    els.lastUpdated.textContent = DAY_NAMES[state.dayIdx] + ' · ' + recs.length + ' rows';
   }
 
   async function saveData() {
@@ -8810,14 +8984,14 @@ function toast(msg, err) {
           state.byDate = m.byDate;
           state.legacy = m.legacy;
           await saveData();
-          toast('Migrated previous Packer data — open Legacy to review older rows');
+          toast('Migrated previous Packer data into calendar days');
         } else if (data && typeof data === 'object') {
           // Very old shift-keyed object
           var legacyRecs = PA.migrateLegacyShifts(data);
           state.legacy = { records: legacyRecs, files: [], quality: PA.summarizeQuality(legacyRecs, null) };
           state.byDate = {};
           await saveData();
-          toast('Migrated legacy shift tabs into Legacy view');
+          toast('Migrated older Packer data into calendar days');
         }
       }
     } catch (e) {
@@ -8875,10 +9049,6 @@ function toast(msg, err) {
   }
   if (els.clearBtn) {
     els.clearBtn.addEventListener('click', async function () {
-      if (state.showLegacy) {
-        toast('Switch out of Legacy to clear a calendar day', 'err');
-        return;
-      }
       if (!clearArmed) {
         clearArmed = true;
         els.clearBtn.textContent = 'Confirm?';
@@ -8934,13 +9104,6 @@ function toast(msg, err) {
       renderAll();
     });
   }
-  if (els.legacyBtn) {
-    els.legacyBtn.addEventListener('click', function () {
-      state.showLegacy = !state.showLegacy;
-      state.page = 1;
-      renderAll();
-    });
-  }
   if (els.weekLabel) {
     els.weekLabel.addEventListener('click', function () {
       if (els.jumpToday) els.jumpToday.click();
@@ -8960,7 +9123,7 @@ function toast(msg, err) {
     els.views.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-view]') : null;
       if (!btn) return;
-      state.view = btn.getAttribute('data-view') || 'strike';
+      state.view = btn.getAttribute('data-view') || 'people';
       state.page = 1;
       applyView();
     });

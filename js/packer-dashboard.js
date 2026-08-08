@@ -47,15 +47,18 @@
     selectedWorker: null,
     loading: false,
     error: null,
-    view: 'strike', // strike | hourly | quality
+    view: 'people', // people | hours
     pendingImport: null // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
   };
 
-  /** Map CSV shiftKey → calendar morning|afternoon. */
+  /** Map CSV shiftKey → calendar morning|afternoon. Intra hour has no shift — use hour (≥14 = Afternoon). */
   function rosterShiftFromRecord(rec, fallback) {
     var sk = (rec && rec.shiftKey) || '';
     if (/afternoon|evening|night/i.test(sk)) return 'afternoon';
     if (/morning|day|^am$/i.test(sk)) return 'morning';
+    if (rec && rec.hour != null && isFinite(rec.hour)) {
+      return rec.hour >= 14 ? 'afternoon' : 'morning';
+    }
     return fallback === 'afternoon' ? 'afternoon' : 'morning';
   }
 
@@ -96,9 +99,9 @@
 
   function preferViewFromFormats(formats) {
     var hasHourly = !!(formats && formats.hourly);
-    var hasStrike = !!(formats && (formats.summary || formats.detailed || formats.endOfShift));
-    if (hasHourly && !hasStrike) return 'hourly';
-    return 'strike';
+    var hasPeople = !!(formats && (formats.summary || formats.detailed || formats.endOfShift));
+    if (hasHourly && !hasPeople) return 'hours';
+    return 'people';
   }
 
   var els = {
@@ -113,7 +116,6 @@
     prevWeek: document.getElementById('pkPrevWeek'),
     nextWeek: document.getElementById('pkNextWeek'),
     jumpToday: document.getElementById('pkJumpToday'),
-    legacyBtn: document.getElementById('pkLegacyBtn'),
     searchInput: document.getElementById('pkSearchInput'),
     views: document.getElementById('pkViews'),
     filters: document.getElementById('pkFilters'),
@@ -198,15 +200,12 @@
     return ensureBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
   }
   function currentRecords() {
-    if (state.showLegacy) return state.legacy.records || [];
     return activeBucket().records || [];
   }
   function currentQuality() {
-    if (state.showLegacy) return state.legacy.quality || PA.emptyQuality();
     return activeBucket().quality || PA.emptyQuality();
   }
   function currentFiles() {
-    if (state.showLegacy) return state.legacy.files || [];
     return activeBucket().files || [];
   }
   function filtered() {
@@ -396,11 +395,11 @@
     if (!state.weekStart) state.weekStart = startOfWeek(new Date());
     if (els.weekLabel) {
       els.weekLabel.innerHTML = weekLabel(state.weekStart) + '<span>' +
-        shiftLabel(state.rosterShift) + (state.showLegacy ? ' · Legacy' : '') + '</span>';
+        shiftLabel(state.rosterShift) + '</span>';
     }
     if (els.shiftToggle) {
       Array.prototype.forEach.call(els.shiftToggle.querySelectorAll('button[data-shift]'), function (btn) {
-        btn.classList.toggle('active', btn.getAttribute('data-shift') === state.rosterShift && !state.showLegacy);
+        btn.classList.toggle('active', btn.getAttribute('data-shift') === state.rosterShift);
       });
     }
     if (els.daysEl) {
@@ -411,7 +410,7 @@
         var key = ymd(d);
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'pk-day' + (i === state.dayIdx && !state.showLegacy ? ' active' : '') + (key === today ? ' today' : '');
+        btn.className = 'pk-day' + (i === state.dayIdx ? ' active' : '') + (key === today ? ' today' : '');
         var bucket = ensureBucket(key, state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
         var n = (bucket.records || []).length;
         btn.innerHTML = '<span class="d">' + DAY_NAMES[i] + '</span><span class="n">' + d.getDate() +
@@ -427,12 +426,6 @@
         els.daysEl.appendChild(btn);
       }
     }
-    if (els.legacyBtn) {
-      var ln = (state.legacy.records || []).length;
-      els.legacyBtn.style.display = ln ? '' : 'none';
-      els.legacyBtn.classList.toggle('active', state.showLegacy);
-      els.legacyBtn.textContent = 'Legacy (' + ln + ')';
-    }
   }
 
   function renderStatus() {
@@ -445,23 +438,17 @@
       els.status.innerHTML = '<div class="pk-banner pk-banner-err" role="alert">' + escapeHtml(state.error) + '</div>';
       return;
     }
-    if (state.showLegacy) {
-      els.status.innerHTML = '<div class="pk-banner pk-banner-empty"><strong>Legacy imports</strong><br>' +
-        'Data from before the Day/Afternoon × Mon–Fri calendar. Kept so nothing was dropped. ' +
-        'New uploads use each row’s report date and Day/Afternoon.</div>';
-      return;
-    }
     if (!currentRecords().length) {
       els.status.innerHTML = '<div class="pk-banner">No data for ' +
         escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-        '. At end of shift upload <b>Boxes Packed by Worker</b> (strike check) and/or <b>Inter hour</b> (boxes per hour). Rows go into the report date and Day/Afternoon from the CSV.</div>';
+        '. End of shift: upload <b>Boxes Packed by Worker</b> and <b>Intra Hour</b> CSVs. ' +
+        'Same names are merged; SKUs and BPH target hit show on People.</div>';
       return;
     }
     els.status.innerHTML = '';
   }
 
   function renderFilters() {
-    // Search lives in chrome; advanced filters stay unused in the compact layout.
     if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
       els.searchInput.value = state.filters.search || '';
     }
@@ -470,19 +457,22 @@
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
-    var rows = PA.aggregateStrikeRows(filtered());
+    var rows = PA.aggregatePeopleRows(filtered());
     var counts = { on: 0, below: 0, strike: 0, none: 0 };
     rows.forEach(function (r) {
       if (r.strikeStatus && counts[r.strikeStatus.key] != null) counts[r.strikeStatus.key]++;
       else counts.none++;
     });
-    var k = PA.aggregateKpis(filtered());
+    var hourRows = filtered().filter(function (r) { return r.hour != null; });
+    var hourSet = {};
+    hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
     var stats = [
-      { cls: 'on', num: String(counts.on), lbl: 'On target' },
+      { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
-      { cls: 'boxes', num: PA.formatNumber(k.totalBoxes), lbl: 'Boxes' },
-      { cls: '', num: PA.formatNumber(k.activeWorkers), lbl: 'People' }
+      { cls: 'boxes', num: PA.formatNumber(rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0)), lbl: 'Boxes' },
+      { cls: '', num: String(rows.length), lbl: 'People' },
+      { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Hours' }
     ];
     els.kpis.innerHTML = stats.map(function (s) {
       return '<div class="pk-stat ' + s.cls + '"><div class="num">' + escapeHtml(s.num) +
@@ -491,50 +481,66 @@
   }
 
   function applyView() {
-    var v = state.view || 'strike';
-    if (els.tableWrap) els.tableWrap.hidden = v !== 'strike' && v !== 'hourly';
+    var v = state.view || 'people';
+    if (v !== 'people' && v !== 'hours') v = 'people';
+    state.view = v;
+    if (els.tableWrap) els.tableWrap.hidden = false;
     if (els.charts) els.charts.hidden = true;
-    if (els.quality) els.quality.hidden = v !== 'quality';
+    if (els.quality) els.quality.hidden = true;
     if (els.views) {
       Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-view') === v);
       });
     }
-    if (v === 'strike' || v === 'hourly') renderTable();
+    renderTable();
   }
 
   function renderCharts() {
     if (els.charts) els.charts.innerHTML = '';
   }
 
-  function renderStrikeTable() {
-    var rows = PA.aggregateStrikeRows(filtered());
-    // Prefer rows that have hours (raw/EOS) — hourly-only uploads won't have BPH
-    var withHours = rows.filter(function (r) { return r.packingHours != null && r.packingHours > 0; });
-    var list = withHours.length ? withHours : rows;
-    var page = PA.paginate(list, state.page, PAGE_SIZE);
+  function skuHitsHtml(skus) {
+    if (!skus || !skus.length) return '<span class="pk-muted">—</span>';
+    return skus.map(function (s) {
+      var st = s.strikeStatus || { key: 'none', label: 'No target set', target: null };
+      var mark = st.key === 'on' ? '✓' : (st.key === 'none' ? '·' : '✗');
+      var tip = (s.sku || '?') + ': ' + PA.formatRate(s.boxesPerHour) + ' BPH' +
+        (st.target != null ? ' (target ' + st.target + ')' : '') + ' — ' + st.label;
+      return '<span class="pk-sku-hit ' + escapeHtml(st.key) + '" title="' + escapeHtml(tip) + '">' +
+        escapeHtml(s.sku || '—') + ' ' + mark + '</span>';
+    }).join('');
+  }
+
+  function renderPeopleTable() {
+    var rows = PA.aggregatePeopleRows(filtered());
+    if (!rows.length) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">' +
+        'No Boxes Packed by Worker rows for this day/shift. Upload that CSV for SKUs and BPH target.</div></section>';
+      return;
+    }
+    var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
+      var hitLbl = r.skuCount
+        ? (r.hitTarget ? 'Hit target' : (r.hitCount + '/' + r.skuCount + ' hit'))
+        : 'No target';
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
-        '<td>' + escapeHtml(r.sku) + '</td>' +
+        '<td class="pk-sku-cell">' + skuHitsHtml(r.skus) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatNumber(r.boxes)) + '</td>' +
+        '<td class="r mn">' + escapeHtml(PA.formatHours(r.packingHours)) + '</td>' +
         '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
-        '<td class="r mn">' + escapeHtml(r.target != null ? String(r.target) : 'N/A') + '</td>' +
-        '<td class="r mn">' + escapeHtml(r.strike != null ? String(r.strike) : 'N/A') + '</td>' +
-        '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
+        '<td>' + strikePill(r.strikeStatus) +
+        '<div class="pk-table-meta">' + escapeHtml(hitLbl) + '</div></td></tr>';
     }).join('');
-    var note = withHours.length
-      ? 'Boxes/hour vs SKU target & strike line'
-      : 'Upload Boxes Packed by Worker (needs packing time + SKU). Inter hour alone can’t compute BPH.';
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Strike check</h2>' +
-      '<div class="pk-table-meta">' + escapeHtml(note) + '</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
+      '<div class="pk-table-meta">Duplicate names merged · SKU ✓ = hit BPH target · ✗ = below</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
-      '<th class="r">#</th><th>Worker</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
-      '<th class="r">Target</th><th class="r">Strike</th><th>Status</th>' +
+      '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
+      '<th class="r">BPH</th><th>Target</th>' +
       '</tr></thead><tbody>' +
-      (body || '<tr><td colspan="8" class="empty-td">No strike rows yet — upload Boxes Packed by Worker</td></tr>') +
+      (body || '<tr><td colspan="7" class="empty-td">No people rows</td></tr>') +
       '</tbody></table></div><div class="pk-pager">' +
       '<button type="button" class="btn" data-page="prev"' + (page.page <= 1 ? ' disabled' : '') + '>Prev</button>' +
       '<span>' + page.page + ' / ' + page.pages + '</span>' +
@@ -549,17 +555,16 @@
   }
 
   function renderHourlyTable() {
-    var byHour = PA.aggregateByHour(filtered());
-    var workers = PA.aggregateWorkers(filtered());
-    if (!byHour.length) {
-      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No hourly rows for this day/shift. Upload the Inter hour CSV.</div></section>';
+    var hourRecs = filtered().filter(function (r) { return r.hour != null; });
+    if (!hourRecs.length) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No Intra Hour rows for this day/shift. Upload Intra Hour Floor Performance CSV(s).</div></section>';
       return;
     }
+    var byHour = PA.aggregateByHour(hourRecs);
     var hourKeys = byHour.map(function (h) { return h.hour; });
     var head = hourKeys.map(function (h) { return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + '</th>'; }).join('');
-    // Rebuild per-worker hour map from records
     var map = {};
-    filtered().forEach(function (r) {
+    hourRecs.forEach(function (r) {
       if (r.hour == null || !r.workerKey) return;
       if (!map[r.workerKey]) map[r.workerKey] = { name: r.workerName, hours: {}, total: 0 };
       map[r.workerKey].hours[r.hour] = (map[r.workerKey].hours[r.hour] || 0) + (r.boxes || 0);
@@ -572,12 +577,12 @@
         var v = w.hours[h];
         return '<td class="r mn">' + (v != null ? v : '—') + '</td>';
       }).join('');
-      return '<tr><td>' + escapeHtml(w.name) + '</td>' + cells +
+      return '<tr><td class="bold">' + escapeHtml(w.name) + '</td>' + cells +
         '<td class="r mn bold">' + w.total + '</td></tr>';
     }).join('');
     els.tableWrap.innerHTML =
-      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Boxes / hour</h2>' +
-      '<div class="pk-table-meta">' + names.length + ' workers</div></div>' +
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Hours</h2>' +
+      '<div class="pk-table-meta">' + names.length + ' workers · ' + hourKeys.length + ' hour(s)</div></div>' +
       chartCard('Boxes by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
       '<div class="pk-tw" style="margin-top:8px"><table><thead><tr><th>Worker</th>' + head +
       '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
@@ -586,8 +591,8 @@
   function renderTable() {
     if (!els.tableWrap) return;
     if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
-    if (state.view === 'hourly') renderHourlyTable();
-    else renderStrikeTable();
+    if (state.view === 'hours') renderHourlyTable();
+    else renderPeopleTable();
   }
 
   function renderDetail() {
@@ -676,7 +681,7 @@
           escapeHtml(r.error || 'Invalid') + '</div>';
       }
       var q = r.quality || {};
-      var label = r.format === 'hourly' ? 'Inter hour'
+      var label = r.format === 'hourly' ? 'Intra Hour'
         : (r.format === 'summary' ? 'Boxes Packed by Worker' : (r.format || '?'));
       return '<div class="pk-preview-file"><strong>' + escapeHtml(f.name) + '</strong>' +
         '<div class="pk-table-meta">' + escapeHtml(label) +
@@ -821,11 +826,10 @@
     var recs = currentRecords();
     var files = currentFiles();
     if (!recs.length && !files.length) {
-      els.lastUpdated.textContent = state.showLegacy ? 'Legacy' : (DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift));
+      els.lastUpdated.textContent = DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift);
       return;
     }
-    els.lastUpdated.textContent = (state.showLegacy ? 'Legacy' : DAY_NAMES[state.dayIdx]) +
-      ' · ' + recs.length + ' rows';
+    els.lastUpdated.textContent = DAY_NAMES[state.dayIdx] + ' · ' + recs.length + ' rows';
   }
 
   async function saveData() {
@@ -896,14 +900,14 @@
           state.byDate = m.byDate;
           state.legacy = m.legacy;
           await saveData();
-          toast('Migrated previous Packer data — open Legacy to review older rows');
+          toast('Migrated previous Packer data into calendar days');
         } else if (data && typeof data === 'object') {
           // Very old shift-keyed object
           var legacyRecs = PA.migrateLegacyShifts(data);
           state.legacy = { records: legacyRecs, files: [], quality: PA.summarizeQuality(legacyRecs, null) };
           state.byDate = {};
           await saveData();
-          toast('Migrated legacy shift tabs into Legacy view');
+          toast('Migrated older Packer data into calendar days');
         }
       }
     } catch (e) {
@@ -961,10 +965,6 @@
   }
   if (els.clearBtn) {
     els.clearBtn.addEventListener('click', async function () {
-      if (state.showLegacy) {
-        toast('Switch out of Legacy to clear a calendar day', 'err');
-        return;
-      }
       if (!clearArmed) {
         clearArmed = true;
         els.clearBtn.textContent = 'Confirm?';
@@ -1020,13 +1020,6 @@
       renderAll();
     });
   }
-  if (els.legacyBtn) {
-    els.legacyBtn.addEventListener('click', function () {
-      state.showLegacy = !state.showLegacy;
-      state.page = 1;
-      renderAll();
-    });
-  }
   if (els.weekLabel) {
     els.weekLabel.addEventListener('click', function () {
       if (els.jumpToday) els.jumpToday.click();
@@ -1046,7 +1039,7 @@
     els.views.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[data-view]') : null;
       if (!btn) return;
-      state.view = btn.getAttribute('data-view') || 'strike';
+      state.view = btn.getAttribute('data-view') || 'people';
       state.page = 1;
       applyView();
     });
