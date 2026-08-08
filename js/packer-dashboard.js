@@ -1211,6 +1211,7 @@
   window.__packerDashboard = {
     refresh: renderAll,
     exportWeek: exportActiveWeek,
+    exportShiftPackers: exportCurrentShiftPackers,
     buildWeeklySkuReview: buildWeeklySkuReview,
     downloadWeeklySkuReview: downloadWeeklySkuReview,
     getByDate: function () { return state.byDate; },

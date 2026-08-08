@@ -6,15 +6,14 @@
 
 https://raw.githubusercontent.com/dSFulfilment/SHIFT-TRACKER-/cursor/shift-floor-planner-f7b8/index.html
 
-Save that file, then open it. Your data stays in the browser on that computer (use **Backup** on Floor Plan if you want a copy).
+Save that file, then open it. Your data stays in the browser on that computer.
 
 ## Features
 
-- Floor Plan, Breaks, Shift Tracker, Packer (Day/Afternoon × Mon–Fri), Roster
-- Whole-app **Backup** / **Restore** (toolbar on Floor Plan)
+- Floor, Breaks, Tracker, Packer (Day/Afternoon × Mon–Fri), Roster, Settings
+- **Settings** holds all exports, restores, and wipes (CSV + JSON)
 - Packer end-of-shift: Boxes Packed by Worker + Intra Hour CSVs
-- **Week review** export: dates + boxes packed on each SKU
-- People view merges duplicate names, lists SKUs, shows BPH target hit
+- People view merges duplicate names, lists SKUs, shows BPH status
 
 ## Optional developer tests
 
