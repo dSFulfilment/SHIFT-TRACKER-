@@ -174,6 +174,29 @@ console.log('\nSKU / shift standardisation');
   assert(PA.normalizeShift('Twilight').known === false, 'unknown shift flagged');
 })();
 
+console.log('\nPeople merge + BPH target (Boxes Packed by Worker)');
+(function () {
+  var res = PA.processCsvText(readFixture('boxes-packed-by-worker.csv'), { sourceFile: 'boxes.csv' });
+  assert(res.ok, 'real boxes CSV ok');
+  var people = PA.aggregatePeopleRows(res.records.filter(function (r) {
+    return r.shiftKey === 'afternoon_shift';
+  }));
+  assert(people.length > 0, 'people rows for afternoon');
+  var avalon = people.filter(function (p) {
+    return /avalon/i.test(p.workerName);
+  })[0];
+  assert(!!avalon, 'Avalon merged into one person');
+  assert(avalon.skus.length >= 3, 'Avalon keeps multiple SKUs');
+  assert(avalon.skus.every(function (s) { return s.strikeStatus && s.strikeStatus.key; }), 'each SKU has target status');
+  assert(typeof avalon.hitTarget === 'boolean', 'hitTarget flag present');
+  // Intra hour alone should not create people BPH rows
+  var hour = PA.processCsvText(readFixture('intra-hour-3pm.csv'), { sourceFile: 'hour.csv' });
+  assert(hour.ok && hour.format === 'hourly', 'intra hour format');
+  assert(PA.aggregatePeopleRows(hour.records).length === 0, 'hourly-only does not invent BPH people rows');
+  assert(PA.parseHourFromKey('2026-08-07 15:00:00.000') === 15, 'ISO hour key parses');
+  assert(PA.parseReportDateFromHourKey('2026-08-07 15:00:00.000') === '2026-08-07', 'ISO hour date parses');
+})();
+
 console.log('\n────────────────────────────────');
 console.log('Passed: ' + passed + '  Failed: ' + failed);
 process.exit(failed ? 1 : 0);

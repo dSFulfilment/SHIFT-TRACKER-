@@ -318,6 +318,7 @@
     var by = {};
     (records || []).forEach(function (r) {
       if (!r.workerKey) return;
+      if (r.packingHours == null || r.packingHours <= 0) return;
       var sku = r.sku || '';
       var k = r.workerKey + '|' + sku;
       if (!by[k]) {
@@ -358,6 +359,105 @@
         var ab = a.boxesPerHour != null ? a.boxesPerHour : -1;
         var bb = b.boxesPerHour != null ? b.boxesPerHour : -1;
         return ab - bb;
+      });
+  }
+
+  /**
+   * One row per packer (duplicate names merged). Includes SKUs worked and
+   * whether each / overall hit the BPH target from the warehouse board.
+   * Uses Boxes Packed by Worker rows (packing time). Hourly-only rows are ignored here.
+   */
+  function aggregatePeopleRows(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (!r.workerKey) return;
+      if (r.packingHours == null || r.packingHours <= 0) return;
+      if (!by[r.workerKey]) {
+        by[r.workerKey] = {
+          workerKey: r.workerKey,
+          workerName: r.workerName,
+          boxes: 0,
+          packingHours: 0,
+          skus: {},
+          stations: {}
+        };
+      }
+      var g = by[r.workerKey];
+      g.boxes += r.boxes || 0;
+      g.packingHours += r.packingHours || 0;
+      if (r.station) g.stations[r.station] = true;
+      var sku = r.sku || '';
+      if (!g.skus[sku]) g.skus[sku] = { sku: sku, boxes: 0, packingHours: 0 };
+      g.skus[sku].boxes += r.boxes || 0;
+      g.skus[sku].packingHours += r.packingHours || 0;
+    });
+
+    return Object.keys(by)
+      .map(function (wk) {
+        var g = by[wk];
+        var hours = g.packingHours > 0 ? g.packingHours : null;
+        var overallBph = boxesPerHour(g.boxes, hours);
+        var skuRows = Object.keys(g.skus)
+          .filter(function (s) { return s; })
+          .sort(function (a, b) { return Number(a) - Number(b); })
+          .map(function (s) {
+            var sg = g.skus[s];
+            var sh = sg.packingHours > 0 ? sg.packingHours : null;
+            var bph = boxesPerHour(sg.boxes, sh);
+            var st = strikeStatus(bph, s);
+            return {
+              sku: s,
+              boxes: sg.boxes,
+              packingHours: sh,
+              boxesPerHour: bph,
+              target: st.target,
+              strike: st.strike,
+              strikeStatus: st,
+              hitTarget: st.key === 'on'
+            };
+          });
+        var blankSku = g.skus[''];
+        if (blankSku && !skuRows.length) {
+          var st0 = strikeStatus(overallBph, '');
+          skuRows.push({
+            sku: '',
+            boxes: blankSku.boxes,
+            packingHours: hours,
+            boxesPerHour: overallBph,
+            target: null,
+            strike: null,
+            strikeStatus: st0,
+            hitTarget: false
+          });
+        }
+        var ranked = skuRows.filter(function (s) { return s.strikeStatus && s.strikeStatus.rank < 99; });
+        var overallStatus;
+        if (!ranked.length) {
+          overallStatus = { key: 'none', label: 'No target set', rank: 99 };
+        } else {
+          overallStatus = ranked.reduce(function (worst, s) {
+            return s.strikeStatus.rank > worst.rank ? s.strikeStatus : worst;
+          }, ranked[0].strikeStatus);
+        }
+        var hitCount = ranked.filter(function (s) { return s.hitTarget; }).length;
+        return {
+          workerKey: g.workerKey,
+          workerName: g.workerName,
+          boxes: g.boxes,
+          packingHours: hours,
+          boxesPerHour: overallBph,
+          stations: Object.keys(g.stations).sort(),
+          skus: skuRows,
+          skuLabels: skuRows.map(function (s) { return s.sku || '—'; }),
+          hitTarget: ranked.length > 0 && hitCount === ranked.length,
+          hitCount: hitCount,
+          skuCount: ranked.length,
+          strikeStatus: overallStatus
+        };
+      })
+      .sort(function (a, b) {
+        if (a.strikeStatus.rank !== b.strikeStatus.rank) return a.strikeStatus.rank - b.strikeStatus.rank;
+        return (a.boxesPerHour != null ? a.boxesPerHour : -1) - (b.boxesPerHour != null ? b.boxesPerHour : -1);
       });
   }
 
@@ -1327,6 +1427,7 @@
     performanceStatus: performanceStatus,
     strikeStatus: strikeStatus,
     aggregateStrikeRows: aggregateStrikeRows,
+    aggregatePeopleRows: aggregatePeopleRows,
     processCsvText: processCsvText,
     recordFingerprint: recordFingerprint,
     mergeRecords: mergeRecords,
