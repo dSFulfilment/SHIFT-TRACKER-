@@ -548,55 +548,71 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   flex:1; min-height:0; overflow:auto; padding:8px 10px calc(76px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling:touch;
 }
-#breakPlannerTab .bp-groups{ display:flex; flex-direction:column; gap:4px; }
+#breakPlannerTab .bp-groups{ width:100%; }
 #breakPlannerTab .bp-empty{
   text-align:center; color:#8E8E93; font-size:12px; padding:28px 12px;
   background:#fff; border:1px dashed #D8DCE3; border-radius:10px;
 }
-#breakPlannerTab .bp-group-card{
-  background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:6px 8px;
-  transition:border-color .12s, box-shadow .12s, background .12s;
+#breakPlannerTab .bp-table{
+  width:100%; border-collapse:separate; border-spacing:0 4px; table-layout:fixed;
 }
-#breakPlannerTab .bp-pool.picking .bp-group-card{
-  border-color:#9FB5F5; cursor:pointer; background:#F7F9FF;
+#breakPlannerTab .bp-table th{
+  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:#8E8E93; text-align:left; padding:0 6px 2px; font-weight:800;
 }
-#breakPlannerTab .bp-pool.picking .bp-group-card:hover,
-#breakPlannerTab .bp-group-card.drop-target{
-  border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7;
+#breakPlannerTab .bp-table th.bp-col-actions{ width:84px; }
+#breakPlannerTab .bp-table th.bp-col-group{ width:72px; }
+#breakPlannerTab .bp-table th.bp-col-st{ width:88px; }
+#breakPlannerTab .bp-table th.bp-col-time{ width:118px; }
+#breakPlannerTab .bp-group-card td{
+  background:#fff; border-top:1px solid #E5E8EF; border-bottom:1px solid #E5E8EF;
+  padding:5px 6px; vertical-align:middle;
 }
-#breakPlannerTab .bp-group-top{
-  display:flex; align-items:center; gap:5px; flex-wrap:wrap;
+#breakPlannerTab .bp-group-card td:first-child{ border-left:1px solid #E5E8EF; border-radius:8px 0 0 8px; }
+#breakPlannerTab .bp-group-card td:last-child{ border-right:1px solid #E5E8EF; border-radius:0 8px 8px 0; }
+#breakPlannerTab .bp-pool.picking .bp-group-card td{
+  background:#F7F9FF; border-color:#9FB5F5; cursor:pointer;
 }
 #breakPlannerTab .bp-group-label{
   font-size:12px; font-weight:800; border:1px solid transparent; background:transparent;
-  padding:2px 5px; border-radius:6px; font-family:inherit; width:78px; color:#1D1D1F;
+  padding:2px 4px; border-radius:6px; font-family:inherit; width:100%; color:#1D1D1F; box-sizing:border-box;
 }
 #breakPlannerTab .bp-group-label:focus{ outline:none; background:#F5F6FA; border-color:#D8DCE3; }
 #breakPlannerTab .bp-group-stations{
   font-size:11px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:6px;
-  padding:3px 6px; font-family:inherit; width:96px; background:#fff;
+  padding:3px 5px; font-family:inherit; width:100%; background:#fff; box-sizing:border-box;
 }
-#breakPlannerTab .bp-times{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; flex:1; min-width:0; }
-#breakPlannerTab .bp-time-block{ display:flex; align-items:center; gap:3px; }
-#breakPlannerTab .bp-time-block label{
-  font-size:9px; color:#8E8E93; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
-}
+#breakPlannerTab .bp-time-block{ display:flex; align-items:center; gap:2px; }
 #breakPlannerTab .bp-time-block input[type=time]{
-  font-size:11px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 4px;
-  font-family:inherit; background:#fff; width:6.4em;
+  font-size:11px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 2px;
+  font-family:inherit; background:#fff; width:5.8em; min-width:0;
 }
 #breakPlannerTab .bp-group-rm,
 #breakPlannerTab .bp-add-people{
   border:1px solid #D8DCE3; border-radius:7px; background:#fff; color:#1D1D1F;
-  font-size:11px; font-weight:800; font-family:inherit; cursor:pointer; padding:4px 8px;
+  font-size:11px; font-weight:800; font-family:inherit; cursor:pointer; padding:4px 7px;
 }
 #breakPlannerTab .bp-add-people{ background:#1C2430; color:#fff; border-color:#1C2430; }
+#breakPlannerTab .bp-row-actions{ display:flex; align-items:center; gap:4px; justify-content:flex-end; }
 #breakPlannerTab .bp-group-rm{
-  width:28px; height:28px; padding:0; color:#C7C7CC; border:none; background:transparent; font-size:16px;
+  width:26px; height:26px; padding:0; color:#C7C7CC; border:none; background:transparent; font-size:16px;
 }
 #breakPlannerTab .bp-group-rm:hover{ color:#FF3B30; background:#FFF5F4; }
 #breakPlannerTab .bp-people{
-  display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:5px; min-height:26px;
+  display:flex; align-items:center; gap:3px; flex-wrap:wrap; min-height:24px;
+}
+@media (max-width:860px){
+  #breakPlannerTab .bp-table thead{ display:none; }
+  #breakPlannerTab .bp-group-card,
+  #breakPlannerTab .bp-group-card td{
+    display:block; width:100%; border:none; border-radius:0; padding:4px 8px;
+  }
+  #breakPlannerTab .bp-group-card{
+    display:block; background:#fff; border:1px solid #E5E8EF !important; border-radius:10px !important;
+    padding:6px 0; margin-bottom:4px;
+  }
+  #breakPlannerTab .bp-group-card td:first-child{ padding-top:6px; }
+  #breakPlannerTab .bp-row-actions{ justify-content:flex-start; padding-bottom:6px; }
 }
 #breakPlannerTab .bp-role-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
 #breakPlannerTab .bp-role-dot.packer{ background:var(--staff); }
@@ -968,8 +984,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       </div>
       <div class="bp-pool" id="bpPool">
         <div class="bp-pool-head">
-          <span class="bp-pool-lbl">Tap to add</span>
-          <span class="bp-pool-hint" id="bpPoolHint">Choose a person, then a group</span>
+          <span class="bp-pool-lbl">Not on a break</span>
+          <span class="bp-pool-hint" id="bpPoolHint">Tap a name → pick a group</span>
         </div>
         <div class="bp-pool-list" id="bpRosterSections"></div>
       </div>
@@ -5247,7 +5263,8 @@ function assignPersonToGroup(groupId, personId, role){
 }
 function freePeopleForShift(){
   var sd = ensureShiftData(currentShift);
-  var people = personsForShift(currentShift).filter(function(p){ return ROLE_KEYS.indexOf(p.role) !== -1; });
+  // Include unassigned so people can be added without visiting Roster first.
+  var people = personsForShift(currentShift);
   var assigned = allAssignedIds(sd);
   return people.filter(function(p){ return !assigned[p.id]; });
 }
@@ -5255,31 +5272,63 @@ function closeAssignSheet(){
   if (sheetEl){ sheetEl.classList.remove('open'); sheetEl.setAttribute('aria-hidden', 'true'); sheetEl.innerHTML = ''; }
   if (sheetScrimEl){ sheetScrimEl.classList.remove('open'); sheetScrimEl.setAttribute('aria-hidden', 'true'); }
 }
+function openSheetShell(mode, title, sub, bodyHtml){
+  sheetEl.setAttribute('data-mode', mode || '');
+  sheetEl.innerHTML =
+    '<button type="button" class="bp-sheet-close" id="bpSheetClose" aria-label="Close">&times;</button>' +
+    '<div class="bp-sheet-title">' + title + '</div>' +
+    '<div class="bp-sheet-sub">' + sub + '</div>' + bodyHtml;
+  sheetEl.classList.add('open');
+  sheetEl.setAttribute('aria-hidden', 'false');
+  sheetScrimEl.classList.add('open');
+  sheetScrimEl.setAttribute('aria-hidden', 'false');
+}
 function openAssignSheet(groupId){
   var sd = ensureShiftData(currentShift);
   var g = sd.groups.filter(function(x){ return x.id === groupId; })[0];
   if (!g) return;
   var free = freePeopleForShift();
-  var sections = ROLE_KEYS.map(function(role){
-    var list = free.filter(function(p){ return p.role === role; });
+  var sections = ROLE_KEYS.concat(['unassigned']).map(function(role){
+    var list = free.filter(function(p){ return (p.role || 'unassigned') === role; });
+    if (!list.length && role === 'unassigned') return '';
+    var targetRole = role === 'unassigned' ? 'packer' : role;
     var chips = list.map(function(p){
-      return '<button type="button" class="bp-chip ' + role + '" data-sheet-add="' + g.id + '|' + role + '|' + p.id + '">' +
+      return '<button type="button" class="bp-chip ' + role + '" data-sheet-add="' + g.id + '|' + targetRole + '|' + p.id + '">' +
         escapeHtml(p.name) + '</button>';
     }).join('');
-    var shortRole = role === 'boxmaker' ? 'Box makers' : ROLE_LABELS[role] + 's';
+    var shortRole = role === 'boxmaker' ? 'Box makers' : (role === 'unassigned' ? 'No role yet → add as packer' : ROLE_LABELS[role] + 's');
     return '<div class="bp-sheet-section"><div class="bp-sheet-section-lbl"><span class="bp-role-dot ' + role + '"></span> ' +
       shortRole + '</div><div class="bp-sheet-list">' +
       (chips || '<span class="bp-sheet-empty">None free</span>') + '</div></div>';
   }).join('');
-  sheetEl.innerHTML =
-    '<button type="button" class="bp-sheet-close" id="bpSheetClose" aria-label="Close">&times;</button>' +
-    '<div class="bp-sheet-title">Add to ' + escapeHtml(g.label || 'group') + '</div>' +
-    '<div class="bp-sheet-sub">Tap a person to put them on this break</div>' +
-    (free.length ? sections : '<div class="bp-sheet-empty">Everyone with a role is already scheduled</div>');
-  sheetEl.classList.add('open');
-  sheetEl.setAttribute('aria-hidden', 'false');
-  sheetScrimEl.classList.add('open');
-  sheetScrimEl.setAttribute('aria-hidden', 'false');
+  openSheetShell(
+    'add-to-group',
+    'Add to ' + escapeHtml(g.label || 'group'),
+    'Tap a name — done. Unassigned people are added as packers.',
+    free.length ? sections : '<div class="bp-sheet-empty">Everyone is already on a break</div>'
+  );
+  clearPendingAssign();
+}
+function openPickGroupSheet(person){
+  var sd = ensureShiftData(currentShift);
+  if (!sd.groups.length){
+    bpToast('Add a break group first');
+    return;
+  }
+  var role = (person.role && ROLE_KEYS.indexOf(person.role) !== -1) ? person.role : 'packer';
+  var btns = sd.groups.map(function(g){
+    var tea = (g.teaStart && g.teaEnd) ? (g.teaStart + '\u2013' + g.teaEnd) : 'no tea time';
+    return '<button type="button" class="bp-chip packer" style="padding:8px 12px;font-size:12px" data-sheet-add="' +
+      g.id + '|' + role + '|' + person.id + '">' + escapeHtml(g.label || 'Group') +
+      (g.stations ? ' · ' + escapeHtml(g.stations) : '') +
+      '<span style="opacity:.65;font-weight:600;margin-left:6px">' + escapeHtml(tea) + '</span></button>';
+  }).join('');
+  openSheetShell(
+    'pick-group',
+    'Add ' + escapeHtml(person.name),
+    'Tap a break group' + (person.role === 'unassigned' || !person.role ? ' (saved as packer)' : ''),
+    '<div class="bp-sheet-list">' + btns + '</div>'
+  );
   clearPendingAssign();
 }
 function renderRosterSections(){
@@ -5291,14 +5340,13 @@ function renderRosterSections(){
     return;
   }
   if (poolEl) poolEl.classList.remove('is-empty');
+  if (poolHintEl) poolHintEl.textContent = 'Tap a name to put them on a break';
   rosterSectionsEl.innerHTML = free.map(function(p){
-    var selected = pendingAssign && pendingAssign.id === p.id ? ' selected' : '';
-    return '<button type="button" class="bp-chip ' + p.role + selected + '" data-pool-pick="' + p.id + '" title="' +
-      escapeHtml(ROLE_LABELS[p.role] || p.role) + ' — tap, then tap a group">' +
+    var role = p.role || 'unassigned';
+    return '<button type="button" class="bp-chip ' + role + '" data-pool-pick="' + p.id + '" title="Tap to choose a break group">' +
       escapeHtml(p.name) + '</button>';
   }).join('');
-  if (pendingAssign && !free.some(function(p){ return p.id === pendingAssign.id; })) clearPendingAssign();
-  if (poolEl) poolEl.classList.toggle('picking', !!pendingAssign);
+  if (poolEl) poolEl.classList.remove('picking');
 }
 function renderSummary(){
   var sd = ensureShiftData(currentShift);
@@ -5327,7 +5375,7 @@ function renderGroups(){
   var stationByRoster = {};
   var sm = floorStationMap(currentShift);
   Object.keys(sm).forEach(function(L){ stationByRoster[sm[L]] = L; });
-  var html = sd.groups.map(function(g){
+  var rows = sd.groups.map(function(g){
     var chips = [];
     ROLE_KEYS.forEach(function(role){
       (g[role] || []).forEach(function(pid){
@@ -5339,24 +5387,27 @@ function renderGroups(){
           '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>');
       });
     });
-    return '<div class="bp-group-card" data-group-card="' + g.id + '">' +
-      '<div class="bp-group-top">' +
-      '<input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '">' +
-      '<input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="Stations" value="' + escapeHtml(g.stations || '') + '">' +
-      '<div class="bp-times">' +
-      '<div class="bp-time-block"><label>Tea</label><input type="time" data-time="' + g.id + '|teaStart" value="' + g.teaStart + '">' +
-      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|teaEnd" value="' + g.teaEnd + '"></div>' +
-      '<div class="bp-time-block"><label>Meal</label><input type="time" data-time="' + g.id + '|mealStart" value="' + g.mealStart + '">' +
-      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|mealEnd" value="' + g.mealEnd + '"></div>' +
-      '</div>' +
-      '<button type="button" class="bp-add-people" data-open-add="' + g.id + '">+ Add</button>' +
+    return '<tr class="bp-group-card" data-group-card="' + g.id + '">' +
+      '<td><input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '"></td>' +
+      '<td><input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="A–D" value="' + escapeHtml(g.stations || '') + '"></td>' +
+      '<td><div class="bp-time-block"><input type="time" data-time="' + g.id + '|teaStart" value="' + g.teaStart + '">' +
+      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|teaEnd" value="' + g.teaEnd + '"></div></td>' +
+      '<td><div class="bp-time-block"><input type="time" data-time="' + g.id + '|mealStart" value="' + g.mealStart + '">' +
+      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|mealEnd" value="' + g.mealEnd + '"></div></td>' +
+      '<td><div class="bp-people" data-drop-group="' + g.id + '">' +
+      chips.join('') +
+      '<button type="button" class="bp-add-people" data-open-add="' + g.id + '">+</button>' +
+      '</div></td>' +
+      '<td><div class="bp-row-actions">' +
       '<button type="button" class="bp-group-rm" data-remove-group="' + g.id + '" title="Remove group">&times;</button>' +
-      '</div>' +
-      '<div class="bp-people" data-drop-group="' + g.id + '">' +
-      (chips.join('') || '<span class="bp-empty-hint">' + (pendingAssign ? 'Tap here to add ' + escapeHtml(pendingAssign.name) : 'No one on this break yet') + '</span>') +
-      '</div></div>';
+      '</div></td></tr>';
   }).join('');
-  groupsEl.innerHTML = html;
+  groupsEl.innerHTML =
+    '<table class="bp-table"><thead><tr>' +
+    '<th class="bp-col-group">Group</th><th class="bp-col-st">Stations</th>' +
+    '<th class="bp-col-time">Tea</th><th class="bp-col-time">Meal</th>' +
+    '<th>People</th><th class="bp-col-actions"></th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 function renderAll(){
@@ -5457,20 +5508,14 @@ autoAssignBtn.addEventListener('click', async function(){
   }
 });
 
-// Tap someone in the free pool, then tap a group to place them.
+// Tap someone in the free pool → pick which group to put them on.
 rosterSectionsEl.addEventListener('click', function(e){
   var chip = e.target.closest ? e.target.closest('[data-pool-pick]') : null;
   if (!chip) return;
   var id = chip.getAttribute('data-pool-pick');
   var person = personsForShift(currentShift).filter(function(p){ return p.id === id; })[0];
   if (!person) return;
-  if (pendingAssign && pendingAssign.id === id){
-    clearPendingAssign();
-    renderRosterSections();
-    return;
-  }
-  setPendingAssign(person);
-  renderGroups();
+  openPickGroupSheet(person);
 });
 
 // groups: label/time edits, remove, open add sheet, drop pending person
@@ -5550,7 +5595,7 @@ groupsEl.addEventListener('click', function(e){
 });
 
 sheetScrimEl.addEventListener('click', closeAssignSheet);
-sheetEl.addEventListener('click', function(e){
+sheetEl.addEventListener('click', async function(e){
   var t = e.target;
   if (t.id === 'bpSheetClose'){ closeAssignSheet(); return; }
   var addAttr = t.getAttribute('data-sheet-add');
@@ -5560,13 +5605,19 @@ sheetEl.addEventListener('click', function(e){
   }
   if (!addAttr) return;
   var parts = addAttr.split('|');
-  var person = personsForShift(currentShift).filter(function(p){ return p.id === parts[2]; })[0];
-  if (assignPersonToGroup(parts[0], parts[2], parts[1])){
+  var groupId = parts[0], role = parts[1], personId = parts[2];
+  var mode = sheetEl.getAttribute('data-mode');
+  var person = personsForShift(currentShift).filter(function(p){ return p.id === personId; })[0];
+  // If they had no role, persist the role we're assigning into.
+  if (person && (!person.role || person.role === 'unassigned') && ROLE_KEYS.indexOf(role) !== -1){
+    await setSharedRole(currentShift, personId, role);
+  }
+  if (assignPersonToGroup(groupId, personId, role)){
     bpToast((person ? person.name : 'Added') + ' added');
     scheduleOwnSave();
     renderAll();
-    // Keep sheet open so several people can be added quickly.
-    openAssignSheet(parts[0]);
+    if (mode === 'add-to-group') openAssignSheet(groupId);
+    else closeAssignSheet();
   }
 });
 
@@ -6828,7 +6879,8 @@ function renderPackerTotalsTable(s, totals) {
       '<td class="r mn bold">' + totals[w].toLocaleString() + '</td>' +
       '<td>' + escapeHtml(st || '\u2014') + '</td></tr>';
   }).join('');
-  return '<div class="sec">Packers (duplicates merged, boxes added up)</div>' +
+  return '<div class="sec">1 · Raw totals</div>' +
+    '<div class="pk-merge-note">One row per packer. Duplicate names are merged and boxes are added up.</div>' +
     '<div class="tw"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th>Stations</th></tr></thead><tbody>' +
     rows + '</tbody></table></div>';
 }
@@ -6883,10 +6935,9 @@ function renderHourlySection(s, hourKeys) {
     ? '<span class="pk-date-pill">Report date ' + escapeHtml(formatReportDate(reportDate)) + '</span>'
     : '';
 
-  return '<div class="sec">Hourly trend ' + dateNote + '</div>' +
+  return '<div class="sec">2 · Boxes / hour ' + dateNote + '</div>' +
     '<div class="card"><div class="hbar-wrap">' + bars + '</div><div class="hbar-lbls">' + lbls + '</div></div>' +
-    '<div class="sec">Boxes per hour by packer</div>' +
-    '<div class="tw"><table><thead><tr><th>Packer</th>' + headCells + '<th class="r">Total</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    '<div class="tw" style="margin-top:.65rem"><table><thead><tr><th>Packer</th>' + headCells + '<th class="r">Total</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 function renderSkuLogSection(s) {
   var log = s.skuLog || [];
@@ -6943,17 +6994,17 @@ function renderEndOfShiftSection(s) {
   var mixedNote = eos.mixedCount
     ? '<div class="panel-sub" style="margin:.5rem 0 0">' + eos.mixedCount + ' session(s) packed a mixed batch of SKU sizes and are left out of this comparison.</div>'
     : '';
-  return '<div class="sec">End-of-shift totals (one row per packer)</div>' +
-    '<div class="tw" style="margin-bottom:.85rem"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th class="r">SKUs</th></tr></thead><tbody>' +
-    packerRows + '</tbody></table></div>' +
-    '<div class="sec">Performance vs target by SKU</div>' +
-    '<div class="kgrid" style="margin-bottom:.9rem">' +
+  return '<div class="sec">3 · Strike check (boxes / hour vs target)</div>' +
+    '<div class="kgrid" style="margin-bottom:.7rem">' +
     '<div class="kc cg"><div class="kc-l">On target</div><div class="kc-v">' + counts.on + '</div></div>' +
     '<div class="kc ca"><div class="kc-l">Below target</div><div class="kc-v">' + counts.below + '</div></div>' +
-    '<div class="kc cr"><div class="kc-l">Below strike line</div><div class="kc-v">' + counts.strike + '</div></div>' +
+    '<div class="kc cr"><div class="kc-l">Below strike</div><div class="kc-v">' + counts.strike + '</div></div>' +
     '</div>' +
-    '<div class="tw"><table><thead><tr><th>Packer</th><th>SKU</th><th class="r">Boxes</th><th class="r">Actual BPH</th>' +
-    '<th class="r">Target</th><th class="r">Strike line</th><th class="r">Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="tw" style="margin-bottom:.75rem"><table><thead><tr><th class="r">#</th><th>Packer</th><th class="r">Boxes</th><th class="r">SKUs</th></tr></thead><tbody>' +
+    packerRows + '</tbody></table></div>' +
+    '<div class="sec">By SKU</div>' +
+    '<div class="tw"><table><thead><tr><th>Packer</th><th>SKU</th><th class="r">Boxes</th><th class="r">BPH</th>' +
+    '<th class="r">Target</th><th class="r">Strike</th><th class="r">Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     mixedNote;
 }
 function renderPanels() {
@@ -6981,7 +7032,7 @@ function renderPanels() {
     '</div><button class="btn btn-ghost btn-sm" id="pkResetBtn" data-key="' + escapeHtml(key) + '" data-pending="0">Reset</button></div>';
 
   if (active === 0 && !(s.endOfShift && s.endOfShift.results && s.endOfShift.results.length)) {
-    html += '<div class="empty-state">No CSV uploaded yet for this shift.<br>Upload a summary, hourly, or end-of-shift export.</div>';
+    html += '<div class="empty-state">Upload CSV to build:<br><b>1. Raw totals</b> → <b>2. Boxes / hour</b> → <b>3. Strike check</b></div>';
   } else {
     if (active) {
       html += '<div class="kgrid">' +
@@ -6991,14 +7042,14 @@ function renderPanels() {
         '<div class="kc"><div class="kc-l">Top packer</div><div class="kc-v" style="font-size:1rem">' + (top ? escapeHtml(workerDisplayName(s, top)) : '\u2014') + '</div>' +
         '<div class="kc-s">' + (top ? totals[top].toLocaleString() + ' boxes' : '') + '</div></div>' +
         '</div>';
-      html += '<div class="pk-merge-note">Same name (any capitalisation) is merged into one packer and boxes are added up.</div>';
       html += renderPackerTotalsTable(s, totals);
     }
 
     var hourKeys = Object.keys(s.hourly || {}).sort();
     if (hourKeys.length) html += renderHourlySection(s, hourKeys);
-    html += renderEndOfShiftSection(s);
-    html += renderSkuLogSection(s);
+    else if (active) html += '<div class="sec">2 · Boxes / hour</div><div class="empty-state" style="padding:1.2rem">Upload an hourly CSV to fill this.</div>';
+    var eosHtml = renderEndOfShiftSection(s);
+    html += eosHtml || '<div class="sec">3 · Strike check</div><div class="empty-state" style="padding:1.2rem">Upload an end-of-shift CSV to compare BPH vs target / strike.</div>';
   }
 
   panelsEl.innerHTML = html;
