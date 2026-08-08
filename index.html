@@ -2319,6 +2319,17 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var entry = stationAssignedEntry(rosterId);
     return entry ? entry.name : 'VACANT';
   }
+  // Floor plates: prefer nickname in (parens), otherwise first name only
+  function plateShortName(fullName){
+    var s = String(fullName || '').trim().replace(/\s+/g, ' ');
+    if(!s) return '';
+    var m = s.match(/\(([^)]+)\)/);
+    if(m){
+      var inner = String(m[1] || '').trim();
+      if(inner) return inner;
+    }
+    return s.split(' ')[0];
+  }
   function skuRosterEntry(skuRosterId){
     if(!skuRosterId) return null;
     return skuRoster.find(function(s){ return s.id===skuRosterId; }) || null;
@@ -2365,9 +2376,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var entry = stationAssignedEntry(card.rosterId);
     var breakHint = breakHintForStation(card.letter);
     if(nameField){
-      if(entry) nameField.textContent = entry.name;
+      var shortName = entry ? plateShortName(entry.name) : '';
+      if(entry) nameField.textContent = shortName || entry.name;
       else nameField.textContent = card.floorPlate ? 'Tap' : 'Vacant';
-      fitPlateNameFont(nameField, entry ? entry.name : '', !!(card.floorPlate || ref.el.classList.contains('floor-plate')));
+      fitPlateNameFont(nameField, entry ? (shortName || entry.name) : '', !!(card.floorPlate || ref.el.classList.contains('floor-plate')));
       if(entry && breakHint){
         nameField.title = entry.name+' · '+breakHint+' — double-click to clear';
       } else if(entry){
@@ -2510,9 +2522,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     var labelField = ref.el.querySelector('.field.slot-label');
     if(labelField) labelField.textContent = card.label || card.key || '';
     if(nameField){
-      nameField.textContent = entry ? slotDisplayName(card) : 'Tap';
+      var fullShown = entry ? slotDisplayName(card) : 'Tap';
+      var plateShown = (entry && card.slotKind !== 'sku')
+        ? (plateShortName(fullShown) || fullShown)
+        : fullShown;
+      nameField.textContent = plateShown;
+      if(card.slotKind !== 'sku' && entry) fitPlateNameFont(nameField, plateShown, false);
+      else nameField.style.fontSize = '';
       nameField.title = entry
-        ? (slotDisplayName(card)+' - double-click to clear')
+        ? (fullShown+' — double-click to clear')
         : ('Tap to assign a '+(card.slotKind==='sku'?'SKU':card.slotKind==='boxmaker'?'box maker':'runner'));
     }
     if(card.slotKind==='sku'){
@@ -3233,7 +3251,11 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       el.appendChild(fLetter); fields.push(fLetter);
       var fName = document.createElement('div');
       fName.className = 'field station-name';
-      fName.textContent = stationAssignedEntry(card.rosterId) ? stationDisplayName(card.rosterId) : (card.floorPlate ? 'Tap' : 'Vacant');
+      fName.textContent = (function(){
+        var ent = stationAssignedEntry(card.rosterId);
+        if(!ent) return card.floorPlate ? 'Tap' : 'Vacant';
+        return plateShortName(ent.name) || ent.name;
+      })();
       fName.removeAttribute('title');
       fName.addEventListener('dblclick', function(e){
         e.stopPropagation();
@@ -3257,7 +3279,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       el.appendChild(fSlotLabel); fields.push(fSlotLabel);
       var fSlotName = document.createElement('div');
       fSlotName.className = 'field slot-name';
-      fSlotName.textContent = slotRosterEntry(card) ? slotDisplayName(card) : 'Tap';
+      fSlotName.textContent = (function(){
+        if(!slotRosterEntry(card)) return 'Tap';
+        var full = slotDisplayName(card);
+        if(card.slotKind === 'sku') return full;
+        return plateShortName(full) || full;
+      })();
       fSlotName.removeAttribute('title');
       fSlotName.addEventListener('dblclick', function(e){
         e.stopPropagation();
