@@ -293,16 +293,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .rotate-line{ position:absolute; display:none; top:-13px; left:50%; width:1px; height:13px;
     background:#CBCBC5; transform:translateX(-50%); }
 #app .print-shift-label{ display:none; }
-#app .notes-panel{ display:none; position:fixed; top:58px; right:16px; width:280px; background:#fff;
-    border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18);
-    padding:10px 12px 12px; z-index:200; }
-#app .notes-panel.open{ display:block; }
-#app .notes-header{ display:flex; align-items:center; justify-content:space-between; font-weight:700;
-    font-size:12.5px; color:var(--ink); margin-bottom:6px; }
-#app .notes-close{ cursor:pointer; color:var(--muted); font-size:16px; line-height:1; padding:2px 4px; border-radius:4px; }
-#app .notes-close:hover{ background:#F1F1EE; color:var(--ink); }
-#app #notesText{ width:100%; min-height:130px; border:1px solid var(--line); border-radius:7px;
-    padding:8px; font-size:12.5px; font-family:inherit; resize:vertical; color:var(--ink); }
 #app .color-popover{ display:none; position:fixed; z-index:10050; background:#fff; border:1px solid var(--line);
     border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:8px;
     grid-template-columns:repeat(4, 24px); gap:7px; }
@@ -464,7 +454,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .role-popover .role-opt.active{ background:#EDEDEA; }
 @media print{
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
-    header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel, .notes-panel{ display:none !important; }
+    header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel{ display:none !important; }
     html, body{ height:auto !important; overflow:visible !important; background:#fff !important; margin:0 !important; }
     #app{ height:auto !important; }
     #main{ height:auto !important; }
@@ -790,7 +780,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
       <button class="btn shift-btn" id="shiftMorning" data-shift="morning">Day</button>
       <button class="btn shift-btn" id="shiftAfternoon" data-shift="afternoon">Afternoon</button>
     </div>
-    <button class="btn" id="notesBtn" title="Handoff notes">Notes</button>
     <button class="btn active" id="toggleRoster" title="Show or hide SKUs">SKUs</button>
     <span class="counts" id="importStatus"></span>
     <button class="btn" id="retryLoadBtn" style="display:none">Retry loading</button>
@@ -863,13 +852,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   <div id="colorPopover" class="color-popover"></div>
   <div id="rolePopover" class="role-popover"></div>
   <div id="assignPopover" class="role-popover"></div>
-  <div id="notesPanel" class="notes-panel">
-    <div class="notes-header">
-      <span id="notesPanelTitle">Handoff Notes</span>
-      <span class="notes-close" id="notesClose" title="Close">×</span>
-    </div>
-    <textarea id="notesText" placeholder="Notes for the next shift…"></textarea>
-  </div>
 </div>
 
 <div id="breakPlannerTab" style="display:none">
@@ -4056,26 +4038,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 
   document.getElementById('rosterSearch').addEventListener('input', renderRoster);
 
-  var notesPanel = document.getElementById('notesPanel');
-  var notesText = document.getElementById('notesText');
-  var notesPanelTitle = document.getElementById('notesPanelTitle');
-  document.getElementById('notesBtn').addEventListener('click', function(){
-    notesPanel.classList.toggle('open');
-    if(notesPanel.classList.contains('open')) notesText.focus();
-  });
-  document.getElementById('notesClose').addEventListener('click', function(){
-    notesPanel.classList.remove('open');
-  });
-  notesText.addEventListener('input', function(){
-    notes = notesText.value;
-    saveDebounced();
-  });
-  function updateNotesUI(){
-    notesPanelTitle.textContent = 'Handoff Notes — '+(currentShift==='morning' ? 'Day' : 'Afternoon');
-    notesText.value = notes;
-  }
-  updateNotesUI();
-
   var toggleRosterBtn = document.getElementById('toggleRoster');
   function updateRosterToggle(){
     toggleRosterBtn.textContent = 'SKUs';
@@ -4126,7 +4088,6 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
     document.getElementById('shiftAfternoon').classList.toggle('active', currentShift==='afternoon');
     document.getElementById('printShiftLabel').textContent = (currentShift==='morning' ? 'Day Shift' : 'Afternoon Shift');
     if(!clearArmed) clearBtn.textContent = clearLabel();
-    updateNotesUI();
   }
   function switchShift(newShift){
     if(!shiftData || newShift===currentShift) return;
