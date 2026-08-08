@@ -495,8 +495,72 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
   background:#fff; border:1px solid var(--line); border-radius:100px;
   box-shadow:0 4px 14px rgba(0,0,0,.18); overflow:hidden; }
 .bp-fab-btn{ padding:10px 16px; font-size:12.5px; font-weight:700; font-family:inherit;
-  border:none; background:#fff; color:var(--muted); cursor:pointer; }
+  border:none; background:#fff; color:var(--muted); cursor:pointer;
+  transition:background .12s, color .12s; }
+.bp-fab-btn:hover{ background:#F5F6FA; color:var(--ink); }
 .bp-fab-btn.active{ background:var(--ink); color:#fff; }
+.bp-fab-btn.active:hover{ background:var(--ink); color:#fff; }
+.bp-fab-btn .fab-full{ display:none; }
+.bp-fab-btn .fab-short{ display:inline; }
+
+/* Desktop-only: wider shells, roomier chrome, fuller nav labels */
+@media (min-width:1101px) and (pointer:fine){
+  #app #viewport{ padding:28px 28px 80px; }
+  #app #rosterPanel{ width:280px; flex-basis:280px; }
+  #floorToolsDock{ left:20px; bottom:20px; }
+  .bp-fab-group{
+    bottom:20px; right:20px; left:auto;
+    border-radius:14px;
+    box-shadow:0 8px 28px rgba(28,36,48,.16);
+  }
+  .bp-fab-btn{ padding:11px 18px; font-size:13px; }
+  .bp-fab-btn .fab-short{ display:none; }
+  .bp-fab-btn .fab-full{ display:inline; }
+  .bp-toast, #tabTracker .toast, #tabPacker .toast{ bottom:78px; }
+
+  #breakPlannerTab .bp-shell,
+  #tabTracker .st-shell,
+  #tabPacker .pk-shell,
+  #tabRoster .ro-shell{ max-width:1280px; }
+  #tabSettings .stn-shell{ max-width:960px; }
+
+  #breakPlannerTab .bp-chrome,
+  #tabPacker .pk-chrome,
+  #tabRoster .ro-chrome{ padding:10px 16px 12px; }
+  #tabTracker .st-chrome{ padding:12px 16px; }
+  #tabSettings .stn-chrome{ padding:14px 18px; }
+  #tabSettings .stn-title{ font-size:17px; }
+  #tabSettings .stn-body{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 10px;
+    align-content:start;
+    padding:14px 18px calc(88px + env(safe-area-inset-bottom,0px));
+  }
+  #tabSettings .stn-sec{ grid-column:1 / -1; margin-top:14px; }
+  #tabSettings .stn-sec:first-child{ margin-top:0; }
+  #tabSettings .stn-note{ grid-column:1 / -1; }
+  #tabSettings .stn-card{ margin-bottom:10px; padding:12px 14px; }
+  #tabSettings .stn-card:has(#stnBackupAll){ grid-column:1 / -1; }
+
+  #breakPlannerTab .bp-list-wrap,
+  #tabPacker .pk-body,
+  #tabRoster .ro-list-wrap,
+  #tabTracker .st-body{ padding-left:16px; padding-right:16px; padding-bottom:88px; }
+
+  #tabPacker .pk-search{ max-width:240px; }
+  #tabPacker .pk-actions button,
+  #tabRoster .ro-actions button{ padding:6px 11px; font-size:11px; }
+  #tabPacker .pk-day:hover:not(.active),
+  #tabRoster .ro-day:hover:not(.active){ background:#F5F6FA; border-color:#C5CAD3; }
+  #tabPacker .pk-tw tbody tr:hover{ background:#F3F6FB; }
+  #tabTracker .st-setup{ gap:8px; }
+  #tabTracker .st-field input{ height:34px; }
+  #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
+  #tabSettings .stn-actions button:hover{ background:#F5F6FA; }
+  #tabSettings .stn-actions button.primary:hover{ background:#2A3444; }
+  #tabSettings .stn-actions button.danger:hover{ background:#FEECEC; }
+}
 
 #breakPlannerTab{
   position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
@@ -1171,12 +1235,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 </div>
 
 <div class="bp-fab-group" id="bpFabGroup">
-  <button class="bp-fab-btn active" data-tab="floor">Floor</button>
-  <button class="bp-fab-btn" data-tab="breaks">Breaks</button>
-  <button class="bp-fab-btn" data-tab="tracker">Tracker</button>
-  <button class="bp-fab-btn" data-tab="packer">Packer</button>
-  <button class="bp-fab-btn" data-tab="roster">Roster</button>
-  <button class="bp-fab-btn" data-tab="settings">Settings</button>
+  <button class="bp-fab-btn active" data-tab="floor"><span class="fab-short">Floor</span><span class="fab-full">Floor Plan</span></button>
+  <button class="bp-fab-btn" data-tab="breaks"><span class="fab-short">Breaks</span><span class="fab-full">Breaks</span></button>
+  <button class="bp-fab-btn" data-tab="tracker"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
+  <button class="bp-fab-btn" data-tab="packer"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
+  <button class="bp-fab-btn" data-tab="roster"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
+  <button class="bp-fab-btn" data-tab="settings"><span class="fab-short">Settings</span><span class="fab-full">Settings</span></button>
 </div>
 <div class="bp-toast" id="bpToast"></div>
 
