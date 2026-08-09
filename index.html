@@ -26,7 +26,6 @@
     --tab-tracker:#0F766E; --tab-tracker-bg:#E6F7F5; --tab-tracker-soft:#F3FBFA;
     --tab-packer:#1D4ED8; --tab-packer-bg:#EAF0FF; --tab-packer-soft:#F6F9FF;
     --tab-roster:#047857; --tab-roster-bg:#E8F8F1; --tab-roster-soft:#F4FBF7;
-    --tab-export:#475569; --tab-export-bg:#E8EDF3; --tab-export-soft:#F5F7FA;
   }
 #app *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--paper);
@@ -551,7 +550,6 @@ html[data-active-tab="breaks"] .bp-nav-launch{ background:var(--tab-breaks); bor
 html[data-active-tab="tracker"] .bp-nav-launch{ background:var(--tab-tracker); border-color:var(--tab-tracker); box-shadow:0 8px 24px rgba(15,118,110,.28); }
 html[data-active-tab="packer"] .bp-nav-launch{ background:var(--tab-packer); border-color:var(--tab-packer); box-shadow:0 8px 24px rgba(29,78,216,.28); }
 html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); border-color:var(--tab-roster); box-shadow:0 8px 24px rgba(4,120,87,.28); }
-html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); border-color:var(--tab-export); box-shadow:0 8px 24px rgba(71,85,105,.28); }
 
 /* Desktop: floating Menu button → popup tab list */
 @media (min-width:1101px){
@@ -637,8 +635,7 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
   #breakPlannerTab,
   #tabTracker,
   #tabPacker,
-  #tabRoster,
-  #tabExport{ left:0; }
+  #tabRoster{ left:0; }
 
   #app header#toolbar{ padding:8px 16px; }
   #app #rosterPanel{ width:300px; flex-basis:300px; }
@@ -649,8 +646,7 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
   #breakPlannerTab .bp-shell,
   #tabTracker .st-shell,
   #tabPacker .pk-shell,
-  #tabRoster .ro-shell,
-  #tabExport .ex-shell{
+  #tabRoster .ro-shell{
     max-width:none;
     width:100%;
   }
@@ -659,16 +655,12 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
   #tabPacker .pk-chrome,
   #tabRoster .ro-chrome{ padding:12px 20px 14px; }
   #tabTracker .st-chrome{ padding:14px 20px; }
-  #tabExport .ex-chrome{ padding:16px 28px; }
-
   #breakPlannerTab .bp-list-wrap,
   #tabPacker .pk-body,
   #tabRoster .ro-list-wrap,
   #tabTracker .st-body{
     padding:12px 20px 72px;
   }
-  #tabExport .ex-body{ padding:20px 28px 96px; }
-
   /* Breaks: pool left + groups right */
   #breakPlannerTab .bp-shell{
     display:grid;
@@ -751,7 +743,7 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
   #tabPacker .pk-tw tbody tr:hover{ background:#F3F6FB; }
   #tabRoster .ro-list-wrap{ padding-top:10px; }
 
-  .bp-toast, #tabTracker .toast, #tabPacker .toast, #tabExport .toast{ bottom:78px; }
+  .bp-toast, #tabTracker .toast, #tabPacker .toast{ bottom:78px; }
 }
 
 @media (min-width:1101px) and (pointer:fine){
@@ -760,7 +752,6 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
   html[data-active-tab="tracker"] .bp-nav-launch:hover{ background:#0B5F58; border-color:#0B5F58; }
   html[data-active-tab="packer"] .bp-nav-launch:hover{ background:#1A44C0; border-color:#1A44C0; }
   html[data-active-tab="roster"] .bp-nav-launch:hover{ background:#036648; border-color:#036648; }
-  html[data-active-tab="export"] .bp-nav-launch:hover{ background:#3A4658; border-color:#3A4658; }
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
 }
 
@@ -1482,134 +1473,6 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
 </div>
 <div class="bp-toast" id="bpToast"></div>
 
-<div id="tabExport" style="display:none">
-  <style>
-    #tabExport{
-      position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
-      overflow:hidden; background:#E8EAED; color:#1D1D1F;
-      font-family:Georgia,"Times New Roman",Times,serif;
-      display:flex; flex-direction:column;
-    }
-    #tabExport .ex-shell{
-      flex:1; min-height:0; display:flex; flex-direction:column;
-      max-width:920px; width:100%; margin:0 auto;
-    }
-    #tabExport .ex-chrome{
-      flex:0 0 auto; background:var(--tab-export-soft); backdrop-filter:blur(10px);
-      border-bottom:1px solid #E1E4EA; border-top:3px solid var(--tab-export);
-      padding:12px 16px; z-index:5;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .ex-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    #tabExport .ex-title{ margin:0; font-size:16px; font-weight:800; letter-spacing:-.02em; color:var(--tab-export); font-family:inherit; }
-    #tabExport .ex-sub{ font-size:12px; color:#6E6E73; margin-top:3px; font-family:inherit; }
-    #tabExport .ex-actions{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
-    #tabExport .ex-actions button{
-      border:1px solid #D8DCE3; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700;
-      cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
-    }
-    #tabExport .ex-actions button.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
-    #tabExport .ex-body{
-      flex:1; min-height:0; overflow:auto; padding:18px 16px calc(88px + env(safe-area-inset-bottom,0px));
-      -webkit-overflow-scrolling:touch;
-    }
-    #tabExport .ex-paper{
-      background:#fff; border:1px solid #D8DCE3; box-shadow:0 10px 40px rgba(28,36,48,.08);
-      padding:42px 48px 48px; min-height:70vh; color:#1a1a1a;
-    }
-    #tabExport .ex-doc-kicker{
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#6E6E73;
-      margin:0 0 8px;
-    }
-    #tabExport .ex-doc-title{
-      margin:0 0 6px; font-size:32px; font-weight:700; letter-spacing:-.03em; line-height:1.15;
-    }
-    #tabExport .ex-doc-lead{
-      margin:0 0 28px; font-size:15px; color:#444; line-height:1.5;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .ex-section{ margin:0 0 28px; page-break-inside:avoid; }
-    #tabExport .ex-section h2{
-      margin:0 0 10px; font-size:18px; font-weight:700; border-bottom:1.5px solid #1C2430;
-      padding-bottom:6px; letter-spacing:-.01em;
-    }
-    #tabExport .ex-section p{
-      margin:0 0 10px; font-size:14px; line-height:1.55; color:#333;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .ex-grid{
-      display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0 0 14px;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .ex-kpi{
-      border:1px solid #E5E8EF; border-radius:8px; padding:10px 12px; background:#FAFBFC;
-    }
-    #tabExport .ex-kpi .n{ font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
-    #tabExport .ex-kpi .l{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6E6E73; margin-top:3px; }
-    #tabExport .ex-table{
-      width:100%; border-collapse:collapse; font-size:13px;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .ex-table th{
-      text-align:left; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
-      color:#6E6E73; padding:6px 8px; border-bottom:1px solid #D8DCE3; background:#F7F8FA;
-    }
-    #tabExport .ex-table td{ padding:7px 8px; border-bottom:1px solid #EEF0F3; vertical-align:top; }
-    #tabExport .ex-table .r{ text-align:right; font-variant-numeric:tabular-nums; }
-    #tabExport .ex-table tr.total td{ font-weight:800; background:#F3F6FB; }
-    #tabExport .ex-empty{ color:#8E8E93; font-style:italic; font-size:13px; }
-    #tabExport .ex-footer{
-      margin-top:36px; padding-top:12px; border-top:1px solid #E1E4EA;
-      font-size:11px; color:#8E8E93;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .toast{
-      position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
-      background:#1C2430; color:#fff; padding:.5rem 1.2rem; border-radius:100px;
-      font-size:.78rem; font-weight:600; opacity:0; pointer-events:none;
-      transition:opacity .2s; z-index:10002; white-space:nowrap;
-      box-shadow:0 4px 12px rgba(0,0,0,.18); max-width:85vw;
-      overflow:hidden; text-overflow:ellipsis;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    #tabExport .toast.show{ opacity:1; }
-    @media print{
-      .bp-fab-dock, #tabExport .ex-chrome, .bp-toast{ display:none !important; }
-      #tabExport, #tabExport .ex-shell, #tabExport .ex-body{ position:static !important; height:auto !important; max-height:none !important; overflow:visible !important; background:#fff !important; padding:0 !important; }
-      #tabExport .ex-paper{ box-shadow:none; border:none; padding:0; }
-      body{ background:#fff; }
-    }
-    @media (max-width:720px){
-      #tabExport .ex-paper{ padding:22px 18px 28px; }
-      #tabExport .ex-doc-title{ font-size:24px; }
-      #tabExport .ex-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
-    }
-  </style>
-  <div class="ex-shell">
-    <div class="ex-chrome">
-      <div class="ex-bar">
-        <div>
-          <h1 class="ex-title">Week Export</h1>
-          <div class="ex-sub">Presentation summary of how the week went — Packer, Roster, and Breaks.</div>
-        </div>
-        <div class="ex-actions">
-          <button type="button" id="exBack">Back</button>
-          <button type="button" id="exRefresh">Refresh</button>
-          <button type="button" class="primary" id="exPrint">Print / Save PDF</button>
-          <button type="button" id="exDownloadDoc">Download Word</button>
-        </div>
-      </div>
-    </div>
-    <div class="ex-body">
-      <article class="ex-paper" id="exPaper" aria-live="polite">
-        <p class="ex-empty">Loading week summary…</p>
-      </article>
-    </div>
-  </div>
-  <div class="toast" id="exportToast"></div>
-</div>
-
 <div id="tabRoster" style="display:none">
   <style>
     #tabRoster{
@@ -1803,7 +1666,6 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
           <button type="button" id="roCopyDaily" title="Copy daily update">Copy day</button>
           <button type="button" id="roCopyWeekly" title="Copy late / left early / absent dates">Copy week</button>
           <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear week</button>
-          <button type="button" id="roWeekExport" title="Open week summary presentation">Week export</button>
         </div>
       </div>
       <div class="ro-days" id="roDays"></div>
@@ -1968,7 +1830,6 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
           <button type="button" id="pkJumpToday">Today</button>
           <button type="button" id="pkClearBtn">Clear day</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
-          <button type="button" id="pkWeekExport" title="Open week summary presentation">Week export</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
         </div>
       </div>
@@ -10845,302 +10706,21 @@ function toast(msg, err) {
 </script>
 
 <script>
-/* Week Export — presentation summary document */
-(function(){
-  var paper = document.getElementById('exPaper');
-  var btnRefresh = document.getElementById('exRefresh');
-  var btnPrint = document.getElementById('exPrint');
-  var btnDoc = document.getElementById('exDownloadDoc');
-
-  function toast(msg){
-    var el = document.getElementById('exportToast') || document.getElementById('bpToast') || document.getElementById('toast');
-    if(!el){ try{ alert(msg); }catch(e){} return; }
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(el._bt);
-    el._bt = setTimeout(function(){ el.classList.remove('show'); }, 2800);
-  }
-  function pad(n){ return (n < 10 ? '0' : '') + n; }
-  function ymd(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
-  function startOfWeek(d){
-    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    var day = x.getDay();
-    var diff = day === 0 ? -6 : 1 - day;
-    x.setDate(x.getDate() + diff);
-    x.setHours(0,0,0,0);
-    return x;
-  }
-  function addDays(d, n){
-    var x = new Date(d.getTime());
-    x.setDate(x.getDate() + n);
-    return x;
-  }
-  function escapeHtml(s){
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
-      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
-    });
-  }
-  function formatAU(dateKey){
-    if (window.PackerAnalytics && typeof window.PackerAnalytics.formatDateAU === 'function'){
-      return window.PackerAnalytics.formatDateAU(dateKey);
-    }
-    var p = String(dateKey||'').split('-');
-    if (p.length !== 3) return dateKey || '';
-    return p[2] + '/' + p[1] + '/' + p[0];
-  }
-  function weekLabel(ws){
-    var we = addDays(ws, 4);
-    var opts = { day:'numeric', month:'short', year:'numeric' };
-    return ws.toLocaleDateString('en-AU', opts) + ' \u2013 ' + we.toLocaleDateString('en-AU', opts);
-  }
-  function fmtTime(t){
-    if (!t) return '';
-    var parts = String(t).split(':');
-    return parts.length >= 2 ? (parts[0] + ':' + parts[1]) : String(t);
-  }
-  async function readStorage(key){
-    try{
-      if (!window.storage || typeof window.storage.get !== 'function') return null;
-      var r = await window.storage.get(key, false);
-      if (!r || r.value == null) return null;
-      return typeof r.value === 'string' ? JSON.parse(r.value) : r.value;
-    }catch(e){ return null; }
-  }
-  function kpi(n, l){
-    return '<div class="ex-kpi"><div class="n">' + escapeHtml(n) + '</div><div class="l">' + escapeHtml(l) + '</div></div>';
-  }
-  function resolveWeek(){
-    var dash = window.__packerDashboard;
-    if (dash && typeof dash.getWeekStart === 'function'){
-      var ws = dash.getWeekStart();
-      if (ws instanceof Date && !isNaN(ws.getTime())) return { ws: ws, weekKey: ymd(ws) };
-    }
-    var roster = window.__weekTracker || window.__rosterTracker;
-    if (roster && typeof roster.getWeekStart === 'function'){
-      var rws = roster.getWeekStart();
-      if (rws instanceof Date && !isNaN(rws.getTime())) return { ws: rws, weekKey: ymd(rws) };
-    }
-    var ws0 = startOfWeek(new Date());
-    return { ws: ws0, weekKey: ymd(ws0) };
-  }
-
-  async function buildPackerSection(weekKey){
-    var dash = window.__packerDashboard;
-    var byDate = {};
-    if (dash && typeof dash.getByDate === 'function') byDate = dash.getByDate() || {};
-    var review = null;
-    var build = dash && typeof dash.buildWeeklySkuReview === 'function'
-      ? dash.buildWeeklySkuReview.bind(dash)
-      : null;
-    if (build) review = build(byDate, weekKey);
-    if ((!review || !review.hasData)){
-      var stored = await readStorage('packer-shift-data');
-      if (stored){
-        byDate = stored.byDate || byDate;
-        if (stored.activeWeekKey) weekKey = stored.activeWeekKey;
-        if (build) review = build(byDate, weekKey);
-      }
-    }
-    var totalBoxes = 0;
-    var dayRows = 0;
-    var html = '<section class="ex-section"><h2>1. Packer performance</h2>';
-    if (!review || !review.hasData){
-      html += '<p class="ex-empty">No Boxes Packed uploads for this week yet.</p></section>';
-      return { html: html, totalBoxes: 0, dayRows: 0, weekKey: weekKey };
-    }
-    var allSkus = review.boardSkus || [];
-    var rows = review.summaryRows || [];
-    var skus = allSkus.filter(function(s, idx){
-      return rows.some(function(row){
-        var v = row[2 + idx];
-        return v !== '' && v != null && Number(v) !== 0;
-      });
-    });
-    if (!skus.length) skus = allSkus.slice();
-    rows.forEach(function(row){
-      if (String(row[0]).indexOf('WEEK TOTAL') === 0){
-        totalBoxes = Number(row[2 + allSkus.length]) || 0;
-      } else {
-        dayRows++;
-      }
-    });
-    html += '<div class="ex-grid">' +
-      kpi(String(totalBoxes || 0), 'Boxes this week') +
-      kpi(String(dayRows || review.dayCount || 0), 'Shift slots with data') +
-      kpi(String(skus.length), 'SKUs with volume') +
-      kpi(formatAU(weekKey), 'Week starting') +
-      '</div>';
-    html += '<table class="ex-table"><thead><tr><th>Date</th><th>Shift</th>' +
-      skus.map(function(s){ return '<th class="r">' + escapeHtml(s) + '</th>'; }).join('') +
-      '<th class="r">Total</th></tr></thead><tbody>';
-    rows.forEach(function(row){
-      var isTotal = String(row[0]).indexOf('WEEK TOTAL') === 0;
-      var cells = [row[0], row[1]];
-      skus.forEach(function(s){ cells.push(row[2 + allSkus.indexOf(s)]); });
-      cells.push(row[2 + allSkus.length]);
-      html += '<tr' + (isTotal ? ' class="total"' : '') + '>' + cells.map(function(c, i){
-        var cls = i >= 2 ? ' class="r"' : '';
-        return '<td' + cls + '>' + escapeHtml(c === '' || c == null ? '\u2014' : c) + '</td>';
-      }).join('') + '</tr>';
-    });
-    html += '</tbody></table></section>';
-    return { html: html, totalBoxes: totalBoxes, dayRows: dayRows, weekKey: weekKey };
-  }
-
-  async function buildRosterSection(ws){
-    var data = await readStorage('shiftWeekAttendance');
-    var byDate = (data && data.byDate) || {};
-    // Prefer live in-memory roster state when available (fresher than storage debounce)
-    if (window.__weekTracker && typeof window.__weekTracker.getByDate === 'function'){
-      try{
-        var live = window.__weekTracker.getByDate();
-        if (live && typeof live === 'object') byDate = live;
-      }catch(e){}
-    }
-    var counts = { here:0, late:0, left_early:0, absent:0, holiday:0 };
-    var DAY = ['Mon','Tue','Wed','Thu','Fri'];
-    var dayLines = [];
-    for (var i = 0; i < 5; i++){
-      var dk = ymd(addDays(ws, i));
-      var day = byDate[dk] || {};
-      var c = { here:0, late:0, left_early:0, absent:0, holiday:0 };
-      Object.keys(day).forEach(function(pid){
-        var st = day[pid];
-        if (st === 'in') st = 'here';
-        if (st === 'leave') st = 'holiday';
-        if (st === 'early') st = 'late';
-        if (c[st] != null){ c[st]++; counts[st]++; }
-      });
-      dayLines.push('<tr><td>' + DAY[i] + ' ' + formatAU(dk) + '</td>' +
-        '<td class="r">' + c.here + '</td><td class="r">' + c.late + '</td><td class="r">' + c.left_early + '</td>' +
-        '<td class="r">' + c.absent + '</td><td class="r">' + c.holiday + '</td></tr>');
-    }
-    var html = '<section class="ex-section"><h2>2. Attendance</h2>';
-    html += '<div class="ex-grid">' +
-      kpi(String(counts.here), 'On') +
-      kpi(String(counts.late), 'Late') +
-      kpi(String(counts.left_early), 'Left early') +
-      kpi(String(counts.absent + counts.holiday), 'Out / Leave') +
-      '</div>';
-    html += '<table class="ex-table"><thead><tr><th>Day</th><th class="r">On</th><th class="r">Late</th><th class="r">Left</th><th class="r">Out</th><th class="r">Leave</th></tr></thead><tbody>' +
-      dayLines.join('') + '</tbody></table></section>';
-    return { html: html, counts: counts };
-  }
-
-  async function buildBreaksSection(){
-    var data = null;
-    // Live break planner memory first (offline / unsynced edits)
-    try{
-      if (window.__breakPlanner && typeof window.__breakPlanner.getData === 'function'){
-        data = window.__breakPlanner.getData();
-      }
-    }catch(e){}
-    if (!data) data = await readStorage('breakPlanner');
-    var html = '<section class="ex-section"><h2>3. Break groups</h2>';
-    if (!data){
-      html += '<p class="ex-empty">No break planner data saved.</p></section>';
-      return { html: html };
-    }
-    var any = false;
-    ['morning','afternoon'].forEach(function(shift){
-      var groups = (data[shift] && data[shift].groups) || [];
-      var label = shift === 'afternoon' ? 'Afternoon' : 'Day';
-      html += '<p><b>' + label + ' shift</b> \u2014 ' + groups.length + ' group' + (groups.length === 1 ? '' : 's') + '</p>';
-      if (!groups.length) return;
-      any = true;
-      html += '<table class="ex-table"><thead><tr><th>Group</th><th>Stations</th><th>Tea</th><th>Meal</th><th>People</th></tr></thead><tbody>';
-      groups.forEach(function(g){
-        var tea = (g.teaStart && g.teaEnd) ? (fmtTime(g.teaStart) + '\u2013' + fmtTime(g.teaEnd)) : '\u2014';
-        var meal = (g.mealStart && g.mealEnd) ? (fmtTime(g.mealStart) + '\u2013' + fmtTime(g.mealEnd)) : '\u2014';
-        var peopleN = ['packer','runner','boxmaker'].reduce(function(n, rk){ return n + ((g[rk]||[]).length); }, 0);
-        html += '<tr><td>' + escapeHtml(g.label || 'Group') + '</td><td>' + escapeHtml(g.stations || '\u2014') +
-          '</td><td>' + escapeHtml(tea) + '</td><td>' + escapeHtml(meal) + '</td><td class="r">' + peopleN + '</td></tr>';
-      });
-      html += '</tbody></table>';
-    });
-    if (!any) html += '<p class="ex-empty">No break groups set up yet.</p>';
-    html += '</section>';
-    return { html: html };
-  }
-
-  var lastExportWeekKey = '';
-
-  async function refresh(){
-    if (!paper) return;
-    var resolved = resolveWeek();
-    var ws = resolved.ws;
-    var weekKey = resolved.weekKey;
-    paper.innerHTML = '<p class="ex-empty">Building week summary\u2026</p>';
-    try{
-      var packer = await buildPackerSection(weekKey);
-      if (packer.weekKey && packer.weekKey !== weekKey){
-        weekKey = packer.weekKey;
-        ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
-      }
-      lastExportWeekKey = weekKey;
-      var roster = await buildRosterSection(ws);
-      var breaks = await buildBreaksSection();
-      var lead = 'A one-page look at Packer output, attendance marks, and break coverage for the Mon\u2013Fri week.';
-      if (packer.totalBoxes) lead = packer.totalBoxes + ' boxes packed across ' + packer.dayRows + ' day/shift slots this week.';
-      paper.innerHTML =
-        '<p class="ex-doc-kicker">Weekly operations summary</p>' +
-        '<h1 class="ex-doc-title">Week of ' + escapeHtml(weekLabel(ws)) + '</h1>' +
-        '<p class="ex-doc-lead">' + escapeHtml(lead) + '</p>' +
-        packer.html + roster.html + breaks.html +
-        '<div class="ex-footer">Generated ' + escapeHtml(new Date().toLocaleString('en-AU')) +
-        ' \u00b7 Shift Floor Planner \u00b7 Use Print / Save PDF for a shareable copy.</div>';
-    }catch(e){
-      console.error(e);
-      paper.innerHTML = '<p class="ex-empty">Could not build the week summary.</p>';
-    }
-  }
-
-  function downloadWord(){
-    if (!paper) return;
-    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Week Summary</title>' +
-      '<style>body{font-family:Georgia,serif;max-width:800px;margin:24px auto;color:#1a1a1a}' +
-      'h1{font-size:28px}h2{font-size:18px;border-bottom:1px solid #333;padding-bottom:4px}' +
-      'table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:12px}' +
-      'th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f3f3f3}' +
-      '.r{text-align:right}.ex-grid{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}' +
-      '.ex-kpi{border:1px solid #ddd;padding:8px 12px;min-width:120px}.ex-kpi .n{font-size:20px;font-weight:700}' +
-      '.ex-kpi .l{font-size:10px;text-transform:uppercase;color:#666}.ex-empty{color:#888;font-style:italic}' +
-      '</style></head><body>' + paper.innerHTML + '</body></html>';
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['\ufeff' + html], { type: 'application/msword' }));
-    a.download = 'week-summary-' + (lastExportWeekKey || ymd(startOfWeek(new Date()))) + '.doc';
-    a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
-    toast('Word document downloaded');
-  }
-
-  if (btnRefresh) btnRefresh.addEventListener('click', function(){ refresh(); toast('Summary refreshed'); });
-  if (btnPrint) btnPrint.addEventListener('click', function(){ window.print(); });
-  if (btnDoc) btnDoc.addEventListener('click', downloadWord);
-
-  window.__weekExport = { refresh: refresh };
-})();
-</script>
-
-<script>
 (function(){
   var panels = {
     floor: document.getElementById('app'),
     roster: document.getElementById('tabRoster'),
     breaks: document.getElementById('breakPlannerTab'),
     tracker: document.getElementById('tabTracker'),
-    packer: document.getElementById('tabPacker'),
-    export: document.getElementById('tabExport')
+    packer: document.getElementById('tabPacker')
   };
   var tabLabels = {
     floor: 'Floor',
     breaks: 'Breaks',
     tracker: 'Tracker',
     packer: 'Packer',
-    roster: 'Roster',
-    export: 'Export'
+    roster: 'Roster'
   };
-  var exportReturnTab = 'packer';
   function setNavOpen(open){
     var dock = document.getElementById('bpFabDock');
     var launch = document.getElementById('bpNavLaunch');
@@ -11155,13 +10735,8 @@ function toast(msg, err) {
       breaks: 'flex',
       tracker: 'flex',
       packer: 'flex',
-      roster: 'flex',
-      export: 'flex'
+      roster: 'flex'
     };
-    var current = document.documentElement.getAttribute('data-active-tab') || 'floor';
-    if (name === 'export' && current !== 'export'){
-      exportReturnTab = (current === 'roster' || current === 'packer') ? current : 'packer';
-    }
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;
       panels[k].style.display = (k === name) ? (showDisplay[k] || '') : 'none';
@@ -11208,9 +10783,6 @@ function toast(msg, err) {
       if (typeof loadBreakPlannerData === 'function') loadBreakPlannerData();
       if (typeof onInput === 'function') onInput();
     }
-    if (name === 'export' && window.__weekExport && typeof window.__weekExport.refresh === 'function'){
-      window.__weekExport.refresh();
-    }
   }
   var launch = document.getElementById('bpNavLaunch');
   if (launch){
@@ -11230,23 +10802,6 @@ function toast(msg, err) {
   var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
   for (var i = 0; i < btns.length; i++){
     btns[i].addEventListener('click', function(){ showTab(this.getAttribute('data-tab')); });
-  }
-  function openWeekExport(fromTab){
-    if (fromTab === 'roster' || fromTab === 'packer') exportReturnTab = fromTab;
-    showTab('export');
-  }
-  var pkExport = document.getElementById('pkWeekExport');
-  var roExport = document.getElementById('roWeekExport');
-  if (pkExport) pkExport.addEventListener('click', function(){ openWeekExport('packer'); });
-  if (roExport) roExport.addEventListener('click', function(){ openWeekExport('roster'); });
-  window.__showAppTab = function(name){
-    if (name === 'export-back') showTab(exportReturnTab || 'packer');
-    else showTab(name);
-  };
-  // Export Back button returns to Packer/Roster, not Floor/Breaks
-  var exBack = document.getElementById('exBack');
-  if (exBack){
-    exBack.addEventListener('click', function(){ showTab(exportReturnTab || 'packer'); });
   }
   showTab('floor');
 })();
