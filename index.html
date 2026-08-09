@@ -26,6 +26,7 @@
     --tab-tracker:#0F766E; --tab-tracker-bg:#E6F7F5; --tab-tracker-soft:#F3FBFA;
     --tab-packer:#1D4ED8; --tab-packer-bg:#EAF0FF; --tab-packer-soft:#F6F9FF;
     --tab-roster:#047857; --tab-roster-bg:#E8F8F1; --tab-roster-soft:#F4FBF7;
+    --tab-settings:#475569; --tab-settings-bg:#E8EDF3; --tab-settings-soft:#F5F7FA;
   }
 #app *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--paper);
@@ -535,12 +536,14 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 .bp-fab-btn[data-tab="tracker"].active{ background:var(--tab-tracker); }
 .bp-fab-btn[data-tab="packer"].active{ background:var(--tab-packer); }
 .bp-fab-btn[data-tab="roster"].active{ background:var(--tab-roster); }
+.bp-fab-btn[data-tab="settings"].active{ background:var(--tab-settings); }
 .bp-fab-btn.active:hover{ color:#fff; }
 .bp-fab-btn[data-tab="floor"].active:hover{ background:var(--tab-floor); }
 .bp-fab-btn[data-tab="breaks"].active:hover{ background:var(--tab-breaks); }
 .bp-fab-btn[data-tab="tracker"].active:hover{ background:var(--tab-tracker); }
 .bp-fab-btn[data-tab="packer"].active:hover{ background:var(--tab-packer); }
 .bp-fab-btn[data-tab="roster"].active:hover{ background:var(--tab-roster); }
+.bp-fab-btn[data-tab="settings"].active:hover{ background:var(--tab-settings); }
 .bp-fab-btn .fab-full{ display:none; }
 .bp-fab-btn .fab-short{ display:inline; }
 
@@ -550,6 +553,7 @@ html[data-active-tab="breaks"] .bp-nav-launch{ background:var(--tab-breaks); bor
 html[data-active-tab="tracker"] .bp-nav-launch{ background:var(--tab-tracker); border-color:var(--tab-tracker); box-shadow:0 8px 24px rgba(15,118,110,.28); }
 html[data-active-tab="packer"] .bp-nav-launch{ background:var(--tab-packer); border-color:var(--tab-packer); box-shadow:0 8px 24px rgba(29,78,216,.28); }
 html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); border-color:var(--tab-roster); box-shadow:0 8px 24px rgba(4,120,87,.28); }
+html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings); border-color:var(--tab-settings); box-shadow:0 8px 24px rgba(71,85,105,.28); }
 
 /* Desktop: floating Menu button → popup tab list */
 @media (min-width:1101px){
@@ -623,11 +627,13 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
   .bp-fab-btn[data-tab="tracker"]{ box-shadow:inset 3px 0 0 var(--tab-tracker); }
   .bp-fab-btn[data-tab="packer"]{ box-shadow:inset 3px 0 0 var(--tab-packer); }
   .bp-fab-btn[data-tab="roster"]{ box-shadow:inset 3px 0 0 var(--tab-roster); }
+  .bp-fab-btn[data-tab="settings"]{ box-shadow:inset 3px 0 0 var(--tab-settings); }
   .bp-fab-btn[data-tab="floor"]:not(.active):hover{ background:var(--tab-floor-soft); color:var(--tab-floor); }
   .bp-fab-btn[data-tab="breaks"]:not(.active):hover{ background:var(--tab-breaks-soft); color:var(--tab-breaks); }
   .bp-fab-btn[data-tab="tracker"]:not(.active):hover{ background:var(--tab-tracker-soft); color:var(--tab-tracker); }
   .bp-fab-btn[data-tab="packer"]:not(.active):hover{ background:var(--tab-packer-soft); color:var(--tab-packer); }
   .bp-fab-btn[data-tab="roster"]:not(.active):hover{ background:var(--tab-roster-soft); color:var(--tab-roster); }
+  .bp-fab-btn[data-tab="settings"]:not(.active):hover{ background:var(--tab-settings-soft); color:var(--tab-settings); }
   .bp-fab-btn .fab-short{ display:none; }
   .bp-fab-btn .fab-full{ display:inline; }
 
@@ -635,7 +641,8 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
   #breakPlannerTab,
   #tabTracker,
   #tabPacker,
-  #tabRoster{ left:0; }
+  #tabRoster,
+  #tabSettings{ left:0; }
 
   #app header#toolbar{ padding:8px 16px; }
   #app #rosterPanel{ width:300px; flex-basis:300px; }
@@ -646,7 +653,8 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
   #breakPlannerTab .bp-shell,
   #tabTracker .st-shell,
   #tabPacker .pk-shell,
-  #tabRoster .ro-shell{
+  #tabRoster .ro-shell,
+  #tabSettings .stn-shell{
     max-width:none;
     width:100%;
   }
@@ -655,6 +663,7 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
   #tabPacker .pk-chrome,
   #tabRoster .ro-chrome{ padding:12px 20px 14px; }
   #tabTracker .st-chrome{ padding:14px 20px; }
+  #tabSettings .stn-chrome{ padding:14px 20px; }
   #breakPlannerTab .bp-list-wrap,
   #tabPacker .pk-body,
   #tabRoster .ro-list-wrap,
@@ -743,6 +752,7 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
   #tabPacker .pk-tw tbody tr:hover{ background:#F3F6FB; }
   #tabRoster .ro-list-wrap{ padding-top:10px; }
 
+  #tabSettings .stn-body{ padding:16px 28px 96px; }
   .bp-toast, #tabTracker .toast, #tabPacker .toast{ bottom:78px; }
 }
 
@@ -752,6 +762,7 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
   html[data-active-tab="tracker"] .bp-nav-launch:hover{ background:#0B5F58; border-color:#0B5F58; }
   html[data-active-tab="packer"] .bp-nav-launch:hover{ background:#1A44C0; border-color:#1A44C0; }
   html[data-active-tab="roster"] .bp-nav-launch:hover{ background:#036648; border-color:#036648; }
+  html[data-active-tab="settings"] .bp-nav-launch:hover{ background:#3A4658; border-color:#3A4658; }
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
 }
 
@@ -1469,9 +1480,114 @@ html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); bor
     <button class="bp-fab-btn" data-tab="tracker" title="Shift Tracker" role="menuitem"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
     <button class="bp-fab-btn" data-tab="packer" title="Packer" role="menuitem"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
     <button class="bp-fab-btn" data-tab="roster" title="Roster" role="menuitem"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
+    <button class="bp-fab-btn" data-tab="settings" title="Settings" role="menuitem"><span class="fab-short">Settings</span><span class="fab-full">Settings</span></button>
   </div>
 </div>
 <div class="bp-toast" id="bpToast"></div>
+
+<div id="tabSettings" style="display:none">
+  <style>
+    #tabSettings{
+      position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
+      overflow:hidden; background:#EEF0F3; color:#1D1D1F;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex; flex-direction:column;
+    }
+    #tabSettings .stn-shell{
+      flex:1; min-height:0; display:flex; flex-direction:column;
+      max-width:720px; width:100%; margin:0 auto;
+    }
+    #tabSettings .stn-chrome{
+      flex:0 0 auto; background:var(--tab-settings-soft); backdrop-filter:blur(10px);
+      border-bottom:1px solid #E1E4EA; border-top:3px solid var(--tab-settings);
+      padding:10px 12px; z-index:5;
+    }
+    #tabSettings .stn-title{ margin:0; font-size:15px; font-weight:800; letter-spacing:-.02em; color:var(--tab-settings); }
+    #tabSettings .stn-sub{ font-size:11px; color:#6E6E73; margin-top:3px; line-height:1.4; }
+    #tabSettings .stn-body{
+      flex:1; min-height:0; overflow:auto; padding:10px 12px calc(80px + env(safe-area-inset-bottom,0px));
+      -webkit-overflow-scrolling:touch;
+    }
+    #tabSettings .stn-sec{
+      font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+      color:#8E8E93; margin:12px 2px 6px;
+    }
+    #tabSettings .stn-sec:first-child{ margin-top:2px; }
+    #tabSettings .stn-card{
+      background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    }
+    #tabSettings .stn-card h2{ margin:0 0 2px; font-size:13px; font-weight:800; }
+    #tabSettings .stn-card p{ margin:0 0 8px; font-size:11px; color:#6E6E73; line-height:1.4; }
+    #tabSettings .stn-actions{ display:flex; flex-wrap:wrap; gap:6px; }
+    #tabSettings .stn-actions button{
+      border:1px solid #D8DCE3; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700;
+      cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
+    }
+    #tabSettings .stn-actions button.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
+    #tabSettings .stn-actions button.danger{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
+    #tabSettings .stn-actions button.btn-danger-pending{ background:#FEE2E2; color:#B8251C; border-color:#F1A8A4; }
+    #tabSettings .stn-note{
+      font-size:11px; color:#8E8E93; line-height:1.45; padding:4px 2px 10px;
+    }
+  </style>
+  <div class="stn-shell">
+    <div class="stn-chrome">
+      <h1 class="stn-title">Settings</h1>
+      <div class="stn-sub">Backup and restore your Floor, Breaks, Packer, and Roster data. Wipe asks Confirm? then reloads.</div>
+    </div>
+    <div class="stn-body" id="settingsBody">
+      <div class="stn-sec">Saved data</div>
+      <div class="stn-card">
+        <h2>Whole app</h2>
+        <p>Floor, Breaks, Packer uploads, and Roster marks in one JSON backup.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" id="stnBackupAll">Download backup</button>
+          <button type="button" id="stnRestoreAll">Restore backup</button>
+          <button type="button" class="danger" id="stnWipeAll">Wipe everything</button>
+        </div>
+        <input type="file" id="stnRestoreFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="stn-card">
+        <h2>Floor Plan</h2>
+        <p>Stations, plates, SKUs, and staff name list.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="planner">Download</button>
+          <button type="button" data-restore="planner">Restore</button>
+          <button type="button" class="danger" data-wipe="planner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Breaks</h2>
+        <p>Break groups, times, and assignments.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="breakPlanner">Download</button>
+          <button type="button" data-restore="breakPlanner">Restore</button>
+          <button type="button" class="danger" data-wipe="breakPlanner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Packer data</h2>
+        <p>Uploaded CSVs and saved packer results.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="packer-shift-data">Download</button>
+          <button type="button" data-restore="packer-shift-data">Restore</button>
+          <button type="button" class="danger" data-wipe="packer-shift-data">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Roster marks</h2>
+        <p>On / Late / Left early / Absent / Leave marks for the week.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="shiftWeekAttendance">Download</button>
+          <button type="button" data-restore="shiftWeekAttendance">Restore</button>
+          <button type="button" class="danger" data-wipe="shiftWeekAttendance">Wipe</button>
+        </div>
+      </div>
+      <input type="file" id="stnRestorePageFile" accept="application/json,.json" style="display:none">
+      <p class="stn-note">Download saves a JSON file you can Restore later. After Wipe or Restore the page reloads. Clear day / Clear week on other tabs only clears that week’s work — they do not wipe saved backups.</p>
+    </div>
+  </div>
+</div>
 
 <div id="tabRoster" style="display:none">
   <style>
@@ -10706,20 +10822,248 @@ function toast(msg, err) {
 </script>
 
 <script>
+/* Settings: backup / restore / wipe */
+(function(){
+  var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
+  var KEY_LABELS = {
+    planner: 'Floor Plan',
+    breakPlanner: 'Breaks',
+    'packer-shift-data': 'Packer',
+    shiftWeekAttendance: 'Roster marks'
+  };
+  var stnBackupAll = document.getElementById('stnBackupAll');
+  var stnRestoreAll = document.getElementById('stnRestoreAll');
+  var stnRestoreFile = document.getElementById('stnRestoreFile');
+  var stnRestorePageFile = document.getElementById('stnRestorePageFile');
+  var stnWipeAll = document.getElementById('stnWipeAll');
+  var settingsBody = document.getElementById('settingsBody');
+  var pendingRestoreKey = null;
+  var wipeArmed = {};
+  var wipeTimers = {};
+
+  function toast(msg){
+    var el = document.getElementById('bpToast') || document.getElementById('toast') || document.getElementById('packerToast');
+    if(!el){ try{ alert(msg); }catch(e){} return; }
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._bt);
+    el._bt = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+  }
+  function downloadJson(filename, obj){
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'}));
+    a.download = filename;
+    a.click();
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+  }
+  function emptyPayload(key){
+    var now = Date.now();
+    if (key === 'planner') {
+      return JSON.stringify({
+        zoom: 1, skuRoster: [], rosterCollapsed: false, breakScale: 1, snapEnabled: true,
+        breakX: 0, breakY: 0, currentShift: 'morning',
+        morningRosterSeparated: false, morningBreakTimesCleared: false,
+        shiftData: {
+          morning: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' },
+          afternoon: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' }
+        }
+      });
+    }
+    if (key === 'breakPlanner') {
+      return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] } });
+    }
+    if (key === 'packer-shift-data') {
+      return JSON.stringify({
+        schemaVersion: 1, revision: 0, version: 3, activeWeekKey: '', byDate: {}, archives: {},
+        legacy: {
+          records: [], files: [],
+          quality: {
+            validRows: 0, invalidRows: 0, blankRows: 0, missingWorkerNames: 0,
+            missingDates: 0, missingPackingTime: 0, duplicateRows: 0, unknownShifts: 0,
+            totalsRowsSkipped: 0, invalidNumericValues: 0, failedCalculations: 0, mixedSkuRows: 0
+          }
+        },
+        updatedAt: now
+      });
+    }
+    if (key === 'shiftWeekAttendance') {
+      return JSON.stringify({ schemaVersion: 1, revision: 0, byDate: {}, activeWeekKey: '', archives: {} });
+    }
+    return JSON.stringify({});
+  }
+  async function readKey(key){
+    try{
+      var r = await window.storage.get(key, false);
+      return r && r.value != null ? r.value : null;
+    }catch(e){ return null; }
+  }
+  function writeValue(key, value){
+    var str = typeof value === 'string' ? value : JSON.stringify(value);
+    return window.storage.set(key, str, false);
+  }
+  async function exportBackup(){
+    if(!window.storage){ toast('Storage unavailable'); return; }
+    var data = { type:'shift-floor-planner-backup', schemaVersion:1, exportedAt:new Date().toISOString(), keys:{} };
+    for(var i=0;i<KEYS.length;i++) data.keys[KEYS[i]] = await readKey(KEYS[i]);
+    downloadJson('shift-floor-backup-' + new Date().toISOString().slice(0,10) + '.json', data);
+    toast('Backup downloaded');
+  }
+  async function exportOneKey(key){
+    if(!window.storage){ toast('Storage unavailable'); return; }
+    if(KEYS.indexOf(key) < 0){ toast('Unknown page'); return; }
+    var value = await readKey(key);
+    downloadJson('shift-' + key + '-' + new Date().toISOString().slice(0,10) + '.json', {
+      type: 'shift-floor-planner-page',
+      schemaVersion: 1,
+      key: key,
+      label: KEY_LABELS[key] || key,
+      exportedAt: new Date().toISOString(),
+      value: value
+    });
+    toast((KEY_LABELS[key] || key) + ' downloaded');
+  }
+  async function importAny(file, expectedKey){
+    try{
+      var text = await file.text();
+      var data = JSON.parse(text);
+      if(!data){ toast('Not a recognised backup file'); return; }
+
+      if(data.type === 'shift-floor-planner-backup' && data.keys){
+        if(expectedKey){
+          if(data.keys[expectedKey] == null){
+            toast('That backup has no ' + (KEY_LABELS[expectedKey] || expectedKey) + ' data');
+            return;
+          }
+          await writeValue(expectedKey, data.keys[expectedKey]);
+          toast((KEY_LABELS[expectedKey] || expectedKey) + ' restored — reloading…');
+          setTimeout(function(){ location.reload(); }, 600);
+          return;
+        }
+        for(var i=0;i<KEYS.length;i++){
+          var k = KEYS[i];
+          if(data.keys[k] == null) continue;
+          await writeValue(k, data.keys[k]);
+        }
+        toast('Backup restored — reloading…');
+        setTimeout(function(){ location.reload(); }, 600);
+        return;
+      }
+
+      if(data.type === 'shift-floor-planner-page' && data.key){
+        var pageKey = data.key;
+        if(KEYS.indexOf(pageKey) < 0){ toast('Unknown page in file'); return; }
+        if(expectedKey && expectedKey !== pageKey){
+          toast('That file is for ' + (KEY_LABELS[pageKey] || pageKey) + ', not ' + (KEY_LABELS[expectedKey] || expectedKey));
+          return;
+        }
+        if(!expectedKey){
+          toast('Use Restore on that page card for single-page files');
+          return;
+        }
+        if(data.value == null){ toast('File has no data'); return; }
+        await writeValue(pageKey, data.value);
+        toast((KEY_LABELS[pageKey] || pageKey) + ' restored — reloading…');
+        setTimeout(function(){ location.reload(); }, 600);
+        return;
+      }
+
+      toast('Not a recognised backup file');
+    }catch(e){
+      console.error(e);
+      toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'));
+    }
+  }
+  async function wipeKeys(keys){
+    if(!window.storage){ toast('Storage unavailable'); return; }
+    for(var i=0;i<keys.length;i++) await writeValue(keys[i], emptyPayload(keys[i]));
+    toast(keys.length > 1 ? 'Wiped everything — reloading…' : ((KEY_LABELS[keys[0]] || keys[0]) + ' wiped — reloading…'));
+    setTimeout(function(){ location.reload(); }, 500);
+  }
+  function armDanger(btn, armKey, idleLabel, onConfirm){
+    if(!wipeArmed[armKey]){
+      wipeArmed[armKey] = true;
+      btn.dataset.idleLabel = idleLabel;
+      btn.textContent = 'Confirm?';
+      btn.classList.add('btn-danger-pending');
+      clearTimeout(wipeTimers[armKey]);
+      wipeTimers[armKey] = setTimeout(function(){
+        wipeArmed[armKey] = false;
+        btn.textContent = idleLabel;
+        btn.classList.remove('btn-danger-pending');
+      }, 4000);
+      return;
+    }
+    clearTimeout(wipeTimers[armKey]);
+    wipeArmed[armKey] = false;
+    btn.textContent = idleLabel;
+    btn.classList.remove('btn-danger-pending');
+    onConfirm();
+  }
+
+  if(stnBackupAll) stnBackupAll.addEventListener('click', exportBackup);
+  if(stnRestoreAll && stnRestoreFile){
+    stnRestoreAll.addEventListener('click', function(){
+      armDanger(stnRestoreAll, 'restore-all', 'Restore backup', function(){ stnRestoreFile.click(); });
+    });
+    stnRestoreFile.addEventListener('change', function(){
+      var f = stnRestoreFile.files && stnRestoreFile.files[0];
+      stnRestoreFile.value = '';
+      if(f) importAny(f, null);
+    });
+  }
+  if(stnRestorePageFile){
+    stnRestorePageFile.addEventListener('change', function(){
+      var f = stnRestorePageFile.files && stnRestorePageFile.files[0];
+      var key = pendingRestoreKey;
+      pendingRestoreKey = null;
+      stnRestorePageFile.value = '';
+      if(f) importAny(f, key);
+    });
+  }
+  if(stnWipeAll){
+    stnWipeAll.addEventListener('click', function(){
+      armDanger(stnWipeAll, 'all', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
+    });
+  }
+  if(settingsBody){
+    settingsBody.addEventListener('click', function(e){
+      var t = e.target;
+      if(!t || !t.getAttribute) return;
+      var exportKey = t.getAttribute('data-export');
+      if(exportKey){ exportOneKey(exportKey); return; }
+      var restoreKey = t.getAttribute('data-restore');
+      if(restoreKey){
+        armDanger(t, 'restore:' + restoreKey, 'Restore', function(){
+          pendingRestoreKey = restoreKey;
+          if(stnRestorePageFile) stnRestorePageFile.click();
+        });
+        return;
+      }
+      var wipeKey = t.getAttribute('data-wipe');
+      if(!wipeKey) return;
+      armDanger(t, 'wipe:' + wipeKey, 'Wipe', function(){ wipeKeys([wipeKey]); });
+    });
+  }
+})();
+</script>
+
+<script>
 (function(){
   var panels = {
     floor: document.getElementById('app'),
     roster: document.getElementById('tabRoster'),
     breaks: document.getElementById('breakPlannerTab'),
     tracker: document.getElementById('tabTracker'),
-    packer: document.getElementById('tabPacker')
+    packer: document.getElementById('tabPacker'),
+    settings: document.getElementById('tabSettings')
   };
   var tabLabels = {
     floor: 'Floor',
     breaks: 'Breaks',
     tracker: 'Tracker',
     packer: 'Packer',
-    roster: 'Roster'
+    roster: 'Roster',
+    settings: 'Settings'
   };
   function setNavOpen(open){
     var dock = document.getElementById('bpFabDock');
@@ -10735,7 +11079,8 @@ function toast(msg, err) {
       breaks: 'flex',
       tracker: 'flex',
       packer: 'flex',
-      roster: 'flex'
+      roster: 'flex',
+      settings: 'flex'
     };
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;
