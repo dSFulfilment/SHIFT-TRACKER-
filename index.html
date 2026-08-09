@@ -867,10 +867,16 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
   color:#8E8E93; text-align:left; padding:0 6px 2px; font-weight:800;
 }
-#breakPlannerTab .bp-table th.bp-col-actions{ width:84px; }
+#breakPlannerTab .bp-table th.bp-col-actions{ width:44px; }
 #breakPlannerTab .bp-table th.bp-col-group{ width:72px; }
-#breakPlannerTab .bp-table th.bp-col-st{ width:88px; }
-#breakPlannerTab .bp-table th.bp-col-time{ width:118px; }
+#breakPlannerTab .bp-table th.bp-col-st{ width:72px; }
+#breakPlannerTab .bp-table th.bp-col-time{ width:280px; }
+#breakPlannerTab .bp-times-wrap{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; min-width:0;
+}
+#breakPlannerTab .bp-time-pair{
+  min-width:0; background:#FFFBF5; border:1px solid #F0E0C8; border-radius:8px; padding:6px 7px;
+}
 #breakPlannerTab .bp-group-card td{
   background:#fff; border-top:1px solid #E5E8EF; border-bottom:1px solid #E5E8EF;
   padding:5px 6px; vertical-align:middle;
@@ -889,10 +895,28 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   font-size:11px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:6px;
   padding:3px 5px; font-family:inherit; width:100%; background:#fff; box-sizing:border-box;
 }
-#breakPlannerTab .bp-time-block{ display:flex; align-items:center; gap:2px; }
+#breakPlannerTab .bp-time-cell{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+#breakPlannerTab .bp-time-cell-lbl{
+  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93; line-height:1;
+}
+#breakPlannerTab .bp-time-range{
+  font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; color:#1D1D1F;
+  letter-spacing:-.01em; line-height:1.15; white-space:nowrap;
+}
+#breakPlannerTab .bp-time-range.is-empty{ color:#C7C7CC; font-weight:700; font-size:12px; }
+#breakPlannerTab .bp-time-block{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 #breakPlannerTab .bp-time-block input[type=time]{
-  font-size:11px; border:1px solid #D8DCE3; border-radius:6px; padding:2px 2px;
-  font-family:inherit; background:#fff; width:5.8em; min-width:0;
+  font-size:13px; font-weight:700; border:1px solid #D8DCE3; border-radius:6px; padding:5px 6px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:#fff; color:#1D1D1F;
+  width:100%; min-width:0; max-width:100%;
+  box-sizing:border-box; font-variant-numeric:tabular-nums;
+}
+#breakPlannerTab .bp-time-block input[type=time]:focus{
+  outline:none; border-color:var(--tab-breaks); box-shadow:0 0 0 2px rgba(180,83,9,.18); background:#fff;
+}
+/* Chromium often needs extra room for the native HH:MM + AM/PM control */
+@supports (-webkit-appearance:none){
+  #breakPlannerTab .bp-time-block input[type=time]{ min-height:30px; }
 }
 #breakPlannerTab .bp-group-rm,
 #breakPlannerTab .bp-add-people{
@@ -919,6 +943,8 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     padding:6px 0; margin-bottom:4px;
   }
   #breakPlannerTab .bp-group-card td:first-child{ padding-top:6px; }
+  #breakPlannerTab .bp-group-card td.bp-td-times{ padding:6px 8px; }
+  #breakPlannerTab .bp-time-range{ font-size:15px; }
   #breakPlannerTab .bp-row-actions{ justify-content:flex-start; padding-bottom:6px; }
 }
 #breakPlannerTab .bp-role-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
@@ -6097,13 +6123,33 @@ function renderGroups(){
           '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>');
       });
     });
+    function fmtTime(t){
+      if (!t) return '';
+      var parts = String(t).split(':');
+      if (parts.length < 2) return String(t);
+      return parts[0] + ':' + parts[1];
+    }
+    function timePairHtml(label, startKey, endKey, startVal, endVal){
+      var range = (startVal && endVal)
+        ? (fmtTime(startVal) + '\u2013' + fmtTime(endVal))
+        : 'Set times';
+      var emptyCls = (startVal && endVal) ? '' : ' is-empty';
+      return '<div class="bp-time-pair">' +
+        '<div class="bp-time-cell">' +
+        '<div class="bp-time-cell-lbl">' + label + '</div>' +
+        '<div class="bp-time-range' + emptyCls + '">' + escapeHtml(range) + '</div>' +
+        '<div class="bp-time-block">' +
+        '<input type="time" data-time="' + g.id + '|' + startKey + '" value="' + escapeHtml(startVal || '') + '" aria-label="' + label + ' start">' +
+        '<input type="time" data-time="' + g.id + '|' + endKey + '" value="' + escapeHtml(endVal || '') + '" aria-label="' + label + ' end">' +
+        '</div></div></div>';
+    }
     return '<tr class="bp-group-card" data-group-card="' + g.id + '">' +
       '<td><input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '"></td>' +
       '<td><input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="A–D" value="' + escapeHtml(g.stations || '') + '"></td>' +
-      '<td><div class="bp-time-block"><input type="time" data-time="' + g.id + '|teaStart" value="' + g.teaStart + '">' +
-      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|teaEnd" value="' + g.teaEnd + '"></div></td>' +
-      '<td><div class="bp-time-block"><input type="time" data-time="' + g.id + '|mealStart" value="' + g.mealStart + '">' +
-      '<span style="color:#C7C7CC">&ndash;</span><input type="time" data-time="' + g.id + '|mealEnd" value="' + g.mealEnd + '"></div></td>' +
+      '<td class="bp-td-times" colspan="2"><div class="bp-times-wrap">' +
+      timePairHtml('Tea', 'teaStart', 'teaEnd', g.teaStart, g.teaEnd) +
+      timePairHtml('Meal', 'mealStart', 'mealEnd', g.mealStart, g.mealEnd) +
+      '</div></td>' +
       '<td><div class="bp-people" data-drop-group="' + g.id + '">' +
       chips.join('') +
       '<button type="button" class="bp-add-people" data-open-add="' + g.id + '">+</button>' +
@@ -6115,7 +6161,7 @@ function renderGroups(){
   groupsEl.innerHTML =
     '<table class="bp-table"><thead><tr>' +
     '<th class="bp-col-group">Group</th><th class="bp-col-st">Stations</th>' +
-    '<th class="bp-col-time">Tea</th><th class="bp-col-time">Meal</th>' +
+    '<th class="bp-col-time" colspan="2">Break times</th>' +
     '<th>People</th><th class="bp-col-actions"></th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
@@ -6251,6 +6297,22 @@ groupsEl.addEventListener('input', function(e){
     var parts = timeAttr.split('|');
     var g2 = sd.groups.filter(function(g){ return g.id === parts[0]; })[0];
     if (g2) g2[parts[1]] = t.value;
+    var pair = t.closest ? t.closest('.bp-time-pair') : null;
+    if (pair){
+      var inputs = pair.querySelectorAll('input[type=time]');
+      var a = inputs[0] ? inputs[0].value : '';
+      var b = inputs[1] ? inputs[1].value : '';
+      var rangeEl = pair.querySelector('.bp-time-range');
+      if (rangeEl){
+        if (a && b){
+          rangeEl.textContent = a.slice(0,5) + '\u2013' + b.slice(0,5);
+          rangeEl.classList.remove('is-empty');
+        } else {
+          rangeEl.textContent = 'Set times';
+          rangeEl.classList.add('is-empty');
+        }
+      }
+    }
     scheduleOwnSave();
   }
 });
