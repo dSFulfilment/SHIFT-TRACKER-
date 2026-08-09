@@ -26,7 +26,7 @@
     --tab-tracker:#0F766E; --tab-tracker-bg:#E6F7F5; --tab-tracker-soft:#F3FBFA;
     --tab-packer:#1D4ED8; --tab-packer-bg:#EAF0FF; --tab-packer-soft:#F6F9FF;
     --tab-roster:#047857; --tab-roster-bg:#E8F8F1; --tab-roster-soft:#F4FBF7;
-    --tab-settings:#475569; --tab-settings-bg:#E8EDF3; --tab-settings-soft:#F5F7FA;
+    --tab-export:#475569; --tab-export-bg:#E8EDF3; --tab-export-soft:#F5F7FA;
   }
 #app *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--paper);
@@ -536,14 +536,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 .bp-fab-btn[data-tab="tracker"].active{ background:var(--tab-tracker); }
 .bp-fab-btn[data-tab="packer"].active{ background:var(--tab-packer); }
 .bp-fab-btn[data-tab="roster"].active{ background:var(--tab-roster); }
-.bp-fab-btn[data-tab="settings"].active{ background:var(--tab-settings); }
 .bp-fab-btn.active:hover{ color:#fff; }
 .bp-fab-btn[data-tab="floor"].active:hover{ background:var(--tab-floor); }
 .bp-fab-btn[data-tab="breaks"].active:hover{ background:var(--tab-breaks); }
 .bp-fab-btn[data-tab="tracker"].active:hover{ background:var(--tab-tracker); }
 .bp-fab-btn[data-tab="packer"].active:hover{ background:var(--tab-packer); }
 .bp-fab-btn[data-tab="roster"].active:hover{ background:var(--tab-roster); }
-.bp-fab-btn[data-tab="settings"].active:hover{ background:var(--tab-settings); }
 .bp-fab-btn .fab-full{ display:none; }
 .bp-fab-btn .fab-short{ display:inline; }
 
@@ -553,87 +551,98 @@ html[data-active-tab="breaks"] .bp-nav-launch{ background:var(--tab-breaks); bor
 html[data-active-tab="tracker"] .bp-nav-launch{ background:var(--tab-tracker); border-color:var(--tab-tracker); box-shadow:0 8px 24px rgba(15,118,110,.28); }
 html[data-active-tab="packer"] .bp-nav-launch{ background:var(--tab-packer); border-color:var(--tab-packer); box-shadow:0 8px 24px rgba(29,78,216,.28); }
 html[data-active-tab="roster"] .bp-nav-launch{ background:var(--tab-roster); border-color:var(--tab-roster); box-shadow:0 8px 24px rgba(4,120,87,.28); }
-html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings); border-color:var(--tab-settings); box-shadow:0 8px 24px rgba(71,85,105,.28); }
+html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); border-color:var(--tab-export); box-shadow:0 8px 24px rgba(71,85,105,.28); }
 
-/* Desktop-only: persistent top tab bar + full-width workspaces */
+/* Desktop: floating Menu button → popup tab list */
 @media (min-width:1101px){
-  :root{ --desk-nav-h:48px; }
-
   .bp-fab-dock{
-    top:0; right:0; bottom:auto; left:0;
-    height:var(--desk-nav-h);
-    display:flex; align-items:center;
-    background:#fff;
-    border-bottom:1px solid #E1E4EA;
-    box-shadow:0 1px 0 rgba(28,36,48,.04);
-    z-index:10001;
-    padding:0 16px;
-    gap:14px;
+    top:auto; right:20px; bottom:20px; left:auto;
   }
-  .bp-fab-dock::before{
-    content:"Shift Tracker";
-    font:800 13px/1 inherit;
-    letter-spacing:-.02em;
-    color:var(--ink);
-    white-space:nowrap;
-    margin-right:4px;
-  }
-  .bp-nav-launch,
-  .bp-nav-scrim{ display:none !important; }
-  .bp-fab-group,
-  .bp-fab-dock.open .bp-fab-group{
-    display:flex !important;
-    position:static;
-    width:auto; flex:1; min-width:0;
-    flex-direction:row;
+  .bp-nav-launch{
+    display:inline-flex;
     align-items:center;
-    gap:4px;
-    padding:0;
-    border:none;
-    border-radius:0;
-    background:transparent;
-    box-shadow:none;
-    overflow:visible;
+    justify-content:center;
+    gap:8px;
+    position:relative;
+    z-index:10001;
+    height:44px;
+    padding:0 16px 0 14px;
+    border:1px solid var(--tab-floor);
+    border-radius:999px;
+    background:var(--tab-floor);
+    color:#fff;
+    font:700 13px/1 inherit;
+    cursor:pointer;
+    box-shadow:0 8px 24px rgba(37,84,199,.28);
+    transition:background .15s, border-color .15s, box-shadow .15s;
   }
+  .bp-nav-launch::after{
+    content:"";
+    width:0; height:0;
+    border-left:4px solid transparent;
+    border-right:4px solid transparent;
+    border-top:5px solid rgba(255,255,255,.85);
+    margin-top:1px;
+  }
+  .bp-fab-dock.open .bp-nav-launch::after{
+    border-top:none;
+    border-bottom:5px solid rgba(255,255,255,.85);
+  }
+  .bp-nav-scrim{
+    display:none;
+    position:fixed; inset:0; z-index:10000;
+    background:rgba(15,23,42,.18);
+  }
+  .bp-fab-dock.open .bp-nav-scrim{ display:block; }
+  .bp-fab-group{
+    display:none;
+    position:absolute;
+    right:0; bottom:54px; left:auto; top:auto;
+    width:220px;
+    flex-direction:column;
+    align-items:stretch;
+    gap:2px;
+    padding:8px;
+    border-radius:14px;
+    border:1px solid #E1E4EA;
+    background:#fff;
+    box-shadow:0 16px 40px rgba(28,36,48,.18);
+    overflow:auto;
+    z-index:10001;
+  }
+  .bp-fab-dock.open .bp-fab-group{ display:flex; }
   .bp-fab-btn{
-    width:auto;
-    border-radius:8px;
-    text-align:center;
-    padding:8px 14px;
+    width:100%;
+    border-radius:10px;
+    text-align:left;
+    padding:11px 12px 11px 14px;
     font-size:13px;
     flex:0 0 auto;
-    box-shadow:none !important;
+    box-shadow:inset 3px 0 0 transparent;
   }
+  .bp-fab-btn[data-tab="floor"]{ box-shadow:inset 3px 0 0 var(--tab-floor); }
+  .bp-fab-btn[data-tab="breaks"]{ box-shadow:inset 3px 0 0 var(--tab-breaks); }
+  .bp-fab-btn[data-tab="tracker"]{ box-shadow:inset 3px 0 0 var(--tab-tracker); }
+  .bp-fab-btn[data-tab="packer"]{ box-shadow:inset 3px 0 0 var(--tab-packer); }
+  .bp-fab-btn[data-tab="roster"]{ box-shadow:inset 3px 0 0 var(--tab-roster); }
   .bp-fab-btn[data-tab="floor"]:not(.active):hover{ background:var(--tab-floor-soft); color:var(--tab-floor); }
   .bp-fab-btn[data-tab="breaks"]:not(.active):hover{ background:var(--tab-breaks-soft); color:var(--tab-breaks); }
   .bp-fab-btn[data-tab="tracker"]:not(.active):hover{ background:var(--tab-tracker-soft); color:var(--tab-tracker); }
   .bp-fab-btn[data-tab="packer"]:not(.active):hover{ background:var(--tab-packer-soft); color:var(--tab-packer); }
   .bp-fab-btn[data-tab="roster"]:not(.active):hover{ background:var(--tab-roster-soft); color:var(--tab-roster); }
-  .bp-fab-btn[data-tab="settings"]:not(.active):hover{ background:var(--tab-settings-soft); color:var(--tab-settings); }
   .bp-fab-btn .fab-short{ display:none; }
   .bp-fab-btn .fab-full{ display:inline; }
 
-  /* Content sits under the top tab bar */
-  #app{
-    margin:var(--desk-nav-h) 0 0 0;
-    width:auto;
-    height:calc(100dvh - var(--desk-nav-h)) !important;
-    max-height:calc(100dvh - var(--desk-nav-h)) !important;
-  }
+  #app{ margin-left:0; width:auto; }
   #breakPlannerTab,
   #tabTracker,
   #tabPacker,
   #tabRoster,
-  #tabSettings{
-    top:var(--desk-nav-h) !important;
-    right:0; bottom:0; left:0;
-    height:calc(100dvh - var(--desk-nav-h)) !important;
-    max-height:calc(100dvh - var(--desk-nav-h)) !important;
-  }
+  #tabExport{ left:0; }
 
-  #app header#toolbar{ padding:10px 20px; }
-  #app #rosterPanel{ width:320px; flex-basis:320px; }
-  #app #viewport{ padding:20px 28px 28px; }
+  #app header#toolbar{ padding:8px 16px; }
+  #app #rosterPanel{ width:300px; flex-basis:300px; }
+  #app #viewport{ padding:20px 24px 72px; }
   #floorToolsDock{ left:20px; bottom:20px; }
   #app #floorToolChip{ left:76px; }
 
@@ -641,45 +650,29 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #tabTracker .st-shell,
   #tabPacker .pk-shell,
   #tabRoster .ro-shell,
-  #tabSettings .stn-shell{
+  #tabExport .ex-shell{
     max-width:none;
     width:100%;
   }
 
   #breakPlannerTab .bp-chrome,
   #tabPacker .pk-chrome,
-  #tabRoster .ro-chrome{ padding:14px 24px 16px; }
-  #tabTracker .st-chrome{ padding:16px 24px; }
-  #tabSettings .stn-chrome{ padding:18px 28px; }
-  #tabSettings .stn-title{ font-size:18px; }
-  #breakPlannerTab .bp-title,
-  #tabPacker .pk-title,
-  #tabRoster .ro-title{ font-size:16px; }
-  #tabTracker .st-title{ font-size:17px; }
+  #tabRoster .ro-chrome{ padding:12px 20px 14px; }
+  #tabTracker .st-chrome{ padding:14px 20px; }
+  #tabExport .ex-chrome{ padding:16px 28px; }
 
   #breakPlannerTab .bp-list-wrap,
   #tabPacker .pk-body,
   #tabRoster .ro-list-wrap,
   #tabTracker .st-body{
-    padding:16px 24px 28px;
+    padding:12px 20px 72px;
   }
-  #tabSettings .stn-body{
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr;
-    gap:0 14px;
-    align-content:start;
-    padding:18px 28px 36px;
-  }
-  #tabSettings .stn-sec{ grid-column:1 / -1; margin-top:18px; }
-  #tabSettings .stn-sec:first-child{ margin-top:0; }
-  #tabSettings .stn-note{ grid-column:1 / -1; }
-  #tabSettings .stn-card{ margin-bottom:12px; padding:16px 18px; }
-  #tabSettings .stn-card:has(#stnBackupAll){ grid-column:1 / -1; }
+  #tabExport .ex-body{ padding:20px 28px 96px; }
 
-  /* Breaks: roomy pool + groups */
+  /* Breaks: pool left + groups right */
   #breakPlannerTab .bp-shell{
     display:grid;
-    grid-template-columns:minmax(280px,340px) minmax(0,1fr);
+    grid-template-columns:minmax(240px,300px) minmax(0,1fr);
     grid-template-rows:auto minmax(0,1fr);
     column-gap:0;
   }
@@ -690,9 +683,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #breakPlannerTab .bp-pool{
     grid-column:1;
     grid-row:2;
-    margin:16px 0 16px 24px;
+    margin:12px 0 12px 20px;
     min-height:0;
-    max-height:calc(100dvh - var(--desk-nav-h) - 130px);
+    max-height:calc(100dvh - 120px);
     overflow:auto;
     align-self:start;
   }
@@ -701,9 +694,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     grid-column:2;
     grid-row:2;
     margin:0;
-    padding:16px 24px 28px 16px;
+    padding:12px 20px 72px 12px;
     border-left:1px solid #E1E4EA;
-    background:#F3F5F8;
+    background:#F7F8FA;
   }
   #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
     grid-template-columns:minmax(0,1fr);
@@ -711,108 +704,69 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
     grid-column:1;
     border-left:none;
-    padding-left:24px;
+    padding-left:20px;
     background:transparent;
   }
 
-  /* Breaks table: prioritize readable Tea/Meal times */
-  #breakPlannerTab .bp-table th{ font-size:10px; padding:0 8px 4px; }
-  #breakPlannerTab .bp-table th.bp-col-group{ width:110px; }
-  #breakPlannerTab .bp-table th.bp-col-st{ width:100px; }
-  #breakPlannerTab .bp-table th.bp-col-time{ width:420px; }
-  #breakPlannerTab .bp-table th.bp-col-actions{ width:48px; }
-  #breakPlannerTab .bp-group-card td{ padding:10px 8px; }
-  #breakPlannerTab .bp-group-label{ font-size:14px; }
-  #breakPlannerTab .bp-group-stations{ font-size:13px; padding:5px 7px; }
-  #breakPlannerTab .bp-time-range{ font-size:16px; }
-  #breakPlannerTab .bp-time-pair{ padding:8px 10px; }
+  /* Clean Breaks times — flat table, no nested amber cards */
+  #breakPlannerTab .bp-table th.bp-col-group{ width:96px; }
+  #breakPlannerTab .bp-table th.bp-col-st{ width:88px; }
+  #breakPlannerTab .bp-table th.bp-col-time{ width:150px; }
+  #breakPlannerTab .bp-table th.bp-col-actions{ width:44px; }
+  #breakPlannerTab .bp-group-card td{ padding:8px 8px; }
+  #breakPlannerTab .bp-time-pair{
+    background:transparent; border:none; border-radius:0; padding:0;
+  }
+  #breakPlannerTab .bp-time-range{ font-size:14px; margin-bottom:2px; }
   #breakPlannerTab .bp-time-block{
-    display:grid; grid-template-columns:1fr 1fr; gap:6px;
+    display:flex; flex-direction:row; gap:4px; align-items:center;
   }
   #breakPlannerTab .bp-time-block input[type=time]{
-    font-size:13px; padding:6px 8px; min-height:34px;
+    width:auto; min-width:7.2em; flex:1; font-size:12px; padding:4px 5px; min-height:28px;
+    background:#fff;
   }
-  #breakPlannerTab .bp-chip{ font-size:12px; padding:5px 9px; border-radius:8px; }
-  #breakPlannerTab .bp-people{ gap:5px; min-height:32px; }
-  #breakPlannerTab .bp-add-people{ padding:6px 10px; font-size:12px; }
-  #breakPlannerTab .bp-sheet{
-    left:50%; top:54%; bottom:auto;
-    transform:translate(-50%,-50%);
-    width:min(560px, 42vw);
-    max-height:min(70vh, 640px);
-    border-radius:14px;
-    padding:16px 16px 20px;
-    box-shadow:0 24px 60px rgba(15,23,42,.28);
-  }
-  #breakPlannerTab .bp-sheet-scrim{ background:rgba(15,23,42,.28); }
+  #breakPlannerTab .bp-time-cell-lbl{ display:none; } /* thead already labels Tea/Meal */
 
-  /* Tracker: live metrics left, plan table right */
+  /* Tracker */
   #tabTracker .st-body{
     display:grid;
-    grid-template-columns:minmax(340px,420px) minmax(0,1fr);
+    grid-template-columns:minmax(300px,400px) minmax(0,1fr);
     grid-template-rows:auto minmax(0,1fr);
-    gap:18px;
+    gap:14px;
     align-items:start;
   }
   #tabTracker .st-live{
-    grid-column:1;
-    grid-row:1 / -1;
-    margin-bottom:0;
-    position:sticky;
-    top:0;
-    align-self:start;
-    max-height:calc(100dvh - var(--desk-nav-h) - 170px);
-    overflow:auto;
+    grid-column:1; grid-row:1 / -1; margin-bottom:0;
+    position:sticky; top:0; align-self:start;
+    max-height:calc(100dvh - 160px); overflow:auto;
   }
-  #tabTracker .st-body .sec{
-    grid-column:2;
-    grid-row:1;
-    margin:0;
-  }
+  #tabTracker .st-body .sec{ grid-column:2; grid-row:1; margin:0; }
   #tabTracker .st-body .tw{
-    grid-column:2;
-    grid-row:2;
-    min-height:0;
-    max-height:calc(100dvh - var(--desk-nav-h) - 210px);
-    overflow:auto;
+    grid-column:2; grid-row:2; min-height:0;
+    max-height:calc(100dvh - 200px); overflow:auto;
   }
-  #tabTracker .st-setup{ gap:10px; }
-  #tabTracker .st-field input{ height:36px; font-size:14px; }
 
-  #tabPacker .pk-search,
-  #tabRoster .ro-search{ max-width:320px; }
-  #tabPacker .pk-actions button,
-  #tabRoster .ro-actions button{ padding:7px 14px; font-size:12px; }
-  #tabPacker .pk-day,
-  #tabRoster .ro-day{ padding:6px 4px 8px; min-height:54px; }
-  #tabPacker .pk-day .d,
-  #tabRoster .ro-day .d{ font-size:10px; }
-  #tabPacker .pk-day .n,
-  #tabRoster .ro-day .n{ font-size:16px; }
-  #tabPacker .pk-day:hover:not(.active),
-  #tabRoster .ro-day:hover:not(.active){ background:#F5F6FA; border-color:#C5CAD3; }
-  #tabPacker .pk-tw{ max-height:calc(100dvh - var(--desk-nav-h) - 230px); }
+  #tabPacker .pk-search, #tabRoster .ro-search{ max-width:280px; }
+  #tabPacker .pk-tw{ max-height:calc(100dvh - 220px); }
   #tabPacker .pk-tw tbody tr:hover{ background:#F3F6FB; }
-  #tabPacker .pk-tw thead th{ font-size:10px; padding:8px 10px; }
-  #tabPacker .pk-tw tbody td{ font-size:13px; padding:9px 10px; }
-  #tabRoster .ro-list-wrap{ padding-top:12px; }
-  #tabRoster .ro-stat .num{ font-size:15px; }
-  #tabRoster .ro-row{ padding:6px 10px; gap:8px; }
+  #tabRoster .ro-list-wrap{ padding-top:10px; }
 
-  .bp-toast, #tabTracker .toast, #tabPacker .toast{ bottom:24px; }
+  .bp-toast, #tabTracker .toast, #tabPacker .toast, #tabExport .toast{ bottom:78px; }
 }
 
 @media (min-width:1101px) and (pointer:fine){
+  html[data-active-tab="floor"] .bp-nav-launch:hover{ background:#1E4BB5; border-color:#1E4BB5; }
+  html[data-active-tab="breaks"] .bp-nav-launch:hover{ background:#9A4508; border-color:#9A4508; }
+  html[data-active-tab="tracker"] .bp-nav-launch:hover{ background:#0B5F58; border-color:#0B5F58; }
+  html[data-active-tab="packer"] .bp-nav-launch:hover{ background:#1A44C0; border-color:#1A44C0; }
+  html[data-active-tab="roster"] .bp-nav-launch:hover{ background:#036648; border-color:#036648; }
+  html[data-active-tab="export"] .bp-nav-launch:hover{ background:#3A4658; border-color:#3A4658; }
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
-  #tabSettings .stn-actions button:hover{ background:#F5F6FA; }
-  #tabSettings .stn-actions button.primary:hover{ background:#2A3444; }
-  #tabSettings .stn-actions button.danger:hover{ background:#FEECEC; }
 }
 
 @media (min-width:1440px){
-  #tabTracker .st-body{ grid-template-columns:minmax(380px,480px) minmax(0,1fr); }
-  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(300px,380px) minmax(0,1fr); }
-  #breakPlannerTab .bp-table th.bp-col-time{ width:460px; }
+  #tabTracker .st-body{ grid-template-columns:minmax(340px,440px) minmax(0,1fr); }
+  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,340px) minmax(0,1fr); }
 }
 
 #breakPlannerTab{
@@ -896,12 +850,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #breakPlannerTab .bp-table th.bp-col-actions{ width:44px; }
 #breakPlannerTab .bp-table th.bp-col-group{ width:72px; }
 #breakPlannerTab .bp-table th.bp-col-st{ width:72px; }
-#breakPlannerTab .bp-table th.bp-col-time{ width:280px; }
-#breakPlannerTab .bp-times-wrap{
-  display:grid; grid-template-columns:1fr 1fr; gap:8px; min-width:0;
-}
+#breakPlannerTab .bp-table th.bp-col-time{ width:132px; }
 #breakPlannerTab .bp-time-pair{
-  min-width:0; background:#FFFBF5; border:1px solid #F0E0C8; border-radius:8px; padding:6px 7px;
+  min-width:0; background:transparent; border:none; border-radius:0; padding:0;
 }
 #breakPlannerTab .bp-group-card td{
   background:#fff; border-top:1px solid #E5E8EF; border-bottom:1px solid #E5E8EF;
@@ -930,11 +881,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   letter-spacing:-.01em; line-height:1.15; white-space:nowrap;
 }
 #breakPlannerTab .bp-time-range.is-empty{ color:#C7C7CC; font-weight:700; font-size:12px; }
-#breakPlannerTab .bp-time-block{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+#breakPlannerTab .bp-time-block{ display:flex; flex-direction:row; flex-wrap:wrap; gap:4px; align-items:center; min-width:0; }
 #breakPlannerTab .bp-time-block input[type=time]{
-  font-size:13px; font-weight:700; border:1px solid #D8DCE3; border-radius:6px; padding:5px 6px;
+  font-size:12px; font-weight:700; border:1px solid #D8DCE3; border-radius:6px; padding:4px 5px;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:#fff; color:#1D1D1F;
-  width:100%; min-width:0; max-width:100%;
+  width:7.4em; min-width:7.4em; max-width:100%;
   box-sizing:border-box; font-variant-numeric:tabular-nums;
 }
 #breakPlannerTab .bp-time-block input[type=time]:focus{
@@ -969,7 +920,8 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     padding:6px 0; margin-bottom:4px;
   }
   #breakPlannerTab .bp-group-card td:first-child{ padding-top:6px; }
-  #breakPlannerTab .bp-group-card td.bp-td-times{ padding:6px 8px; }
+  #breakPlannerTab .bp-group-card td.bp-td-time{ padding:6px 8px; }
+  #breakPlannerTab .bp-time-cell-lbl{ display:block; margin-bottom:2px; }
   #breakPlannerTab .bp-time-range{ font-size:15px; }
   #breakPlannerTab .bp-row-actions{ justify-content:flex-start; padding-bottom:6px; }
 }
@@ -1520,135 +1472,142 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     <span id="bpNavLaunchLbl">Floor</span>
   </button>
   <div class="bp-nav-scrim" id="bpNavScrim" hidden></div>
-  <div class="bp-fab-group" id="bpFabGroup" role="tablist" aria-label="Main tabs">
-    <button class="bp-fab-btn active" data-tab="floor" title="Floor Plan" role="tab" aria-selected="true"><span class="fab-short">Floor</span><span class="fab-full">Floor Plan</span></button>
-    <button class="bp-fab-btn" data-tab="breaks" title="Breaks" role="tab" aria-selected="false"><span class="fab-short">Breaks</span><span class="fab-full">Breaks</span></button>
-    <button class="bp-fab-btn" data-tab="tracker" title="Shift Tracker" role="tab" aria-selected="false"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
-    <button class="bp-fab-btn" data-tab="packer" title="Packer" role="tab" aria-selected="false"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
-    <button class="bp-fab-btn" data-tab="roster" title="Roster" role="tab" aria-selected="false"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
-    <button class="bp-fab-btn" data-tab="settings" title="Settings" role="tab" aria-selected="false"><span class="fab-short">Settings</span><span class="fab-full">Settings</span></button>
+  <div class="bp-fab-group" id="bpFabGroup" role="menu">
+    <button class="bp-fab-btn active" data-tab="floor" title="Floor Plan" role="menuitem"><span class="fab-short">Floor</span><span class="fab-full">Floor Plan</span></button>
+    <button class="bp-fab-btn" data-tab="breaks" title="Breaks" role="menuitem"><span class="fab-short">Breaks</span><span class="fab-full">Breaks</span></button>
+    <button class="bp-fab-btn" data-tab="tracker" title="Shift Tracker" role="menuitem"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
+    <button class="bp-fab-btn" data-tab="packer" title="Packer" role="menuitem"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
+    <button class="bp-fab-btn" data-tab="roster" title="Roster" role="menuitem"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
   </div>
 </div>
 <div class="bp-toast" id="bpToast"></div>
 
-<div id="tabSettings" style="display:none">
+<div id="tabExport" style="display:none">
   <style>
-    #tabSettings{
+    #tabExport{
       position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
-      overflow:hidden; background:#EEF0F3; color:#1D1D1F;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      overflow:hidden; background:#E8EAED; color:#1D1D1F;
+      font-family:Georgia,"Times New Roman",Times,serif;
       display:flex; flex-direction:column;
     }
-    #tabSettings .stn-shell{
+    #tabExport .ex-shell{
       flex:1; min-height:0; display:flex; flex-direction:column;
-      max-width:720px; width:100%; margin:0 auto;
+      max-width:920px; width:100%; margin:0 auto;
     }
-    #tabSettings .stn-chrome{
-      flex:0 0 auto; background:var(--tab-settings-soft); backdrop-filter:blur(10px);
-      border-bottom:1px solid #E1E4EA; border-top:3px solid var(--tab-settings);
-      padding:10px 12px; z-index:5;
+    #tabExport .ex-chrome{
+      flex:0 0 auto; background:var(--tab-export-soft); backdrop-filter:blur(10px);
+      border-bottom:1px solid #E1E4EA; border-top:3px solid var(--tab-export);
+      padding:12px 16px; z-index:5;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
-    #tabSettings .stn-title{ margin:0; font-size:15px; font-weight:800; letter-spacing:-.02em; color:var(--tab-settings); }
-    #tabSettings .stn-sub{ font-size:11px; color:#6E6E73; margin-top:3px; line-height:1.4; }
-    #tabSettings .stn-body{
-      flex:1; min-height:0; overflow:auto; padding:10px 12px calc(80px + env(safe-area-inset-bottom,0px));
-      -webkit-overflow-scrolling:touch;
-    }
-    #tabSettings .stn-sec{
-      font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
-      color:#8E8E93; margin:12px 2px 6px;
-    }
-    #tabSettings .stn-sec:first-child{ margin-top:2px; }
-    #tabSettings .stn-card{
-      background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:10px 12px; margin-bottom:8px;
-    }
-    #tabSettings .stn-card h2{ margin:0 0 2px; font-size:13px; font-weight:800; }
-    #tabSettings .stn-card p{ margin:0 0 8px; font-size:11px; color:#6E6E73; line-height:1.4; }
-    #tabSettings .stn-actions{ display:flex; flex-wrap:wrap; gap:6px; }
-    #tabSettings .stn-actions button{
+    #tabExport .ex-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    #tabExport .ex-title{ margin:0; font-size:16px; font-weight:800; letter-spacing:-.02em; color:var(--tab-export); font-family:inherit; }
+    #tabExport .ex-sub{ font-size:12px; color:#6E6E73; margin-top:3px; font-family:inherit; }
+    #tabExport .ex-actions{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+    #tabExport .ex-actions button{
       border:1px solid #D8DCE3; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:700;
       cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit;
     }
-    #tabSettings .stn-actions button.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
-    #tabSettings .stn-actions button.danger{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
-    #tabSettings .stn-actions button.btn-danger-pending{ background:#FEE2E2; color:#B8251C; border-color:#F1A8A4; }
-    #tabSettings .stn-note{
-      font-size:11px; color:#8E8E93; line-height:1.45; padding:4px 2px 10px;
+    #tabExport .ex-actions button.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
+    #tabExport .ex-body{
+      flex:1; min-height:0; overflow:auto; padding:18px 16px calc(88px + env(safe-area-inset-bottom,0px));
+      -webkit-overflow-scrolling:touch;
+    }
+    #tabExport .ex-paper{
+      background:#fff; border:1px solid #D8DCE3; box-shadow:0 10px 40px rgba(28,36,48,.08);
+      padding:42px 48px 48px; min-height:70vh; color:#1a1a1a;
+    }
+    #tabExport .ex-doc-kicker{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#6E6E73;
+      margin:0 0 8px;
+    }
+    #tabExport .ex-doc-title{
+      margin:0 0 6px; font-size:32px; font-weight:700; letter-spacing:-.03em; line-height:1.15;
+    }
+    #tabExport .ex-doc-lead{
+      margin:0 0 28px; font-size:15px; color:#444; line-height:1.5;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .ex-section{ margin:0 0 28px; page-break-inside:avoid; }
+    #tabExport .ex-section h2{
+      margin:0 0 10px; font-size:18px; font-weight:700; border-bottom:1.5px solid #1C2430;
+      padding-bottom:6px; letter-spacing:-.01em;
+    }
+    #tabExport .ex-section p{
+      margin:0 0 10px; font-size:14px; line-height:1.55; color:#333;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .ex-grid{
+      display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0 0 14px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .ex-kpi{
+      border:1px solid #E5E8EF; border-radius:8px; padding:10px 12px; background:#FAFBFC;
+    }
+    #tabExport .ex-kpi .n{ font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
+    #tabExport .ex-kpi .l{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6E6E73; margin-top:3px; }
+    #tabExport .ex-table{
+      width:100%; border-collapse:collapse; font-size:13px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .ex-table th{
+      text-align:left; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+      color:#6E6E73; padding:6px 8px; border-bottom:1px solid #D8DCE3; background:#F7F8FA;
+    }
+    #tabExport .ex-table td{ padding:7px 8px; border-bottom:1px solid #EEF0F3; vertical-align:top; }
+    #tabExport .ex-table .r{ text-align:right; font-variant-numeric:tabular-nums; }
+    #tabExport .ex-table tr.total td{ font-weight:800; background:#F3F6FB; }
+    #tabExport .ex-empty{ color:#8E8E93; font-style:italic; font-size:13px; }
+    #tabExport .ex-footer{
+      margin-top:36px; padding-top:12px; border-top:1px solid #E1E4EA;
+      font-size:11px; color:#8E8E93;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .toast{
+      position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
+      background:#1C2430; color:#fff; padding:.5rem 1.2rem; border-radius:100px;
+      font-size:.78rem; font-weight:600; opacity:0; pointer-events:none;
+      transition:opacity .2s; z-index:10002; white-space:nowrap;
+      box-shadow:0 4px 12px rgba(0,0,0,.18); max-width:85vw;
+      overflow:hidden; text-overflow:ellipsis;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .toast.show{ opacity:1; }
+    @media print{
+      .bp-fab-dock, #tabExport .ex-chrome, .bp-toast{ display:none !important; }
+      #tabExport, #tabExport .ex-shell, #tabExport .ex-body{ position:static !important; height:auto !important; max-height:none !important; overflow:visible !important; background:#fff !important; padding:0 !important; }
+      #tabExport .ex-paper{ box-shadow:none; border:none; padding:0; }
+      body{ background:#fff; }
+    }
+    @media (max-width:720px){
+      #tabExport .ex-paper{ padding:22px 18px 28px; }
+      #tabExport .ex-doc-title{ font-size:24px; }
+      #tabExport .ex-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
   </style>
-  <div class="stn-shell">
-    <div class="stn-chrome">
-      <h1 class="stn-title">Settings</h1>
-      <div class="stn-sub">All exports live here. Daily tabs stay for work only. Wipe asks Confirm? then reloads.</div>
+  <div class="ex-shell">
+    <div class="ex-chrome">
+      <div class="ex-bar">
+        <div>
+          <h1 class="ex-title">Week Export</h1>
+          <div class="ex-sub">Presentation summary of how the week went — Packer, Roster, and Breaks.</div>
+        </div>
+        <div class="ex-actions">
+          <button type="button" id="exBack">Back</button>
+          <button type="button" id="exRefresh">Refresh</button>
+          <button type="button" class="primary" id="exPrint">Print / Save PDF</button>
+          <button type="button" id="exDownloadDoc">Download Word</button>
+        </div>
+      </div>
     </div>
-    <div class="stn-body" id="settingsBody">
-      <div class="stn-sec">CSV exports</div>
-      <div class="stn-card">
-        <h2>Packer shift list</h2>
-        <p>CSV of packers for the day/shift currently selected on Packer (SKUs, boxes, BPH, status).</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" id="stnExportPackerShift">Export CSV</button>
-        </div>
-      </div>
-      <div class="stn-card">
-        <h2>Week review</h2>
-        <p>SKU totals by date (+ by worker) from Packer, plus today’s Tracker plan vs actual CSV.</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" id="stnExportWeekReview">Export CSV</button>
-        </div>
-      </div>
-
-      <div class="stn-sec">Saved data</div>
-      <div class="stn-card">
-        <h2>Whole app</h2>
-        <p>Floor, Breaks, Packer uploads, and Roster marks in one JSON backup.</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" id="stnBackupAll">Export all</button>
-          <button type="button" id="stnRestoreAll">Restore all</button>
-          <button type="button" class="danger" id="stnWipeAll">Wipe everything</button>
-        </div>
-        <input type="file" id="stnRestoreFile" accept="application/json,.json" style="display:none">
-      </div>
-      <div class="stn-card">
-        <h2>Floor Plan</h2>
-        <p>Stations, plates, SKUs, and staff name list.</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" data-export="planner">Export</button>
-          <button type="button" data-restore="planner">Restore</button>
-          <button type="button" class="danger" data-wipe="planner">Wipe</button>
-        </div>
-      </div>
-      <div class="stn-card">
-        <h2>Breaks</h2>
-        <p>Break groups, times, and assignments.</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" data-export="breakPlanner">Export</button>
-          <button type="button" data-restore="breakPlanner">Restore</button>
-          <button type="button" class="danger" data-wipe="breakPlanner">Wipe</button>
-        </div>
-      </div>
-      <div class="stn-card">
-        <h2>Packer data</h2>
-        <p>Uploaded CSVs and saved packer results (JSON backup of Packer storage).</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" data-export="packer-shift-data">Export</button>
-          <button type="button" data-restore="packer-shift-data">Restore</button>
-          <button type="button" class="danger" data-wipe="packer-shift-data">Wipe</button>
-        </div>
-      </div>
-      <div class="stn-card">
-        <h2>Roster marks</h2>
-        <p>On / Late / Left early / Absent / Leave marks. Absent or Left early for today also clears that person off Floor Plan stations (name stays on the roster list).</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" data-export="shiftWeekAttendance">Export</button>
-          <button type="button" data-restore="shiftWeekAttendance">Restore</button>
-          <button type="button" class="danger" data-wipe="shiftWeekAttendance">Wipe</button>
-        </div>
-      </div>
-      <input type="file" id="stnRestorePageFile" accept="application/json,.json" style="display:none">
-      <p class="stn-note">Export downloads a JSON you can Restore later. After Wipe or Restore the page reloads. Clear day / Clear week on other tabs only clears that week’s work — they do not wipe saved backups.</p>
+    <div class="ex-body">
+      <article class="ex-paper" id="exPaper" aria-live="polite">
+        <p class="ex-empty">Loading week summary…</p>
+      </article>
     </div>
   </div>
+  <div class="toast" id="exportToast"></div>
 </div>
 
 <div id="tabRoster" style="display:none">
@@ -1844,6 +1803,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <button type="button" id="roCopyDaily" title="Copy daily update">Copy day</button>
           <button type="button" id="roCopyWeekly" title="Copy late / left early / absent dates">Copy week</button>
           <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear week</button>
+          <button type="button" id="roWeekExport" title="Open week summary presentation">Week export</button>
         </div>
       </div>
       <div class="ro-days" id="roDays"></div>
@@ -2008,6 +1968,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <button type="button" id="pkJumpToday">Today</button>
           <button type="button" id="pkClearBtn">Clear day</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
+          <button type="button" id="pkWeekExport" title="Open week summary presentation">Week export</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
         </div>
       </div>
@@ -6158,24 +6119,22 @@ function renderGroups(){
     function timePairHtml(label, startKey, endKey, startVal, endVal){
       var range = (startVal && endVal)
         ? (fmtTime(startVal) + '\u2013' + fmtTime(endVal))
-        : 'Set times';
+        : '\u2014';
       var emptyCls = (startVal && endVal) ? '' : ' is-empty';
-      return '<div class="bp-time-pair">' +
-        '<div class="bp-time-cell">' +
-        '<div class="bp-time-cell-lbl">' + label + '</div>' +
+      return '<td class="bp-td-time">' +
+        '<div class="bp-time-pair"><div class="bp-time-cell">' +
+        '<div class="bp-time-cell-lbl">' + escapeHtml(label) + '</div>' +
         '<div class="bp-time-range' + emptyCls + '">' + escapeHtml(range) + '</div>' +
         '<div class="bp-time-block">' +
         '<input type="time" data-time="' + g.id + '|' + startKey + '" value="' + escapeHtml(startVal || '') + '" aria-label="' + label + ' start">' +
         '<input type="time" data-time="' + g.id + '|' + endKey + '" value="' + escapeHtml(endVal || '') + '" aria-label="' + label + ' end">' +
-        '</div></div></div>';
+        '</div></div></div></td>';
     }
     return '<tr class="bp-group-card" data-group-card="' + g.id + '">' +
       '<td><input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '"></td>' +
-      '<td><input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="A–D" value="' + escapeHtml(g.stations || '') + '"></td>' +
-      '<td class="bp-td-times" colspan="2"><div class="bp-times-wrap">' +
+      '<td><input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="A\u2013D" value="' + escapeHtml(g.stations || '') + '"></td>' +
       timePairHtml('Tea', 'teaStart', 'teaEnd', g.teaStart, g.teaEnd) +
       timePairHtml('Meal', 'mealStart', 'mealEnd', g.mealStart, g.mealEnd) +
-      '</div></td>' +
       '<td><div class="bp-people" data-drop-group="' + g.id + '">' +
       chips.join('') +
       '<button type="button" class="bp-add-people" data-open-add="' + g.id + '">+</button>' +
@@ -6187,7 +6146,7 @@ function renderGroups(){
   groupsEl.innerHTML =
     '<table class="bp-table"><thead><tr>' +
     '<th class="bp-col-group">Group</th><th class="bp-col-st">Stations</th>' +
-    '<th class="bp-col-time" colspan="2">Break times</th>' +
+    '<th class="bp-col-time">Tea</th><th class="bp-col-time">Meal</th>' +
     '<th>People</th><th class="bp-col-actions"></th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
@@ -6334,7 +6293,7 @@ groupsEl.addEventListener('input', function(e){
           rangeEl.textContent = a.slice(0,5) + '\u2013' + b.slice(0,5);
           rangeEl.classList.remove('is-empty');
         } else {
-          rangeEl.textContent = 'Set times';
+          rangeEl.textContent = '\u2014';
           rangeEl.classList.add('is-empty');
         }
       }
@@ -6465,6 +6424,9 @@ window.__breakPlanner = {
     return loadAll().then(function(){ renderAll(); }).catch(function(){
       return loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
     });
+  },
+  getData: function(){
+    return bpData;
   }
 };
 init();
@@ -9256,7 +9218,10 @@ function toast(msg, err) {
       hasData: summaryRows.length > 0,
       summaryCsv: summaryCsv,
       detailCsv: detailCsv,
-      dayCount: summaryRows.length ? summaryRows.length - 1 : 0
+      dayCount: summaryRows.length ? summaryRows.length - 1 : 0,
+      boardSkus: skuCols,
+      summaryRows: summaryRows,
+      detailRows: detailRows
     };
   }
 
@@ -10869,261 +10834,291 @@ function toast(msg, err) {
   bindCopy('roCopyWeekly', buildWeeklyCopy, 'Weekly attendance copied');
   bindCopy('roCopyWeeklyCard', buildWeeklyCopy, 'Weekly attendance copied');
 
-  window.__weekTracker = { refresh: refresh };
+  window.__weekTracker = {
+    refresh: refresh,
+    getByDate: function(){ return state.byDate || {}; },
+    getWeekStart: function(){ return state.weekStart || startOfWeek(new Date()); }
+  };
   window.__rosterTracker = window.__weekTracker;
   loadState().then(refresh);
 })();
 </script>
 
 <script>
-/* Settings: CSV exports + backup / restore / wipe */
+/* Week Export — presentation summary document */
 (function(){
-  var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
-  var KEY_LABELS = {
-    planner: 'Floor Plan',
-    breakPlanner: 'Breaks',
-    'packer-shift-data': 'Packer',
-    shiftWeekAttendance: 'Roster marks'
-  };
-  var stnBackupAll = document.getElementById('stnBackupAll');
-  var stnRestoreAll = document.getElementById('stnRestoreAll');
-  var stnRestoreFile = document.getElementById('stnRestoreFile');
-  var stnRestorePageFile = document.getElementById('stnRestorePageFile');
-  var stnWipeAll = document.getElementById('stnWipeAll');
-  var settingsBody = document.getElementById('settingsBody');
-  var stnExportPackerShift = document.getElementById('stnExportPackerShift');
-  var stnExportWeekReview = document.getElementById('stnExportWeekReview');
-  var stnRestoreArmed = false, stnRestoreTimer = null;
-  var pendingRestoreKey = null;
-  var wipeArmed = {};
-  var wipeTimers = {};
+  var paper = document.getElementById('exPaper');
+  var btnRefresh = document.getElementById('exRefresh');
+  var btnPrint = document.getElementById('exPrint');
+  var btnDoc = document.getElementById('exDownloadDoc');
 
   function toast(msg){
-    var el = document.getElementById('bpToast') || document.getElementById('toast') || document.getElementById('packerToast');
+    var el = document.getElementById('exportToast') || document.getElementById('bpToast') || document.getElementById('toast');
     if(!el){ try{ alert(msg); }catch(e){} return; }
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(el._bt);
-    el._bt = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+    el._bt = setTimeout(function(){ el.classList.remove('show'); }, 2800);
   }
-  function downloadJson(filename, obj){
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'}));
-    a.download = filename;
-    a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function ymd(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+  function startOfWeek(d){
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var day = x.getDay();
+    var diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0,0,0,0);
+    return x;
   }
-  function emptyPayload(key){
-    var now = Date.now();
-    if (key === 'planner') {
-      return JSON.stringify({
-        zoom: 1, skuRoster: [], rosterCollapsed: false, breakScale: 1, snapEnabled: true,
-        breakX: 0, breakY: 0, currentShift: 'morning',
-        morningRosterSeparated: false, morningBreakTimesCleared: false,
-        shiftData: {
-          morning: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' },
-          afternoon: { cards: [], breakTitle: 'Break Schedule', breakRows: [], staffRoster: [], notes: '' }
-        }
-      });
-    }
-    if (key === 'breakPlanner') {
-      return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] } });
-    }
-    if (key === 'packer-shift-data') {
-      return JSON.stringify({
-        schemaVersion: 1, revision: 0, version: 3, activeWeekKey: '', byDate: {}, archives: {},
-        legacy: {
-          records: [], files: [],
-          quality: {
-            validRows: 0, invalidRows: 0, blankRows: 0, missingWorkerNames: 0,
-            missingDates: 0, missingPackingTime: 0, duplicateRows: 0, unknownShifts: 0,
-            totalsRowsSkipped: 0, invalidNumericValues: 0, failedCalculations: 0, mixedSkuRows: 0
-          }
-        },
-        updatedAt: now
-      });
-    }
-    if (key === 'shiftWeekAttendance') {
-      return JSON.stringify({ schemaVersion: 1, revision: 0, byDate: {}, activeWeekKey: '', archives: {} });
-    }
-    return JSON.stringify({});
+  function addDays(d, n){
+    var x = new Date(d.getTime());
+    x.setDate(x.getDate() + n);
+    return x;
   }
-  async function readKey(key){
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+  function formatAU(dateKey){
+    if (window.PackerAnalytics && typeof window.PackerAnalytics.formatDateAU === 'function'){
+      return window.PackerAnalytics.formatDateAU(dateKey);
+    }
+    var p = String(dateKey||'').split('-');
+    if (p.length !== 3) return dateKey || '';
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  function weekLabel(ws){
+    var we = addDays(ws, 4);
+    var opts = { day:'numeric', month:'short', year:'numeric' };
+    return ws.toLocaleDateString('en-AU', opts) + ' \u2013 ' + we.toLocaleDateString('en-AU', opts);
+  }
+  function fmtTime(t){
+    if (!t) return '';
+    var parts = String(t).split(':');
+    return parts.length >= 2 ? (parts[0] + ':' + parts[1]) : String(t);
+  }
+  async function readStorage(key){
     try{
+      if (!window.storage || typeof window.storage.get !== 'function') return null;
       var r = await window.storage.get(key, false);
-      return r && r.value != null ? r.value : null;
+      if (!r || r.value == null) return null;
+      return typeof r.value === 'string' ? JSON.parse(r.value) : r.value;
     }catch(e){ return null; }
   }
-  function writeValue(key, value){
-    var str = typeof value === 'string' ? value : JSON.stringify(value);
-    return window.storage.set(key, str, false);
+  function kpi(n, l){
+    return '<div class="ex-kpi"><div class="n">' + escapeHtml(n) + '</div><div class="l">' + escapeHtml(l) + '</div></div>';
   }
-  async function exportBackup(){
-    if(!window.storage){ toast('Storage unavailable'); return; }
-    var data = { type:'shift-floor-planner-backup', schemaVersion:1, exportedAt:new Date().toISOString(), keys:{} };
-    for(var i=0;i<KEYS.length;i++) data.keys[KEYS[i]] = await readKey(KEYS[i]);
-    downloadJson('shift-floor-backup-' + new Date().toISOString().slice(0,10) + '.json', data);
-    toast('Backup downloaded');
+  function resolveWeek(){
+    var dash = window.__packerDashboard;
+    if (dash && typeof dash.getWeekStart === 'function'){
+      var ws = dash.getWeekStart();
+      if (ws instanceof Date && !isNaN(ws.getTime())) return { ws: ws, weekKey: ymd(ws) };
+    }
+    var roster = window.__weekTracker || window.__rosterTracker;
+    if (roster && typeof roster.getWeekStart === 'function'){
+      var rws = roster.getWeekStart();
+      if (rws instanceof Date && !isNaN(rws.getTime())) return { ws: rws, weekKey: ymd(rws) };
+    }
+    var ws0 = startOfWeek(new Date());
+    return { ws: ws0, weekKey: ymd(ws0) };
   }
-  async function exportOneKey(key){
-    if(!window.storage){ toast('Storage unavailable'); return; }
-    if(KEYS.indexOf(key) < 0){ toast('Unknown page'); return; }
-    var value = await readKey(key);
-    downloadJson('shift-' + key + '-' + new Date().toISOString().slice(0,10) + '.json', {
-      type: 'shift-floor-planner-page',
-      schemaVersion: 1,
-      key: key,
-      label: KEY_LABELS[key] || key,
-      exportedAt: new Date().toISOString(),
-      value: value
+
+  async function buildPackerSection(weekKey){
+    var dash = window.__packerDashboard;
+    var byDate = {};
+    if (dash && typeof dash.getByDate === 'function') byDate = dash.getByDate() || {};
+    var review = null;
+    var build = dash && typeof dash.buildWeeklySkuReview === 'function'
+      ? dash.buildWeeklySkuReview.bind(dash)
+      : null;
+    if (build) review = build(byDate, weekKey);
+    if ((!review || !review.hasData)){
+      var stored = await readStorage('packer-shift-data');
+      if (stored){
+        byDate = stored.byDate || byDate;
+        if (stored.activeWeekKey) weekKey = stored.activeWeekKey;
+        if (build) review = build(byDate, weekKey);
+      }
+    }
+    var totalBoxes = 0;
+    var dayRows = 0;
+    var html = '<section class="ex-section"><h2>1. Packer performance</h2>';
+    if (!review || !review.hasData){
+      html += '<p class="ex-empty">No Boxes Packed uploads for this week yet.</p></section>';
+      return { html: html, totalBoxes: 0, dayRows: 0, weekKey: weekKey };
+    }
+    var allSkus = review.boardSkus || [];
+    var rows = review.summaryRows || [];
+    var skus = allSkus.filter(function(s, idx){
+      return rows.some(function(row){
+        var v = row[2 + idx];
+        return v !== '' && v != null && Number(v) !== 0;
+      });
     });
-    toast((KEY_LABELS[key] || key) + ' exported');
+    if (!skus.length) skus = allSkus.slice();
+    rows.forEach(function(row){
+      if (String(row[0]).indexOf('WEEK TOTAL') === 0){
+        totalBoxes = Number(row[2 + allSkus.length]) || 0;
+      } else {
+        dayRows++;
+      }
+    });
+    html += '<div class="ex-grid">' +
+      kpi(String(totalBoxes || 0), 'Boxes this week') +
+      kpi(String(dayRows || review.dayCount || 0), 'Shift slots with data') +
+      kpi(String(skus.length), 'SKUs with volume') +
+      kpi(formatAU(weekKey), 'Week starting') +
+      '</div>';
+    html += '<table class="ex-table"><thead><tr><th>Date</th><th>Shift</th>' +
+      skus.map(function(s){ return '<th class="r">' + escapeHtml(s) + '</th>'; }).join('') +
+      '<th class="r">Total</th></tr></thead><tbody>';
+    rows.forEach(function(row){
+      var isTotal = String(row[0]).indexOf('WEEK TOTAL') === 0;
+      var cells = [row[0], row[1]];
+      skus.forEach(function(s){ cells.push(row[2 + allSkus.indexOf(s)]); });
+      cells.push(row[2 + allSkus.length]);
+      html += '<tr' + (isTotal ? ' class="total"' : '') + '>' + cells.map(function(c, i){
+        var cls = i >= 2 ? ' class="r"' : '';
+        return '<td' + cls + '>' + escapeHtml(c === '' || c == null ? '\u2014' : c) + '</td>';
+      }).join('') + '</tr>';
+    });
+    html += '</tbody></table></section>';
+    return { html: html, totalBoxes: totalBoxes, dayRows: dayRows, weekKey: weekKey };
   }
-  async function importAny(file, expectedKey){
+
+  async function buildRosterSection(ws){
+    var data = await readStorage('shiftWeekAttendance');
+    var byDate = (data && data.byDate) || {};
+    // Prefer live in-memory roster state when available (fresher than storage debounce)
+    if (window.__weekTracker && typeof window.__weekTracker.getByDate === 'function'){
+      try{
+        var live = window.__weekTracker.getByDate();
+        if (live && typeof live === 'object') byDate = live;
+      }catch(e){}
+    }
+    var counts = { here:0, late:0, left_early:0, absent:0, holiday:0 };
+    var DAY = ['Mon','Tue','Wed','Thu','Fri'];
+    var dayLines = [];
+    for (var i = 0; i < 5; i++){
+      var dk = ymd(addDays(ws, i));
+      var day = byDate[dk] || {};
+      var c = { here:0, late:0, left_early:0, absent:0, holiday:0 };
+      Object.keys(day).forEach(function(pid){
+        var st = day[pid];
+        if (st === 'in') st = 'here';
+        if (st === 'leave') st = 'holiday';
+        if (st === 'early') st = 'late';
+        if (c[st] != null){ c[st]++; counts[st]++; }
+      });
+      dayLines.push('<tr><td>' + DAY[i] + ' ' + formatAU(dk) + '</td>' +
+        '<td class="r">' + c.here + '</td><td class="r">' + c.late + '</td><td class="r">' + c.left_early + '</td>' +
+        '<td class="r">' + c.absent + '</td><td class="r">' + c.holiday + '</td></tr>');
+    }
+    var html = '<section class="ex-section"><h2>2. Attendance</h2>';
+    html += '<div class="ex-grid">' +
+      kpi(String(counts.here), 'On') +
+      kpi(String(counts.late), 'Late') +
+      kpi(String(counts.left_early), 'Left early') +
+      kpi(String(counts.absent + counts.holiday), 'Out / Leave') +
+      '</div>';
+    html += '<table class="ex-table"><thead><tr><th>Day</th><th class="r">On</th><th class="r">Late</th><th class="r">Left</th><th class="r">Out</th><th class="r">Leave</th></tr></thead><tbody>' +
+      dayLines.join('') + '</tbody></table></section>';
+    return { html: html, counts: counts };
+  }
+
+  async function buildBreaksSection(){
+    var data = null;
+    // Live break planner memory first (offline / unsynced edits)
     try{
-      var text = await file.text();
-      var data = JSON.parse(text);
-      if(!data){ toast('Not a recognised backup file'); return; }
-
-      if(data.type === 'shift-floor-planner-backup' && data.keys){
-        if(expectedKey){
-          if(data.keys[expectedKey] == null){
-            toast('That backup has no ' + (KEY_LABELS[expectedKey] || expectedKey) + ' data');
-            return;
-          }
-          await writeValue(expectedKey, data.keys[expectedKey]);
-          toast((KEY_LABELS[expectedKey] || expectedKey) + ' restored — reloading…');
-          setTimeout(function(){ location.reload(); }, 600);
-          return;
-        }
-        for(var i=0;i<KEYS.length;i++){
-          var k = KEYS[i];
-          if(data.keys[k] == null) continue;
-          await writeValue(k, data.keys[k]);
-        }
-        toast('Backup restored — reloading…');
-        setTimeout(function(){ location.reload(); }, 600);
-        return;
+      if (window.__breakPlanner && typeof window.__breakPlanner.getData === 'function'){
+        data = window.__breakPlanner.getData();
       }
+    }catch(e){}
+    if (!data) data = await readStorage('breakPlanner');
+    var html = '<section class="ex-section"><h2>3. Break groups</h2>';
+    if (!data){
+      html += '<p class="ex-empty">No break planner data saved.</p></section>';
+      return { html: html };
+    }
+    var any = false;
+    ['morning','afternoon'].forEach(function(shift){
+      var groups = (data[shift] && data[shift].groups) || [];
+      var label = shift === 'afternoon' ? 'Afternoon' : 'Day';
+      html += '<p><b>' + label + ' shift</b> \u2014 ' + groups.length + ' group' + (groups.length === 1 ? '' : 's') + '</p>';
+      if (!groups.length) return;
+      any = true;
+      html += '<table class="ex-table"><thead><tr><th>Group</th><th>Stations</th><th>Tea</th><th>Meal</th><th>People</th></tr></thead><tbody>';
+      groups.forEach(function(g){
+        var tea = (g.teaStart && g.teaEnd) ? (fmtTime(g.teaStart) + '\u2013' + fmtTime(g.teaEnd)) : '\u2014';
+        var meal = (g.mealStart && g.mealEnd) ? (fmtTime(g.mealStart) + '\u2013' + fmtTime(g.mealEnd)) : '\u2014';
+        var peopleN = ['packer','runner','boxmaker'].reduce(function(n, rk){ return n + ((g[rk]||[]).length); }, 0);
+        html += '<tr><td>' + escapeHtml(g.label || 'Group') + '</td><td>' + escapeHtml(g.stations || '\u2014') +
+          '</td><td>' + escapeHtml(tea) + '</td><td>' + escapeHtml(meal) + '</td><td class="r">' + peopleN + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    });
+    if (!any) html += '<p class="ex-empty">No break groups set up yet.</p>';
+    html += '</section>';
+    return { html: html };
+  }
 
-      if(data.type === 'shift-floor-planner-page' && data.key){
-        var pageKey = data.key;
-        if(KEYS.indexOf(pageKey) < 0){ toast('Unknown page in file'); return; }
-        if(expectedKey && expectedKey !== pageKey){
-          toast('That file is for ' + (KEY_LABELS[pageKey] || pageKey) + ', not ' + (KEY_LABELS[expectedKey] || expectedKey));
-          return;
-        }
-        if(!expectedKey){
-          toast('Use Restore on that page card, or Export all / Restore all for full backups');
-          return;
-        }
-        if(data.value == null){ toast('File has no data'); return; }
-        await writeValue(pageKey, data.value);
-        toast((KEY_LABELS[pageKey] || pageKey) + ' restored — reloading…');
-        setTimeout(function(){ location.reload(); }, 600);
-        return;
+  var lastExportWeekKey = '';
+
+  async function refresh(){
+    if (!paper) return;
+    var resolved = resolveWeek();
+    var ws = resolved.ws;
+    var weekKey = resolved.weekKey;
+    paper.innerHTML = '<p class="ex-empty">Building week summary\u2026</p>';
+    try{
+      var packer = await buildPackerSection(weekKey);
+      if (packer.weekKey && packer.weekKey !== weekKey){
+        weekKey = packer.weekKey;
+        ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
       }
-
-      toast('Not a recognised backup file');
+      lastExportWeekKey = weekKey;
+      var roster = await buildRosterSection(ws);
+      var breaks = await buildBreaksSection();
+      var lead = 'A one-page look at Packer output, attendance marks, and break coverage for the Mon\u2013Fri week.';
+      if (packer.totalBoxes) lead = packer.totalBoxes + ' boxes packed across ' + packer.dayRows + ' day/shift slots this week.';
+      paper.innerHTML =
+        '<p class="ex-doc-kicker">Weekly operations summary</p>' +
+        '<h1 class="ex-doc-title">Week of ' + escapeHtml(weekLabel(ws)) + '</h1>' +
+        '<p class="ex-doc-lead">' + escapeHtml(lead) + '</p>' +
+        packer.html + roster.html + breaks.html +
+        '<div class="ex-footer">Generated ' + escapeHtml(new Date().toLocaleString('en-AU')) +
+        ' \u00b7 Shift Floor Planner \u00b7 Use Print / Save PDF for a shareable copy.</div>';
     }catch(e){
       console.error(e);
-      toast('Restore failed: ' + (e && e.message ? e.message : 'bad file'));
+      paper.innerHTML = '<p class="ex-empty">Could not build the week summary.</p>';
     }
-  }
-  async function wipeKeys(keys){
-    if(!window.storage){ toast('Storage unavailable'); return; }
-    for(var i=0;i<keys.length;i++) await writeValue(keys[i], emptyPayload(keys[i]));
-    toast(keys.length > 1 ? 'Wiped everything — reloading…' : ((KEY_LABELS[keys[0]] || keys[0]) + ' wiped — reloading…'));
-    setTimeout(function(){ location.reload(); }, 500);
-  }
-  function armDanger(btn, armKey, idleLabel, onConfirm){
-    if(!wipeArmed[armKey]){
-      wipeArmed[armKey] = true;
-      btn.dataset.idleLabel = idleLabel;
-      btn.textContent = 'Confirm?';
-      btn.classList.add('btn-danger-pending');
-      clearTimeout(wipeTimers[armKey]);
-      wipeTimers[armKey] = setTimeout(function(){
-        wipeArmed[armKey] = false;
-        btn.textContent = idleLabel;
-        btn.classList.remove('btn-danger-pending');
-      }, 4000);
-      return;
-    }
-    clearTimeout(wipeTimers[armKey]);
-    wipeArmed[armKey] = false;
-    btn.textContent = idleLabel;
-    btn.classList.remove('btn-danger-pending');
-    onConfirm();
   }
 
-  if(stnBackupAll) stnBackupAll.addEventListener('click', exportBackup);
-  if(stnRestoreAll && stnRestoreFile){
-    stnRestoreAll.addEventListener('click', function(){
-      armDanger(stnRestoreAll, 'restore-all', 'Restore all', function(){ stnRestoreFile.click(); });
-    });
-    stnRestoreFile.addEventListener('change', function(){
-      var f = stnRestoreFile.files && stnRestoreFile.files[0];
-      stnRestoreFile.value = '';
-      if(f) importAny(f, null);
-    });
+  function downloadWord(){
+    if (!paper) return;
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Week Summary</title>' +
+      '<style>body{font-family:Georgia,serif;max-width:800px;margin:24px auto;color:#1a1a1a}' +
+      'h1{font-size:28px}h2{font-size:18px;border-bottom:1px solid #333;padding-bottom:4px}' +
+      'table{border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:12px}' +
+      'th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#f3f3f3}' +
+      '.r{text-align:right}.ex-grid{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}' +
+      '.ex-kpi{border:1px solid #ddd;padding:8px 12px;min-width:120px}.ex-kpi .n{font-size:20px;font-weight:700}' +
+      '.ex-kpi .l{font-size:10px;text-transform:uppercase;color:#666}.ex-empty{color:#888;font-style:italic}' +
+      '</style></head><body>' + paper.innerHTML + '</body></html>';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + html], { type: 'application/msword' }));
+    a.download = 'week-summary-' + (lastExportWeekKey || ymd(startOfWeek(new Date()))) + '.doc';
+    a.click();
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
+    toast('Word document downloaded');
   }
-  if(stnRestorePageFile){
-    stnRestorePageFile.addEventListener('change', function(){
-      var f = stnRestorePageFile.files && stnRestorePageFile.files[0];
-      var key = pendingRestoreKey;
-      pendingRestoreKey = null;
-      stnRestorePageFile.value = '';
-      if(f) importAny(f, key);
-    });
-  }
-  if(stnWipeAll){
-    stnWipeAll.addEventListener('click', function(){
-      armDanger(stnWipeAll, 'all', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
-    });
-  }
-  if(stnExportPackerShift){
-    stnExportPackerShift.addEventListener('click', function(){
-      var dash = window.__packerDashboard;
-      if(dash && typeof dash.exportShiftPackers === 'function'){
-        dash.exportShiftPackers();
-        return;
-      }
-      if(dash && typeof dash.exportWeek === 'function'){
-        dash.exportWeek(true);
-        return;
-      }
-      toast('Open Packer once, then try again');
-    });
-  }
-  if(stnExportWeekReview){
-    stnExportWeekReview.addEventListener('click', function(){
-      if(typeof window.exportWeeklyReview === 'function'){
-        window.exportWeeklyReview();
-        return;
-      }
-      toast('Week review unavailable');
-    });
-  }
-  if(settingsBody){
-    settingsBody.addEventListener('click', function(e){
-      var t = e.target;
-      if(!t || !t.getAttribute) return;
-      var exportKey = t.getAttribute('data-export');
-      if(exportKey){ exportOneKey(exportKey); return; }
-      var restoreKey = t.getAttribute('data-restore');
-      if(restoreKey){
-        armDanger(t, 'restore:' + restoreKey, 'Restore', function(){
-          pendingRestoreKey = restoreKey;
-          if(stnRestorePageFile) stnRestorePageFile.click();
-        });
-        return;
-      }
-      var wipeKey = t.getAttribute('data-wipe');
-      if(!wipeKey) return;
-      armDanger(t, 'wipe:' + wipeKey, 'Wipe', function(){ wipeKeys([wipeKey]); });
-    });
-  }
+
+  if (btnRefresh) btnRefresh.addEventListener('click', function(){ refresh(); toast('Summary refreshed'); });
+  if (btnPrint) btnPrint.addEventListener('click', function(){ window.print(); });
+  if (btnDoc) btnDoc.addEventListener('click', downloadWord);
+
+  window.__weekExport = { refresh: refresh };
 })();
 </script>
 
@@ -11135,7 +11130,7 @@ function toast(msg, err) {
     breaks: document.getElementById('breakPlannerTab'),
     tracker: document.getElementById('tabTracker'),
     packer: document.getElementById('tabPacker'),
-    settings: document.getElementById('tabSettings')
+    export: document.getElementById('tabExport')
   };
   var tabLabels = {
     floor: 'Floor',
@@ -11143,8 +11138,9 @@ function toast(msg, err) {
     tracker: 'Tracker',
     packer: 'Packer',
     roster: 'Roster',
-    settings: 'Settings'
+    export: 'Export'
   };
+  var exportReturnTab = 'packer';
   function setNavOpen(open){
     var dock = document.getElementById('bpFabDock');
     var launch = document.getElementById('bpNavLaunch');
@@ -11160,17 +11156,19 @@ function toast(msg, err) {
       tracker: 'flex',
       packer: 'flex',
       roster: 'flex',
-      settings: 'flex'
+      export: 'flex'
     };
+    var current = document.documentElement.getAttribute('data-active-tab') || 'floor';
+    if (name === 'export' && current !== 'export'){
+      exportReturnTab = (current === 'roster' || current === 'packer') ? current : 'packer';
+    }
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;
       panels[k].style.display = (k === name) ? (showDisplay[k] || '') : 'none';
     });
     var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
     for (var i = 0; i < btns.length; i++){
-      var on = btns[i].getAttribute('data-tab') === name;
-      btns[i].classList.toggle('active', on);
-      btns[i].setAttribute('aria-selected', on ? 'true' : 'false');
+      btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === name);
     }
     var launchLbl = document.getElementById('bpNavLaunchLbl');
     if (launchLbl) launchLbl.textContent = tabLabels[name] || 'Menu';
@@ -11210,6 +11208,9 @@ function toast(msg, err) {
       if (typeof loadBreakPlannerData === 'function') loadBreakPlannerData();
       if (typeof onInput === 'function') onInput();
     }
+    if (name === 'export' && window.__weekExport && typeof window.__weekExport.refresh === 'function'){
+      window.__weekExport.refresh();
+    }
   }
   var launch = document.getElementById('bpNavLaunch');
   if (launch){
@@ -11229,6 +11230,23 @@ function toast(msg, err) {
   var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
   for (var i = 0; i < btns.length; i++){
     btns[i].addEventListener('click', function(){ showTab(this.getAttribute('data-tab')); });
+  }
+  function openWeekExport(fromTab){
+    if (fromTab === 'roster' || fromTab === 'packer') exportReturnTab = fromTab;
+    showTab('export');
+  }
+  var pkExport = document.getElementById('pkWeekExport');
+  var roExport = document.getElementById('roWeekExport');
+  if (pkExport) pkExport.addEventListener('click', function(){ openWeekExport('packer'); });
+  if (roExport) roExport.addEventListener('click', function(){ openWeekExport('roster'); });
+  window.__showAppTab = function(name){
+    if (name === 'export-back') showTab(exportReturnTab || 'packer');
+    else showTab(name);
+  };
+  // Export Back button returns to Packer/Roster, not Floor/Breaks
+  var exBack = document.getElementById('exBack');
+  if (exBack){
+    exBack.addEventListener('click', function(){ showTab(exportReturnTab || 'packer'); });
   }
   showTab('floor');
 })();
