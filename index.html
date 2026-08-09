@@ -1482,7 +1482,6 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
     <button class="bp-fab-btn" data-tab="tracker" title="Shift Tracker" role="menuitem"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
     <button class="bp-fab-btn" data-tab="packer" title="Packer" role="menuitem"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
     <button class="bp-fab-btn" data-tab="roster" title="Roster" role="menuitem"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
-    <button class="bp-fab-btn" data-tab="export" title="Week Export" role="menuitem"><span class="fab-short">Export</span><span class="fab-full">Week Export</span></button>
   </div>
 </div>
 <div class="bp-toast" id="bpToast"></div>
@@ -1599,6 +1598,7 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
           <div class="ex-sub">Presentation summary of how the week went — Packer, Roster, and Breaks.</div>
         </div>
         <div class="ex-actions">
+          <button type="button" id="exBack">Back</button>
           <button type="button" id="exRefresh">Refresh</button>
           <button type="button" class="primary" id="exPrint">Print / Save PDF</button>
           <button type="button" id="exDownloadDoc">Download Word</button>
@@ -1807,6 +1807,7 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
           <button type="button" id="roCopyDaily" title="Copy daily update">Copy day</button>
           <button type="button" id="roCopyWeekly" title="Copy late / left early / absent dates">Copy week</button>
           <button type="button" id="roClearWeek" title="Clear marks for this week only">Clear week</button>
+          <button type="button" id="roWeekExport" title="Open week summary presentation">Week export</button>
         </div>
       </div>
       <div class="ro-days" id="roDays"></div>
@@ -1971,6 +1972,7 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
           <button type="button" id="pkJumpToday">Today</button>
           <button type="button" id="pkClearBtn">Clear day</button>
           <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
+          <button type="button" id="pkWeekExport" title="Open week summary presentation">Week export</button>
           <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
         </div>
       </div>
@@ -11142,6 +11144,7 @@ function toast(msg, err) {
     roster: 'Roster',
     export: 'Export'
   };
+  var exportReturnTab = 'packer';
   function setNavOpen(open){
     var dock = document.getElementById('bpFabDock');
     var launch = document.getElementById('bpNavLaunch');
@@ -11159,6 +11162,10 @@ function toast(msg, err) {
       roster: 'flex',
       export: 'flex'
     };
+    var current = document.documentElement.getAttribute('data-active-tab') || 'floor';
+    if (name === 'export' && current !== 'export'){
+      exportReturnTab = (current === 'roster' || current === 'packer') ? current : 'packer';
+    }
     Object.keys(panels).forEach(function(k){
       if (!panels[k]) return;
       panels[k].style.display = (k === name) ? (showDisplay[k] || '') : 'none';
@@ -11227,6 +11234,23 @@ function toast(msg, err) {
   var btns = document.querySelectorAll('#bpFabGroup .bp-fab-btn');
   for (var i = 0; i < btns.length; i++){
     btns[i].addEventListener('click', function(){ showTab(this.getAttribute('data-tab')); });
+  }
+  function openWeekExport(fromTab){
+    if (fromTab === 'roster' || fromTab === 'packer') exportReturnTab = fromTab;
+    showTab('export');
+  }
+  var pkExport = document.getElementById('pkWeekExport');
+  var roExport = document.getElementById('roWeekExport');
+  if (pkExport) pkExport.addEventListener('click', function(){ openWeekExport('packer'); });
+  if (roExport) roExport.addEventListener('click', function(){ openWeekExport('roster'); });
+  window.__showAppTab = function(name){
+    if (name === 'export-back') showTab(exportReturnTab || 'packer');
+    else showTab(name);
+  };
+  // Export Back button returns to Packer/Roster, not Floor/Breaks
+  var exBack = document.getElementById('exBack');
+  if (exBack){
+    exBack.addEventListener('click', function(){ showTab(exportReturnTab || 'packer'); });
   }
   showTab('floor');
 })();
