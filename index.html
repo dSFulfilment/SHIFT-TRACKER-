@@ -53,6 +53,16 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #app .shift-btn.active{ background:var(--ink); color:#fff; }
 #app .shift-btn.active:hover{ background:var(--ink); }
 #app .counts{ font-size:12px; color:var(--muted); margin-left:2px; white-space:nowrap; }
+#app .att-glance{ display:inline-flex; align-items:center; gap:4px; margin-left:4px; flex-wrap:wrap; }
+#app .att-chip{ display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700;
+  border:1px solid var(--line); background:#fff; border-radius:6px; padding:3px 7px; color:var(--muted);
+  font-variant-numeric:tabular-nums; }
+#app .att-chip b{ font-size:12px; font-weight:800; color:var(--ink); }
+#app .att-chip.on b{ color:#1A6B30; }
+#app .att-chip.late b{ color:#A05D00; }
+#app .att-chip.out b{ color:#B8251C; }
+#app .card.find-hit{ outline:3px solid #D97706; outline-offset:2px; z-index:6;
+  box-shadow:0 0 0 3px rgba(217,119,6,.25); }
 #app .zoomgroup{ display:flex; align-items:center; gap:4px; margin-left:auto; }
 #app .zoomgroup .btn{ padding:4px 8px; }
 #app .zoomlabel{ font-size:12px; color:var(--muted); width:40px; text-align:center; }
@@ -393,6 +403,12 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 #floorToolsDock .ft-actions{ display:flex; flex-wrap:wrap; gap:6px; }
 #floorToolsDock .ft-actions .btn{ flex:1 1 56px; justify-content:center; min-height:40px; }
 #floorToolsDock #toggleSnap:not(.active){ color:var(--muted); }
+#floorToolsDock .ft-find{ display:flex; flex-direction:column; gap:4px; }
+#floorToolsDock .ft-find input[type=search]{
+  width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+  font-size:13px; font-family:inherit; background:#fff; color:var(--ink);
+}
+#floorToolsDock .ft-find-status{ font-size:11px; color:var(--muted); min-height:14px; }
 #floorToolsScrim{ display:none; position:fixed; inset:0; z-index:9997; background:transparent; }
 #floorToolsScrim.open{ display:block; }
 @media (max-width:640px){
@@ -497,27 +513,52 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 @media print{
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     header#toolbar, #floorToolsDock, #floorToolsScrim, #floorToolChip, aside#rosterPanel,
-    #bpFabDock, #bpFabGroup, #bpToast, #toast, #packerToast{ display:none !important; }
+    #bpFabDock, #bpFabGroup, #bpToast, #toast, #packerToast, #colorPopover, #rolePopover, #assignPopover,
+    #tabTracker, #tabPacker, #tabRoster, #tabSettings, .att-glance, #bpSheetScrim, #bpAssignSheet{ display:none !important; }
     html, body{ height:auto !important; overflow:visible !important; background:#fff !important; margin:0 !important; }
-    #app{ height:auto !important; }
-    #main{ height:auto !important; }
-    #viewport{ overflow:visible !important; padding:0 !important; background:#fff !important; height:auto !important; }
-    .print-shift-label{ display:block !important; font-size:11px; font-weight:700; color:#000; margin:0 0 4px 2px; }
-    #canvas{ transform:none !important; box-shadow:none !important; margin:0 auto !important; background:#fff !important; }
-    .ctrl, .rotate-line{ display:none !important; }
-    .card{ box-shadow:none !important; }
-    .card.selected{ border-color:transparent !important; }
-    .card.staff{ border-left:4px solid #000 !important; }
-    .card.sku{ border-left:4px dashed #000 !important; }
-    .card.text .field.label{ text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 5px #fff !important; }
-    .field:empty::before{ content:none !important; }
-    .field.sub:empty{ display:none !important; }
-    .break-table td:empty::before{ content:none !important; }
-    .break-table{ box-shadow:none !important; background:#fff !important; border-color:#000 !important; }
-    .break-table th{ border-bottom-color:#000 !important; }
-    .break-table td{ border-bottom-color:#999 !important; }
-    .break-table .bt-rm, .break-table .bt-addrow, .break-table .bt-resize, .break-table .bt-move{ display:none !important; }
-    @page{ size:landscape; margin:0.15in; }
+
+    /* Floor handoff */
+    html[data-active-tab="floor"] #app{ height:auto !important; display:flex !important; }
+    html[data-active-tab="floor"] #breakPlannerTab{ display:none !important; }
+    html[data-active-tab="floor"] #main{ height:auto !important; }
+    html[data-active-tab="floor"] #viewport{ overflow:visible !important; padding:0 !important; background:#fff !important; height:auto !important; }
+    html[data-active-tab="floor"] .print-shift-label{ display:block !important; font-size:11px; font-weight:700; color:#000; margin:0 0 4px 2px; }
+    html[data-active-tab="floor"] #canvas{ transform:none !important; box-shadow:none !important; margin:0 auto !important; background:#fff !important; }
+    html[data-active-tab="floor"] .ctrl, html[data-active-tab="floor"] .rotate-line{ display:none !important; }
+    html[data-active-tab="floor"] .card{ box-shadow:none !important; }
+    html[data-active-tab="floor"] .card.selected, html[data-active-tab="floor"] .card.find-hit{ border-color:transparent !important; outline:none !important; box-shadow:none !important; }
+    html[data-active-tab="floor"] .card.staff{ border-left:4px solid #000 !important; }
+    html[data-active-tab="floor"] .card.sku{ border-left:4px dashed #000 !important; }
+    html[data-active-tab="floor"] .card.text .field.label{ text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 5px #fff !important; }
+    html[data-active-tab="floor"] .field:empty::before{ content:none !important; }
+    html[data-active-tab="floor"] .field.sub:empty{ display:none !important; }
+    html[data-active-tab="floor"] .break-table td:empty::before{ content:none !important; }
+    html[data-active-tab="floor"] .break-table{ box-shadow:none !important; background:#fff !important; border-color:#000 !important; }
+    html[data-active-tab="floor"] .break-table th{ border-bottom-color:#000 !important; }
+    html[data-active-tab="floor"] .break-table td{ border-bottom-color:#999 !important; }
+    html[data-active-tab="floor"] .break-table .bt-rm,
+    html[data-active-tab="floor"] .break-table .bt-addrow,
+    html[data-active-tab="floor"] .break-table .bt-resize,
+    html[data-active-tab="floor"] .break-table .bt-move{ display:none !important; }
+
+    /* Breaks handoff */
+    html[data-active-tab="breaks"] #app{ display:none !important; }
+    html[data-active-tab="breaks"] #breakPlannerTab{
+      display:block !important; position:static !important; inset:auto !important;
+      height:auto !important; overflow:visible !important; background:#fff !important;
+    }
+    html[data-active-tab="breaks"] .bp-shell{ display:block !important; height:auto !important; }
+    html[data-active-tab="breaks"] .bp-chrome{ position:static !important; border:none !important; padding:0 0 8px !important; background:#fff !important; }
+    html[data-active-tab="breaks"] .bp-actions, html[data-active-tab="breaks"] .bp-pool,
+    html[data-active-tab="breaks"] .bp-shiftgroup, html[data-active-tab="breaks"] .bp-summary{ display:none !important; }
+    html[data-active-tab="breaks"] .bp-title{ font-size:16px !important; color:#000 !important; }
+    html[data-active-tab="breaks"] .bp-list-wrap{ overflow:visible !important; height:auto !important; padding:0 !important; }
+    html[data-active-tab="breaks"] .bp-group-card{ break-inside:avoid; box-shadow:none !important; border:1px solid #000 !important; }
+    html[data-active-tab="breaks"] .bp-btn, html[data-active-tab="breaks"] .bp-rm,
+    html[data-active-tab="breaks"] .bp-chip-x, html[data-active-tab="breaks"] input[type=time]{
+      border-color:#999 !important;
+    }
+    @page{ size:landscape; margin:0.2in; }
   }
 /* ══════════════ ADDED: Break Planner tab (role-based break scheduling) ══════════════ */
 .bp-fab-dock{ position:fixed; z-index:9999; }
@@ -1109,7 +1150,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabTracker .aip::placeholder, #tabPacker .aip::placeholder{color:var(--fnt);font-weight:400;font-size:.78rem}
 #tabTracker .empty-td, #tabPacker .empty-td{text-align:center;padding:2.5rem;color:var(--fnt);font-size:.82rem}
 #tabTracker .toast, #tabPacker .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--sur);padding:.5rem 1.2rem;border-radius:100px;font-size:.78rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10002;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18);max-width:85vw;overflow:hidden;text-overflow:ellipsis}
-#tabTracker .toast.show, #tabPacker .toast.show{opacity:1}#tabTracker .top-tabs, #tabPacker .top-tabs{display:flex;gap:.5rem;padding:.75rem 1rem 0;max-width:960px;margin:0 auto}
+#tabTracker .toast.show, #tabPacker .toast.show{opacity:1}
 #tabTracker .top-tab, #tabPacker .top-tab{padding:.5rem 1.1rem;border-radius:100px;border:1px solid var(--bdr2);background:var(--sur);color:var(--mut);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
 #tabTracker .top-tab.active, #tabPacker .top-tab.active{background:var(--txt);border-color:var(--txt);color:var(--sur)}
 #tabTracker .top-tab-panel, #tabPacker .top-tab-panel{display:none}
@@ -1126,9 +1167,6 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabTracker .new-shift-row.show, #tabPacker .new-shift-row.show{display:flex;flex-wrap:wrap}
 #tabTracker .new-shift-row input, #tabPacker .new-shift-row input{padding:.32rem .55rem;border:1px solid var(--bdr2);border-radius:var(--rs);font-family:inherit;font-size:.78rem;background:var(--sur);color:var(--txt);flex:1;min-width:140px}
 #tabTracker .pk-tabs, #tabPacker .pk-tabs{display:flex;gap:.4rem;margin:1rem 0 .9rem;flex-wrap:wrap}
-#tabTracker .pk-tab-btn, #tabPacker .pk-tab-btn{padding:.5rem 1rem;border-radius:100px;border:1px solid var(--bdr2);background:var(--sur);color:var(--mut);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
-#tabTracker .pk-tab-btn.active, #tabPacker .pk-tab-btn.active{background:var(--blu);border-color:var(--blu);color:#fff}
-#tabTracker .pk-tab-btn .cnt, #tabPacker .pk-tab-btn .cnt{opacity:.75;font-weight:500;margin-left:4px}
 #tabTracker .panel-hdr, #tabPacker .panel-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.9rem;flex-wrap:wrap;gap:.5rem}
 #tabTracker .panel-title, #tabPacker .panel-title{font-size:1.05rem;font-weight:800}
 #tabTracker .panel-sub, #tabPacker .panel-sub{font-size:.68rem;color:var(--mut);margin-top:.1rem}
@@ -1327,12 +1365,28 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     return;
   }
 
-  var PREFIX = 'shift-floor-planner:';
+  // One storage path for Floor / Breaks / Packer / Roster / Settings.
+  // Migrates older prefixes used by earlier builds.
+  var PREFIX = 'shift-tracker:';
+  var LEGACY_PREFIXES = ['shift-floor-planner:', 'shiftFloorPlanner:'];
+
+  function readRaw(key) {
+    var value = localStorage.getItem(PREFIX + key);
+    if (value !== null) return value;
+    for (var i = 0; i < LEGACY_PREFIXES.length; i++) {
+      var legacy = localStorage.getItem(LEGACY_PREFIXES[i] + key);
+      if (legacy !== null) {
+        try { localStorage.setItem(PREFIX + key, legacy); } catch (e) { /* keep reading legacy */ }
+        return legacy;
+      }
+    }
+    return null;
+  }
 
   window.storage = {
     get: function (key) {
       return Promise.resolve().then(function () {
-        var value = localStorage.getItem(PREFIX + key);
+        var value = readRaw(key);
         return {
           key: key,
           value: value === null ? null : value,
@@ -1349,6 +1403,16 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           value: value,
           shared: false
         };
+      });
+    },
+
+    remove: function (key) {
+      return Promise.resolve().then(function () {
+        localStorage.removeItem(PREFIX + key);
+        LEGACY_PREFIXES.forEach(function (p) {
+          try { localStorage.removeItem(p + key); } catch (e) {}
+        });
+        return { key: key, removed: true };
       });
     }
   };
@@ -1367,6 +1431,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     <span class="counts" id="importStatus"></span>
     <button class="btn" id="retryLoadBtn" style="display:none">Retry loading</button>
     <span class="counts" id="counts">0 on plates</span>
+    <div class="att-glance" id="floorAttGlance" title="Today’s roster marks for this shift" aria-live="polite">
+      <span class="att-chip on"><b id="floorAttOn">–</b> On</span>
+      <span class="att-chip late"><b id="floorAttLate">–</b> Late</span>
+      <span class="att-chip out"><b id="floorAttOut">–</b> Out</span>
+    </div>
     <div class="zoomgroup">
       <button class="btn" id="zoomOut" title="Zoom out">–</button>
       <span class="zoomlabel" id="zoomLabel">100%</span>
@@ -1407,10 +1476,16 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         </div>
       </div>
       <div class="ft-sec">
+        <div class="ft-find">
+          <input type="search" id="floorFindInput" placeholder="Find person…" autocomplete="off" />
+          <div class="ft-find-status" id="floorFindStatus"></div>
+        </div>
+      </div>
+      <div class="ft-sec">
         <div class="ft-actions">
           <button type="button" class="btn active" id="toggleSnap" title="Snap to grid">Snap</button>
           <button type="button" class="btn" id="alignStations" title="Reset plate positions">Reset</button>
-          <button type="button" class="btn" id="printBtn" title="Print">Print</button>
+          <button type="button" class="btn" id="printBtn" title="Print floor handoff">Print</button>
           <button type="button" class="btn danger" id="clearAll" title="Clear board">Clear</button>
         </div>
       </div>
@@ -1451,6 +1526,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <button class="bp-btn" id="bpImportBreaks" title="Rebuild break groups from floor break rows / stations">Sync</button>
           <button class="bp-btn primary" id="bpAutoAssign" title="Put each floor-assigned packer into the break group for their station">Auto-assign</button>
           <button class="bp-btn" id="bpAddGroup">+ Group</button>
+          <button class="bp-btn" id="bpPrintBtn" title="Print breaks handoff">Print</button>
         </div>
       </div>
     </div>
@@ -1963,10 +2039,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
       <div id="pkPreview" hidden></div>
       <div id="pkStatus"></div>
       <div id="pkTableWrap"></div>
-      <div id="pkCharts" hidden></div>
-      <div id="pkQuality" hidden></div>
       <div id="pkDetail" hidden></div>
-      <div id="pkFilters" hidden></div>
     </div>
   </div>
   <div class="toast" id="packerToast"></div>
@@ -4834,6 +4907,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     updateShiftButtons();
     syncBreakPlannerPackersFromFloor({ delay: 400 });
     saveDebounced();
+    updateFloorAttGlance();
+    var findInput = document.getElementById('floorFindInput');
+    if(findInput && findInput.value) runFloorFind(findInput.value);
   }
   document.getElementById('shiftMorning').addEventListener('click', function(){ switchShift('morning'); });
   document.getElementById('shiftAfternoon').addEventListener('click', function(){ switchShift('afternoon'); });
@@ -4841,6 +4917,105 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   document.getElementById('printBtn').addEventListener('click', function(){
     window.print();
   });
+
+  // ---- Find person on Floor ------------------------------------------------
+  var findClearTimer = null;
+  function clearFindHits(){
+    cards.forEach(function(c){
+      var ref = els.get(c.id);
+      if(ref && ref.el) ref.el.classList.remove('find-hit');
+    });
+  }
+  function plateNameForCard(card){
+    if(card.type==='station'){
+      var entry = stationAssignedEntry(card.rosterId);
+      return entry ? String(entry.name||'') : '';
+    }
+    if(card.type==='floorslot' && card.slotKind!=='sku'){
+      var person = slotRosterEntry(card);
+      return person ? String(person.name||'') : '';
+    }
+    if(card.type==='staff') return String(card.name||'');
+    return '';
+  }
+  function runFloorFind(q){
+    clearFindHits();
+    var statusEl = document.getElementById('floorFindStatus');
+    q = String(q||'').trim().toLowerCase().replace(/\s+/g,' ');
+    if(!q){
+      if(statusEl) statusEl.textContent = '';
+      return;
+    }
+    var hits = [];
+    cards.forEach(function(c){
+      var name = plateNameForCard(c);
+      if(!name) return;
+      var norm = name.toLowerCase().replace(/\s+/g,' ');
+      if(norm.indexOf(q)!==-1 || q.indexOf(norm)!==-1){
+        hits.push(c);
+        var ref = els.get(c.id);
+        if(ref && ref.el) ref.el.classList.add('find-hit');
+      }
+    });
+    if(statusEl){
+      statusEl.textContent = hits.length
+        ? (hits.length + ' match' + (hits.length===1?'':'es'))
+        : 'No one on plates matches';
+    }
+    if(hits.length){
+      var first = els.get(hits[0].id);
+      if(first && first.el && typeof first.el.scrollIntoView === 'function'){
+        try{ first.el.scrollIntoView({ block:'center', inline:'center', behavior:'smooth' }); }
+        catch(e){ first.el.scrollIntoView(true); }
+      }
+      clearTimeout(findClearTimer);
+      findClearTimer = setTimeout(clearFindHits, 6000);
+    }
+  }
+  (function bindFloorFind(){
+    var input = document.getElementById('floorFindInput');
+    if(!input) return;
+    var t = null;
+    input.addEventListener('input', function(){
+      clearTimeout(t);
+      var val = input.value;
+      t = setTimeout(function(){ runFloorFind(val); }, 120);
+    });
+    input.addEventListener('keydown', function(e){
+      if(e.key==='Enter'){ e.preventDefault(); runFloorFind(input.value); }
+      if(e.key==='Escape'){ input.value=''; runFloorFind(''); }
+    });
+  })();
+
+  // ---- Today On / Late / Out glance ----------------------------------------
+  function pad2(n){ return (n<10?'0':'')+n; }
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  }
+  function updateFloorAttGlance(){
+    var onEl = document.getElementById('floorAttOn');
+    var lateEl = document.getElementById('floorAttLate');
+    var outEl = document.getElementById('floorAttOut');
+    if(!onEl || !lateEl || !outEl) return;
+    var byDate = (window.__weekTracker && typeof window.__weekTracker.getByDate==='function')
+      ? (window.__weekTracker.getByDate() || {}) : {};
+    var day = byDate[todayKey()] || {};
+    var on=0, late=0, out=0;
+    (staffRoster||[]).forEach(function(p){
+      if(!p || !p.id) return;
+      var st = day[p.id] || '';
+      if(st==='here') on++;
+      else if(st==='late') late++;
+      else if(st==='absent') out++;
+    });
+    onEl.textContent = String(on);
+    lateEl.textContent = String(late);
+    outEl.textContent = String(out);
+  }
+  window.__floorAttGlance = { refresh: updateFloorAttGlance };
+  setInterval(updateFloorAttGlance, 4000);
+  setTimeout(updateFloorAttGlance, 800);
 
   var importStatus = document.getElementById('importStatus');
   function flashStatus(msg){
@@ -5094,7 +5269,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   }
 
   // ---------------- persistence ----------------
-  var LOCAL_KEY_PREFIX = 'shiftFloorPlanner:';
+  // Same key path as SharedSync / Settings / Breaks / Packer / Roster.
+  var LOCAL_KEY_PREFIX = 'shift-tracker:';
+  var LEGACY_LOCAL_PREFIXES = ['shift-floor-planner:', 'shiftFloorPlanner:'];
   function hasClaudeStorage(){
     return typeof window.storage !== 'undefined' && window.storage
       && typeof window.storage.set === 'function' && typeof window.storage.get === 'function';
@@ -5113,6 +5290,15 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     return new Promise(function(resolve, reject){
       try{
         var v = localStorage.getItem(LOCAL_KEY_PREFIX+key);
+        if(v===null){
+          for(var i=0;i<LEGACY_LOCAL_PREFIXES.length;i++){
+            v = localStorage.getItem(LEGACY_LOCAL_PREFIXES[i]+key);
+            if(v!==null){
+              try{ localStorage.setItem(LOCAL_KEY_PREFIX+key, v); }catch(e){}
+              break;
+            }
+          }
+        }
         if(v===null){ reject(new Error('no value for '+key)); return; }
         resolve({ key:key, value:v, shared:false });
       }catch(err){ reject(err); }
@@ -5561,6 +5747,7 @@ var summaryEl = document.getElementById('bpSummary');
 var addGroupBtn = document.getElementById('bpAddGroup');
 var importBreaksBtn = document.getElementById('bpImportBreaks');
 var autoAssignBtn = document.getElementById('bpAutoAssign');
+var bpPrintBtn = document.getElementById('bpPrintBtn');
 var shiftMorningBtn = document.getElementById('bpShiftMorning');
 var shiftAfternoonBtn = document.getElementById('bpShiftAfternoon');
 var toastEl = document.getElementById('bpToast');
@@ -5669,6 +5856,22 @@ function autoAssignPackersFromStations(sd, opts){
   return { assigned: count, stations: Object.keys(stationMap).length };
 }
 function hasSync(){ return typeof window !== 'undefined' && !!window.SharedSync; }
+function hasLocalStore(){
+  return typeof window !== 'undefined' && window.storage
+    && typeof window.storage.get === 'function' && typeof window.storage.set === 'function';
+}
+async function readLocalJson(key){
+  if (!hasLocalStore()) return null;
+  try{
+    var r = await window.storage.get(key, false);
+    if (!r || r.value == null || r.value === '') return null;
+    return typeof r.value === 'string' ? JSON.parse(r.value) : r.value;
+  }catch(e){ return null; }
+}
+async function writeLocalJson(key, obj){
+  if (!hasLocalStore()) throw new Error('Storage unavailable');
+  return window.storage.set(key, JSON.stringify(obj), false);
+}
 
 // ── FLOOR PLANNER ROSTER (read-through; Floor Planner owns the storage) ─────
 function liveRosterFor(shift){
@@ -5678,12 +5881,14 @@ function liveRosterFor(shift){
   }catch(e){ return []; }
 }
 async function loadPlannerCache(){
-  if (!hasSync()){ plannerCache = null; return; }
-  try{ plannerCache = await window.SharedSync.readSharedState(PLANNER_KEY); }
-  catch(e){
-    plannerCache = null;
-    bpToast('Could not read the Floor Planner roster (' + (e && e.message ? e.message : 'unknown error') + ')');
+  if (hasSync()){
+    try{ plannerCache = await window.SharedSync.readSharedState(PLANNER_KEY); return; }
+    catch(e){
+      plannerCache = null;
+      bpToast('Could not read the Floor Planner roster (' + (e && e.message ? e.message : 'unknown error') + ')');
+    }
   }
+  plannerCache = await readLocalJson(PLANNER_KEY);
 }
 async function refreshPlannerCache(){
   if (!hasSync()) return;
@@ -5859,6 +6064,10 @@ async function loadAll(){
       bpData = { morning: null, afternoon: null };
     }
   }
+  if ((!bpData || (!bpData.morning && !bpData.afternoon)) && hasLocalStore()){
+    var local = await readLocalJson(STORAGE_KEY);
+    if (local && (local.morning || local.afternoon)) bpData = local;
+  }
   if (!bpData) bpData = { morning: null, afternoon: null };
 
   await loadPlannerCache();
@@ -5898,15 +6107,31 @@ async function loadAll(){
 }
 
 // ── Break Planner's own save (groups/lanes/times only) ───────────────
+var ownSaveTimer = null;
 function scheduleOwnSave(delay){
-  if (!hasSync()) return;
   var shift = currentShift;
   var groupsSnap = bpData && bpData[shift] ? bpData[shift].groups : null;
   if (!groupsSnap) return;
-  window.SharedSync.scheduleSharedSave(STORAGE_KEY, function(latest){
-    if (!latest[shift]) latest[shift] = {};
-    latest[shift].groups = groupsSnap;
-    return latest;
+  if (hasSync()){
+    window.SharedSync.scheduleSharedSave(STORAGE_KEY, function(latest){
+      if (!latest[shift]) latest[shift] = {};
+      latest[shift].groups = groupsSnap;
+      return latest;
+    }, delay == null ? 400 : delay);
+    return;
+  }
+  // Offline / no SharedSync — persist break groups via window.storage
+  clearTimeout(ownSaveTimer);
+  ownSaveTimer = setTimeout(function(){
+    if (!bpData) return;
+    var payload = {
+      morning: bpData.morning || { groups: [] },
+      afternoon: bpData.afternoon || { groups: [] }
+    };
+    writeLocalJson(STORAGE_KEY, payload).catch(function(err){
+      console.error('breakPlanner local save failed', err);
+      bpToast('Could not save breaks offline');
+    });
   }, delay == null ? 400 : delay);
 }
 
@@ -6149,6 +6374,9 @@ function isTypingInField(){
   return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'));
 }
 
+if (bpPrintBtn){
+  bpPrintBtn.addEventListener('click', function(){ window.print(); });
+}
 addGroupBtn.addEventListener('click', function(){
   var sd = ensureShiftData(currentShift);
   sd.groups.push({ id: uid(), label: 'Group ' + (sd.groups.length + 1), stations:'', teaStart:'', teaEnd:'', mealStart:'', mealEnd:'',
@@ -8901,11 +9129,8 @@ function toast(msg, err) {
     jumpToday: document.getElementById('pkJumpToday'),
     searchInput: document.getElementById('pkSearchInput'),
     views: document.getElementById('pkViews'),
-    filters: document.getElementById('pkFilters'),
     kpis: document.getElementById('pkKpis'),
-    charts: document.getElementById('pkCharts'),
     tableWrap: document.getElementById('pkTableWrap'),
-    quality: document.getElementById('pkQuality'),
     detail: document.getElementById('pkDetail'),
     status: document.getElementById('pkStatus'),
     toast: document.getElementById('packerToast'),
@@ -9354,12 +9579,6 @@ function toast(msg, err) {
     els.status.innerHTML = '';
   }
 
-  function renderFilters() {
-    if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
-      els.searchInput.value = state.filters.search || '';
-    }
-  }
-
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
@@ -9391,18 +9610,12 @@ function toast(msg, err) {
     if (v !== 'people' && v !== 'hours') v = 'people';
     state.view = v;
     if (els.tableWrap) els.tableWrap.hidden = false;
-    if (els.charts) els.charts.hidden = true;
-    if (els.quality) els.quality.hidden = true;
     if (els.views) {
       Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-view') === v);
       });
     }
     renderTable();
-  }
-
-  function renderCharts() {
-    if (els.charts) els.charts.innerHTML = '';
   }
 
   function skuListHtml(skus) {
@@ -9531,29 +9744,6 @@ function toast(msg, err) {
   function detailMetric(label, value) {
     return '<div class="pk-detail-metric"><div class="pk-kpi-l">' + escapeHtml(label) +
       '</div><div class="pk-kpi-v" style="font-size:1.15rem">' + escapeHtml(value) + '</div></div>';
-  }
-
-  function renderQuality() {
-    if (!els.quality) return;
-    var files = currentFiles();
-    var q = PA.summarizeQuality(currentRecords(), currentQuality());
-    if (!currentRecords().length && !files.length) { els.quality.innerHTML = ''; return; }
-    var items = [
-      ['Valid rows', q.validRows], ['Invalid rows', q.invalidRows],
-      ['Missing worker names', q.missingWorkerNames], ['Missing dates', q.missingDates],
-      ['Missing packing time', q.missingPackingTime], ['Duplicate rows skipped', q.duplicateRows],
-      ['Unknown shifts', q.unknownShifts], ['Failed calculated fields', q.failedCalculations],
-      ['Files (raw kept)', files.length]
-    ];
-    els.quality.innerHTML = '<section class="pk-quality"><h2 class="pk-section-title">Data quality</h2>' +
-      '<div class="pk-quality-grid">' + items.map(function (it) {
-        return '<div class="pk-quality-item"><div class="pk-kpi-v" style="font-size:1.1rem">' +
-          escapeHtml(PA.formatNumber(it[1])) + '</div><div class="pk-kpi-l">' + escapeHtml(it[0]) + '</div></div>';
-      }).join('') + '</div><div class="pk-file-list">' + files.map(function (f) {
-        return '<div class="pk-file-chip" title="Raw CSV preserved">' + escapeHtml(f.name) +
-          ' · ' + (f.rowCount != null ? f.rowCount + ' rows · ' : '') +
-          escapeHtml(new Date(f.uploadedAt).toLocaleString('en-AU')) + '</div>';
-      }).join('') + '</div></section>';
   }
 
   function renderPreview() {
@@ -9713,12 +9903,12 @@ function toast(msg, err) {
     ensureCurrentWeekFresh();
     renderChrome();
     renderStatus();
-    renderFilters();
+    if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
+      els.searchInput.value = state.filters.search || '';
+    }
     renderKpis();
-    renderCharts();
     renderTable();
     renderDetail();
-    renderQuality();
     renderPreview();
     applyView();
     updateHeader();
@@ -9977,8 +10167,6 @@ function toast(msg, err) {
       state.page = 1;
       renderKpis();
       renderTable();
-      renderCharts();
-      renderQuality();
     });
   }
   if (els.views) {
@@ -11120,6 +11308,9 @@ function toast(msg, err) {
     }
     if (name === 'roster' && window.__rosterTracker && typeof window.__rosterTracker.refresh === 'function'){
       window.__rosterTracker.refresh();
+    }
+    if (name === 'floor' && window.__floorAttGlance && typeof window.__floorAttGlance.refresh === 'function'){
+      window.__floorAttGlance.refresh();
     }
     if (name === 'packer' && window.__packerDashboard && typeof window.__packerDashboard.refresh === 'function'){
       window.__packerDashboard.refresh();
