@@ -1262,6 +1262,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .pk-tw tbody tr:hover{background:#F7F8FA}
 #tabPacker .pk-tw .r{text-align:right}
 #tabPacker .pk-tw .mn{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+#tabPacker .pk-tw tr.pk-week-total td{background:#F0F4FF;font-weight:800}
 #tabPacker .pk-th{background:none;border:0;padding:0;font:inherit;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#8E8E93;cursor:pointer}
 #tabPacker .pk-link{background:none;border:0;padding:0;font:inherit;font-weight:700;color:#2554C7;cursor:pointer;text-align:left}
 #tabPacker .pk-pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px;font-size:11px;color:#6E6E73}
@@ -1527,25 +1528,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   <div class="stn-shell">
     <div class="stn-chrome">
       <h1 class="stn-title">Settings</h1>
-      <div class="stn-sub">All exports live here. Daily tabs stay for work only. Wipe asks Confirm? then reloads.</div>
+      <div class="stn-sub">JSON backup / restore / wipe only. Week totals live as tables on Packer, Roster, and Tracker — Mondays auto-archive the old week.</div>
     </div>
     <div class="stn-body" id="settingsBody">
-      <div class="stn-sec">CSV exports</div>
-      <div class="stn-card">
-        <h2>Packer shift list</h2>
-        <p>CSV of packers for the day/shift currently selected on Packer (SKUs, boxes, BPH, status).</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" id="stnExportPackerShift">Export CSV</button>
-        </div>
-      </div>
-      <div class="stn-card">
-        <h2>Week review</h2>
-        <p>SKU totals by date (+ by worker) from Packer, plus today’s Tracker plan vs actual CSV.</p>
-        <div class="stn-actions">
-          <button type="button" class="primary" id="stnExportWeekReview">Export CSV</button>
-        </div>
-      </div>
-
       <div class="stn-sec">Saved data</div>
       <div class="stn-card">
         <h2>Whole app</h2>
@@ -1594,7 +1579,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         </div>
       </div>
       <input type="file" id="stnRestorePageFile" accept="application/json,.json" style="display:none">
-      <p class="stn-note">Export downloads a JSON you can Restore later. After Wipe or Restore the page reloads. Clear day / Clear week on other tabs only clears that week’s work — they do not wipe saved backups.</p>
+      <p class="stn-note">Export downloads a JSON you can Restore later. After Wipe or Restore the page reloads. Packer and Roster auto-archive last week on Monday (kept in-app even if the browser blocks the download). Week tables are on Packer (Week view), Roster, and Tracker.</p>
     </div>
   </div>
 </div>
@@ -1687,7 +1672,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
       font-size:10px; color:#6E6E73; margin:0; line-height:1.2; flex:0 1 180px; min-width:0;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
-    #tabRoster .ro-weekly-stats{ display:none; }
+    #tabRoster .ro-weekly-stats{ display:flex; }
     #tabRoster .ro-add{
       display:flex; gap:4px; align-items:center; flex-wrap:nowrap; min-width:0;
     }
@@ -1753,6 +1738,26 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     #tabRoster .ro-btn.on-absent{ background:#FF3B30; color:#fff; }
     #tabRoster .ro-btn.on-holiday{ background:#007AFF; color:#fff; }
     #tabRoster .ro-empty{ text-align:center; color:#8E8E93; padding:36px 12px; font-size:13px; }
+    #tabRoster .ro-week-card{
+      background:#fff; border:1px solid #E5E8EF; border-radius:9px; padding:8px; margin-bottom:8px;
+    }
+    #tabRoster .ro-week-card h2{
+      margin:0 0 6px; font-size:12px; font-weight:800;
+    }
+    #tabRoster .ro-week-card .ro-tw{ overflow:auto; border:1px solid #E5E8EF; border-radius:7px; }
+    #tabRoster .ro-week-card table{ width:100%; border-collapse:collapse; font-size:11px; }
+    #tabRoster .ro-week-card th{
+      background:#F5F6F8; text-align:left; padding:5px 6px; font-size:9px; font-weight:800;
+      letter-spacing:.04em; text-transform:uppercase; color:#8E8E93; border-bottom:1px solid #E5E8EF; white-space:nowrap;
+    }
+    #tabRoster .ro-week-card td{ padding:5px 6px; border-bottom:1px solid #EEF0F3; white-space:nowrap; }
+    #tabRoster .ro-week-card td.st{ font-weight:800; text-align:center; }
+    #tabRoster .ro-week-card td.st-here{ color:#1A6B30; background:#F3FBF5; }
+    #tabRoster .ro-week-card td.st-late{ color:#A05D00; background:#FFFBF0; }
+    #tabRoster .ro-week-card td.st-left_early{ color:#0F766E; background:#F0FDFA; }
+    #tabRoster .ro-week-card td.st-absent{ color:#B8251C; background:#FFF5F4; }
+    #tabRoster .ro-week-card td.st-holiday{ color:#0A52B8; background:#F0F6FF; }
+    #tabRoster .ro-week-card .ro-week-empty{ font-size:12px; color:#8E8E93; padding:8px 2px; }
     #tabRoster .ro-copy-mini{ display:none; }
     @media (max-width:820px){
       #tabRoster .ro-title{ display:none; }
@@ -1817,6 +1822,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
       </div>
     </div>
     <div class="ro-list-wrap">
+      <div class="ro-week-card" id="roWeekGrid"></div>
       <div class="ro-rows" id="roRows"></div>
     </div>
   </div>
@@ -1932,6 +1938,15 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           </tbody>
         </table>
       </div>
+      <div class="sec">This week · SKU boxes</div>
+      <div class="tw" id="stWeekSkuWrap">
+        <table>
+          <thead><tr><th>Date</th><th>Shift</th><th class="r">Total</th></tr></thead>
+          <tbody id="stWeekSkuBody">
+            <tr><td colspan="3" class="empty-td">Open Packer and upload Boxes Packed to fill this week table.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
   <div class="toast" id="toast"></div>
@@ -1966,6 +1981,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         <div class="pk-views" id="pkViews" role="tablist" aria-label="Packer views">
           <button type="button" data-view="people" class="active">People</button>
           <button type="button" data-view="hours">Hours</button>
+          <button type="button" data-view="week">Week</button>
         </div>
       </div>
     </div>
@@ -7219,6 +7235,71 @@ function buildTrackerWeeklySkuCsv(byDateSnap, weekKey) {
 function exportCSV() { exportWeeklyReview(); }
 window.exportWeeklyReview = exportWeeklyReview;
 
+function escapeHtmlTracker(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+async function refreshTrackerWeekTable(){
+  var body = document.getElementById('stWeekSkuBody');
+  var wrap = document.getElementById('stWeekSkuWrap');
+  if (!body || !wrap) return;
+  var weekStart = startOfWeekLocal(new Date());
+  var weekKey = ymdLocal(weekStart);
+  var review = null;
+  var dash = window.__packerDashboard;
+  try {
+    if (dash && typeof dash.buildWeeklySkuReview === 'function') {
+      var byDate = (typeof dash.getViewByDate === 'function' ? dash.getViewByDate() : null)
+        || (typeof dash.getByDate === 'function' ? dash.getByDate() : {})
+        || {};
+      if (typeof dash.getActiveWeekKey === 'function' && dash.getActiveWeekKey()) {
+        weekKey = dash.getActiveWeekKey();
+      } else if (typeof dash.getWeekStart === 'function' && dash.getWeekStart()) {
+        weekKey = ymdLocal(dash.getWeekStart());
+      }
+      // Prefer the live calendar week on Tracker
+      weekKey = ymdLocal(startOfWeekLocal(new Date()));
+      if (typeof dash.getByDate === 'function') byDate = dash.getByDate() || byDate;
+      // If live empty, fall back to newest archive via storage
+      review = dash.buildWeeklySkuReview(byDate, weekKey);
+      if ((!review || !review.hasData) && window.storage) {
+        var r = await window.storage.get('packer-shift-data', false);
+        if (r && r.value) {
+          var data = JSON.parse(r.value);
+          byDate = (data && data.byDate) || {};
+          weekKey = (data && data.activeWeekKey) || weekKey;
+          review = dash.buildWeeklySkuReview(byDate, weekKey);
+        }
+      }
+    }
+  } catch (e) { console.error(e); }
+
+  if (!review || !review.hasData) {
+    body.innerHTML = '<tr><td colspan="3" class="empty-td">No Packer SKU boxes this week yet — upload on Packer.</td></tr>';
+    var table = wrap.querySelector('table');
+    if (table) {
+      table.querySelector('thead').innerHTML = '<tr><th>Date</th><th>Shift</th><th class="r">Total</th></tr>';
+    }
+    return;
+  }
+  var skus = review.boardSkus || [];
+  var head = '<tr><th>Date</th><th>Shift</th>' +
+    skus.map(function(s){ return '<th class="r">' + escapeHtmlTracker(s) + '</th>'; }).join('') +
+    '<th class="r">Total</th><th>Other</th></tr>';
+  var rows = (review.summaryRows || []).map(function(row){
+    var isTotal = String(row[0]).indexOf('WEEK TOTAL') === 0;
+    var cells = row.map(function(c, idx){
+      var cls = idx >= 2 ? ' class="r"' : (isTotal ? ' class="bold"' : '');
+      return '<td' + cls + '>' + escapeHtmlTracker(c === '' || c == null ? '—' : c) + '</td>';
+    }).join('');
+    return '<tr>' + cells + '</tr>';
+  }).join('');
+  wrap.querySelector('thead').innerHTML = head;
+  body.innerHTML = rows || '<tr><td colspan="3" class="empty-td">No rows</td></tr>';
+}
+window.refreshTrackerWeekTable = refreshTrackerWeekTable;
+
 
 // ── TARGET FINISH ─────────────────────────────────────────────────────────────
 function updateTarget() {
@@ -8943,7 +9024,41 @@ function toast(msg, err) {
   function emptyBucket() {
     return { records: [], files: [], quality: PA.emptyQuality() };
   }
+  function viewWeekKey() {
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    return ymd(state.weekStart);
+  }
+  function viewByDate() {
+    var vk = viewWeekKey();
+    var live = state.activeWeekKey || '';
+    if (vk === live) return state.byDate || {};
+    var merged = {};
+    var arch = state.archives && state.archives[vk] && state.archives[vk].byDate;
+    if (arch) {
+      Object.keys(arch).forEach(function (dk) { merged[dk] = arch[dk]; });
+    }
+    // Overlay any leftover live slots that still fall in the viewed week
+    if (state.byDate && state.weekStart) {
+      for (var i = 0; i < 5; i++) {
+        var dk = ymd(addDays(state.weekStart, i));
+        if (state.byDate[dk]) merged[dk] = state.byDate[dk];
+      }
+    }
+    return merged;
+  }
   function ensureBucket(dateKey, shiftKey) {
+    var live = state.activeWeekKey || ymd(startOfWeek(new Date()));
+    var wk = ymd(startOfWeek(new Date(dateKey + 'T00:00:00')));
+    // Past/future weeks write into archives so live byDate stays this week only
+    if (wk !== live) {
+      if (!state.archives) state.archives = {};
+      if (!state.archives[wk]) state.archives[wk] = { weekKey: wk, byDate: {}, archivedAt: Date.now() };
+      if (!state.archives[wk].byDate) state.archives[wk].byDate = {};
+      var arch = state.archives[wk].byDate;
+      if (!arch[dateKey]) arch[dateKey] = {};
+      if (!arch[dateKey][shiftKey]) arch[dateKey][shiftKey] = emptyBucket();
+      return arch[dateKey][shiftKey];
+    }
     if (!state.byDate[dateKey]) state.byDate[dateKey] = {};
     if (!state.byDate[dateKey][shiftKey]) state.byDate[dateKey][shiftKey] = emptyBucket();
     return state.byDate[dateKey][shiftKey];
@@ -8952,17 +9067,25 @@ function toast(msg, err) {
     if (!state.weekStart) state.weekStart = startOfWeek(new Date());
     return ymd(addDays(state.weekStart, state.dayIdx));
   }
+  function readBucket(dateKey, shiftKey) {
+    var day = (viewByDate()[dateKey] || {});
+    return day[shiftKey] || emptyBucket();
+  }
+  function viewingLiveWeek() {
+    return viewWeekKey() === (state.activeWeekKey || viewWeekKey());
+  }
   function activeBucket() {
+    // Writes always go to live byDate (imports / clear day)
     return ensureBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
   }
   function currentRecords() {
-    return activeBucket().records || [];
+    return (readBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning').records) || [];
   }
   function currentQuality() {
-    return activeBucket().quality || PA.emptyQuality();
+    return readBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning').quality || PA.emptyQuality();
   }
   function currentFiles() {
-    return activeBucket().files || [];
+    return readBucket(activeDateKey(), state.rosterShift === 'afternoon' ? 'afternoon' : 'morning').files || [];
   }
   function filtered() {
     return PA.filterRecords(currentRecords(), state.filters);
@@ -9166,6 +9289,9 @@ function toast(msg, err) {
     return {
       weekKey: weekKey,
       hasData: summaryRows.length > 0,
+      summaryHdr: summaryHdr,
+      summaryRows: summaryRows,
+      boardSkus: skuCols,
       summaryCsv: summaryCsv,
       detailCsv: detailCsv,
       dayCount: summaryRows.length ? summaryRows.length - 1 : 0
@@ -9226,8 +9352,17 @@ function toast(msg, err) {
   }
 
   function exportActiveWeek(force) {
-    // Packer Export = this day/shift packer list (not multi-file week dump).
-    return exportCurrentShiftPackers();
+    var weekKey = viewWeekKey();
+    var snap = viewByDate();
+    var weekly = downloadWeeklySkuReview(snap, weekKey, !!force);
+    var report = buildWeekReport(weekKey, snap);
+    var okJson = downloadTextFile('packer-week-' + weekKey + '.json', JSON.stringify(report, null, 2), 'application/json');
+    if ((weekly && weekly.ok) || okJson) {
+      toast('Exported week of ' + weekKey);
+      return true;
+    }
+    toast('Could not export week of ' + weekKey, 'err');
+    return false;
   }
 
   function ensureCurrentWeekFresh() {
@@ -9243,35 +9378,39 @@ function toast(msg, err) {
         });
       });
       if (hasData) {
+        // Archive first so data is never lost if browser blocks downloads
         var report = buildWeekReport(oldKey, snap);
-        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
-        var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-        if (!ok && !(weekly && weekly.ok)) {
-          state.error = 'Could not export last week’s Packer data — keeping it so nothing is cleared.';
-          toast(state.error, 'err');
-          return;
-        }
         if (!state.archives) state.archives = {};
         state.archives[oldKey] = { weekKey: oldKey, byDate: snap, archivedAt: Date.now(), report: report };
         var aks = Object.keys(state.archives).sort();
         while (aks.length > 12) { delete state.archives[aks[0]]; aks.shift(); }
+        state.byDate = {};
+        state.activeWeekKey = currentKey;
+        // Keep the user on whatever week they were browsing; only live pointer advances
+        saveData();
+        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
+        var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
+        if (ok || (weekly && weekly.ok)) {
+          toast('New week — archived Packer week of ' + oldKey + ' (download started)');
+        } else {
+          toast('New week — Packer week of ' + oldKey + ' archived in app (download blocked)');
+        }
+      } else {
+        state.byDate = {};
+        state.activeWeekKey = currentKey;
+        saveData();
       }
-      state.byDate = {};
-      state.activeWeekKey = currentKey;
-      state.weekStart = current;
-      saveData();
-      if (hasData) toast('New week — exported & archived Packer week of ' + oldKey);
     } else if (!state.activeWeekKey) {
       state.activeWeekKey = currentKey;
-      state.weekStart = current;
+      if (!state.weekStart) state.weekStart = current;
     }
   }
 
   function renderChrome() {
     if (!state.weekStart) state.weekStart = startOfWeek(new Date());
     if (els.weekLabel) {
-      els.weekLabel.innerHTML = weekLabel(state.weekStart) + '<span>' +
-        shiftLabel(state.rosterShift) + '</span>';
+      var archNote = viewingLiveWeek() ? shiftLabel(state.rosterShift) : (shiftLabel(state.rosterShift) + ' · archived');
+      els.weekLabel.innerHTML = weekLabel(state.weekStart) + '<span>' + archNote + '</span>';
     }
     if (els.shiftToggle) {
       Array.prototype.forEach.call(els.shiftToggle.querySelectorAll('button[data-shift]'), function (btn) {
@@ -9287,7 +9426,7 @@ function toast(msg, err) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'pk-day' + (i === state.dayIdx ? ' active' : '') + (key === today ? ' today' : '');
-        var bucket = ensureBucket(key, state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
+        var bucket = readBucket(key, state.rosterShift === 'afternoon' ? 'afternoon' : 'morning');
         var n = (bucket.records || []).length;
         btn.innerHTML = '<span class="d">' + DAY_NAMES[i] + '</span><span class="n">' + d.getDate() +
           (n ? ' · ' + n : '') + '</span>';
@@ -9358,7 +9497,7 @@ function toast(msg, err) {
 
   function applyView() {
     var v = state.view || 'people';
-    if (v !== 'people' && v !== 'hours') v = 'people';
+    if (v !== 'people' && v !== 'hours' && v !== 'week') v = 'people';
     state.view = v;
     if (els.tableWrap) els.tableWrap.hidden = false;
     if (els.charts) els.charts.hidden = true;
@@ -9460,8 +9599,37 @@ function toast(msg, err) {
       '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
   }
 
+  function renderWeekTable() {
+    var weekKey = viewWeekKey();
+    var review = buildWeeklySkuReview(viewByDate(), weekKey);
+    var liveNote = viewingLiveWeek() ? 'live week' : 'archived · look-only';
+    if (!review.hasData) {
+      els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">' +
+        'No SKU boxes for week of ' + escapeHtml(weekKey) + ' yet. Upload Boxes Packed by Worker CSVs.</div></section>';
+      return;
+    }
+    var skus = review.boardSkus || [];
+    var head = skus.map(function (s) { return '<th class="r">' + escapeHtml(s) + '</th>'; }).join('');
+    var body = (review.summaryRows || []).map(function (row) {
+      var isTotal = String(row[0]).indexOf('WEEK TOTAL') === 0;
+      var cells = row.map(function (c, idx) {
+        var cls = idx >= 2 ? ' class="r mn"' : (isTotal ? ' class="bold"' : '');
+        return '<td' + cls + '>' + escapeHtml(c == null || c === '' ? '—' : c) + '</td>';
+      }).join('');
+      return '<tr' + (isTotal ? ' class="pk-week-total"' : '') + '>' + cells + '</tr>';
+    }).join('');
+    els.tableWrap.innerHTML =
+      '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Week · SKU boxes</h2>' +
+      '<div class="pk-table-meta">' + escapeHtml(weekLabel(state.weekStart)) + ' · ' + escapeHtml(liveNote) +
+      ' · auto-archives Monday</div></div>' +
+      '<div class="pk-tw"><table><thead><tr>' +
+      '<th>Date</th><th>Shift</th>' + head + '<th class="r">Total</th><th>Other</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table></div></section>';
+  }
+
   function renderTable() {
     if (!els.tableWrap) return;
+    if (state.view === 'week') { renderWeekTable(); return; }
     if (!currentRecords().length) { els.tableWrap.innerHTML = ''; return; }
     if (state.view === 'hours') renderHourlyTable();
     else renderPeopleTable();
@@ -9665,7 +9833,8 @@ function toast(msg, err) {
     state.rosterShift = jumpShift === 'afternoon' ? 'afternoon' : 'morning';
     var ws = startOfWeek(new Date(jumpDate + 'T00:00:00'));
     state.weekStart = ws;
-    state.activeWeekKey = ymd(ws);
+    // Keep activeWeekKey on the live calendar week — browsing/import must not trigger wipe
+    if (!state.activeWeekKey) state.activeWeekKey = ymd(startOfWeek(new Date()));
     state.dayIdx = 0;
     for (var i = 0; i < 5; i++) {
       if (ymd(addDays(ws, i)) === jumpDate) { state.dayIdx = i; break; }
@@ -9884,6 +10053,10 @@ function toast(msg, err) {
   }
   if (els.clearBtn) {
     els.clearBtn.addEventListener('click', async function () {
+      if (!viewingLiveWeek()) {
+        toast('Archived week — jump to This week to clear a day', 'err');
+        return;
+      }
       if (!clearArmed) {
         clearArmed = true;
         els.clearBtn.textContent = 'Confirm?';
@@ -9914,7 +10087,6 @@ function toast(msg, err) {
   if (els.prevWeek) {
     els.prevWeek.addEventListener('click', function () {
       state.weekStart = addDays(state.weekStart, -7);
-      state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
       renderAll();
     });
@@ -9922,7 +10094,6 @@ function toast(msg, err) {
   if (els.nextWeek) {
     els.nextWeek.addEventListener('click', function () {
       state.weekStart = addDays(state.weekStart, 7);
-      state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
       renderAll();
     });
@@ -9930,7 +10101,6 @@ function toast(msg, err) {
   if (els.jumpToday) {
     els.jumpToday.addEventListener('click', function () {
       state.weekStart = startOfWeek(new Date());
-      state.activeWeekKey = ymd(state.weekStart);
       state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
       state.showLegacy = false;
       renderAll();
@@ -9968,7 +10138,9 @@ function toast(msg, err) {
     buildWeeklySkuReview: buildWeeklySkuReview,
     downloadWeeklySkuReview: downloadWeeklySkuReview,
     getByDate: function () { return state.byDate; },
-    getWeekStart: function () { return state.weekStart || startOfWeek(new Date()); }
+    getViewByDate: function () { return viewByDate(); },
+    getWeekStart: function () { return state.weekStart || startOfWeek(new Date()); },
+    getActiveWeekKey: function () { return state.activeWeekKey || ''; }
   };
   loadAll();
 })();
@@ -10082,22 +10254,24 @@ function toast(msg, err) {
     var currentKey = ymd(current);
     if (state.activeWeekKey && state.activeWeekKey !== currentKey){
       var oldKey = state.activeWeekKey;
-      var snap = state.byDate || {};
+      var snap = JSON.parse(JSON.stringify(state.byDate || {}));
       var hasMarks = Object.keys(snap).some(function(dk){
         return snap[dk] && Object.keys(snap[dk]).length > 0;
       });
       if (hasMarks){
-        var exported = exportWeekAttendance(oldKey, snap);
-        if (!exported){
-          rosterToast('Could not export last week’s roster — keeping that week’s marks so nothing is lost');
-          return;
-        }
+        // Archive in-app first — downloads are best-effort
         archiveOutgoingWeek(oldKey, snap);
+        state.byDate = {};
+        state.activeWeekKey = currentKey;
+        saveState();
+        var exported = exportWeekAttendance(oldKey, snap);
+        if (exported) rosterToast('New week — archived roster week of ' + oldKey + ' (download started)');
+        else rosterToast('New week — roster week of ' + oldKey + ' archived in app (download blocked)');
+      } else {
+        state.byDate = {};
+        state.activeWeekKey = currentKey;
+        saveState();
       }
-      state.byDate = {};
-      state.activeWeekKey = currentKey;
-      saveState();
-      if (hasMarks) rosterToast('New week — exported & archived week of ' + oldKey);
     } else if (!state.activeWeekKey){
       state.activeWeekKey = currentKey;
       pruneToWeek(current);
@@ -10260,8 +10434,19 @@ function toast(msg, err) {
     var title = document.getElementById('roManageTitle');
     if (title) title.textContent = 'Add · ' + shiftLabel(state.rosterShift);
   }
+  function rosterViewWeekKey(){
+    return ymd(state.weekStart || startOfWeek(new Date()));
+  }
+  function rosterViewingLive(){
+    return rosterViewWeekKey() === (state.activeWeekKey || rosterViewWeekKey());
+  }
+  function rosterMarksMap(){
+    if (rosterViewingLive()) return state.byDate || {};
+    var vk = rosterViewWeekKey();
+    return (state.archives && state.archives[vk] && state.archives[vk].byDate) || {};
+  }
   function statusFor(dateKey, personId){
-    var day = state.byDate[dateKey] || {};
+    var day = rosterMarksMap()[dateKey] || {};
     return normalizeStatus(day[personId] || '');
   }
   // Absent / Left early → pull them off Floor plates for today's selected shift
@@ -10312,6 +10497,10 @@ function toast(msg, err) {
     }
   }
   function setStatus(dateKey, personId, status){
+    if (!rosterViewingLive()){
+      rosterToast('Archived week — open This week to change marks');
+      return;
+    }
     if (!state.byDate[dateKey]) state.byDate[dateKey] = {};
     if (!status) delete state.byDate[dateKey][personId];
     else state.byDate[dateKey][personId] = status;
@@ -10359,6 +10548,41 @@ function toast(msg, err) {
       return a.name.localeCompare(b.name);
     });
   }
+  function statusShort(st){
+    if (st === 'here') return 'On';
+    if (st === 'late') return 'Late';
+    if (st === 'left_early') return 'Left';
+    if (st === 'absent') return 'Out';
+    if (st === 'holiday') return 'Leave';
+    return '—';
+  }
+  function renderWeekGrid(allStaff, ws){
+    var grid = document.getElementById('roWeekGrid');
+    if (!grid) return;
+    var liveNote = rosterViewingLive() ? 'live week' : 'archived · look-only';
+    if (!allStaff.length){
+      grid.innerHTML = '<h2>Week marks</h2><div class="ro-week-empty">Add people to see the Mon–Fri table.</div>';
+      return;
+    }
+    var dayKeys = [];
+    for (var i = 0; i < 5; i++) dayKeys.push(ymd(addDays(ws, i)));
+    var head = DAY_NAMES.map(function(d){ return '<th>'+d+'</th>'; }).join('');
+    var body = allStaff.map(function(p){
+      var cells = dayKeys.map(function(dk){
+        var st = statusFor(dk, p.id);
+        var cls = st ? (' st st-'+st) : ' st';
+        return '<td class="'+cls+'">'+statusShort(st)+'</td>';
+      }).join('');
+      return '<tr><td class="bold">'+escapeHtmlRoster(p.name)+'</td>'+cells+'</tr>';
+    }).join('');
+    grid.innerHTML = '<h2>Week marks · '+liveNote+'</h2><div class="ro-tw"><table><thead><tr><th>Name</th>'+
+      head+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+  }
+  function escapeHtmlRoster(s){
+    return String(s||'').replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
   function render(){
     ensureCurrentWeekFresh();
     updateShiftButtons();
@@ -10374,7 +10598,7 @@ function toast(msg, err) {
     var ws = state.weekStart || startOfWeek(new Date());
     var isCurrentWeek = ymd(ws) === ymd(startOfWeek(new Date()));
     var shiftName = shiftLabel(state.rosterShift);
-    labelEl.innerHTML = weekLabel(ws) + '<span>'+shiftName+' · '+(isCurrentWeek ? 'resets Monday' : 'Mon–Fri')+'</span>';
+    labelEl.innerHTML = weekLabel(ws) + '<span>'+shiftName+' · '+(rosterViewingLive() ? (isCurrentWeek ? 'resets Monday' : 'live') : 'archived')+'</span>';
     daysEl.innerHTML = '';
     for (var i = 0; i < 5; i++){
       var d = addDays(ws, i);
@@ -10388,6 +10612,7 @@ function toast(msg, err) {
     }
     var dateKey = ymd(addDays(ws, state.dayIdx));
     var allStaff = rosterStaff();
+    renderWeekGrid(allStaff, ws);
     var staff = sortStaffForMarking(allStaff, dateKey);
     var q = (state.search || '').trim().toLowerCase();
     if (q) staff = staff.filter(function(p){ return p.name.toLowerCase().indexOf(q) >= 0; });
@@ -10788,7 +11013,7 @@ function toast(msg, err) {
 </script>
 
 <script>
-/* Settings: CSV exports + backup / restore / wipe */
+/* Settings: backup / restore / wipe (week tables live on Packer / Roster / Tracker) */
 (function(){
   var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
   var KEY_LABELS = {
@@ -10803,9 +11028,6 @@ function toast(msg, err) {
   var stnRestorePageFile = document.getElementById('stnRestorePageFile');
   var stnWipeAll = document.getElementById('stnWipeAll');
   var settingsBody = document.getElementById('settingsBody');
-  var stnExportPackerShift = document.getElementById('stnExportPackerShift');
-  var stnExportWeekReview = document.getElementById('stnExportWeekReview');
-  var stnRestoreArmed = false, stnRestoreTimer = null;
   var pendingRestoreKey = null;
   var wipeArmed = {};
   var wipeTimers = {};
@@ -10994,29 +11216,6 @@ function toast(msg, err) {
       armDanger(stnWipeAll, 'all', 'Wipe everything', function(){ wipeKeys(KEYS.slice()); });
     });
   }
-  if(stnExportPackerShift){
-    stnExportPackerShift.addEventListener('click', function(){
-      var dash = window.__packerDashboard;
-      if(dash && typeof dash.exportShiftPackers === 'function'){
-        dash.exportShiftPackers();
-        return;
-      }
-      if(dash && typeof dash.exportWeek === 'function'){
-        dash.exportWeek(true);
-        return;
-      }
-      toast('Open Packer once, then try again');
-    });
-  }
-  if(stnExportWeekReview){
-    stnExportWeekReview.addEventListener('click', function(){
-      if(typeof window.exportWeeklyReview === 'function'){
-        window.exportWeeklyReview();
-        return;
-      }
-      toast('Week review unavailable');
-    });
-  }
   if(settingsBody){
     settingsBody.addEventListener('click', function(e){
       var t = e.target;
@@ -11119,6 +11318,7 @@ function toast(msg, err) {
     if (name === 'tracker'){
       if (typeof loadBreakPlannerData === 'function') loadBreakPlannerData();
       if (typeof onInput === 'function') onInput();
+      if (typeof refreshTrackerWeekTable === 'function') refreshTrackerWeekTable();
     }
   }
   var launch = document.getElementById('bpNavLaunch');

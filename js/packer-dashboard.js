@@ -487,26 +487,28 @@
       });
       if (hasData) {
         var report = buildWeekReport(oldKey, snap);
-        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
-        var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
-        if (!ok && !(weekly && weekly.ok)) {
-          state.error = 'Could not export last week’s Packer data — keeping it so nothing is cleared.';
-          toast(state.error, 'err');
-          return;
-        }
         if (!state.archives) state.archives = {};
         state.archives[oldKey] = { weekKey: oldKey, byDate: snap, archivedAt: Date.now(), report: report };
         var aks = Object.keys(state.archives).sort();
         while (aks.length > 12) { delete state.archives[aks[0]]; aks.shift(); }
+        state.byDate = {};
+        state.activeWeekKey = currentKey;
+        saveData();
+        var weekly = downloadWeeklySkuReview(snap, oldKey, true);
+        var ok = downloadTextFile('packer-week-' + oldKey + '.json', JSON.stringify(report, null, 2), 'application/json');
+        if (ok || (weekly && weekly.ok)) {
+          toast('New week — archived Packer week of ' + oldKey + ' (download started)');
+        } else {
+          toast('New week — Packer week of ' + oldKey + ' archived in app (download blocked)');
+        }
+      } else {
+        state.byDate = {};
+        state.activeWeekKey = currentKey;
+        saveData();
       }
-      state.byDate = {};
-      state.activeWeekKey = currentKey;
-      state.weekStart = current;
-      saveData();
-      if (hasData) toast('New week — exported & archived Packer week of ' + oldKey);
     } else if (!state.activeWeekKey) {
       state.activeWeekKey = currentKey;
-      state.weekStart = current;
+      if (!state.weekStart) state.weekStart = current;
     }
   }
 
@@ -1157,7 +1159,6 @@
   if (els.prevWeek) {
     els.prevWeek.addEventListener('click', function () {
       state.weekStart = addDays(state.weekStart, -7);
-      state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
       renderAll();
     });
@@ -1165,7 +1166,6 @@
   if (els.nextWeek) {
     els.nextWeek.addEventListener('click', function () {
       state.weekStart = addDays(state.weekStart, 7);
-      state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
       renderAll();
     });
@@ -1173,7 +1173,6 @@
   if (els.jumpToday) {
     els.jumpToday.addEventListener('click', function () {
       state.weekStart = startOfWeek(new Date());
-      state.activeWeekKey = ymd(state.weekStart);
       state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
       state.showLegacy = false;
       renderAll();
