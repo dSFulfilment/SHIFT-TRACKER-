@@ -1569,6 +1569,16 @@ html[data-active-tab="export"] .bp-nav-launch{ background:var(--tab-export); bor
       font-size:11px; color:#8E8E93;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
+    #tabExport .toast{
+      position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
+      background:#1C2430; color:#fff; padding:.5rem 1.2rem; border-radius:100px;
+      font-size:.78rem; font-weight:600; opacity:0; pointer-events:none;
+      transition:opacity .2s; z-index:10002; white-space:nowrap;
+      box-shadow:0 4px 12px rgba(0,0,0,.18); max-width:85vw;
+      overflow:hidden; text-overflow:ellipsis;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    #tabExport .toast.show{ opacity:1; }
     @media print{
       .bp-fab-dock, #tabExport .ex-chrome, .bp-toast{ display:none !important; }
       #tabExport, #tabExport .ex-shell, #tabExport .ex-body{ position:static !important; height:auto !important; max-height:none !important; overflow:visible !important; background:#fff !important; padding:0 !important; }
@@ -6285,7 +6295,7 @@ groupsEl.addEventListener('input', function(e){
           rangeEl.textContent = a.slice(0,5) + '\u2013' + b.slice(0,5);
           rangeEl.classList.remove('is-empty');
         } else {
-          rangeEl.textContent = 'Set times';
+          rangeEl.textContent = '\u2014';
           rangeEl.classList.add('is-empty');
         }
       }
@@ -6416,6 +6426,9 @@ window.__breakPlanner = {
     return loadAll().then(function(){ renderAll(); }).catch(function(){
       return loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
     });
+  },
+  getData: function(){
+    return bpData;
   }
 };
 init();
@@ -9207,7 +9220,10 @@ function toast(msg, err) {
       hasData: summaryRows.length > 0,
       summaryCsv: summaryCsv,
       detailCsv: detailCsv,
-      dayCount: summaryRows.length ? summaryRows.length - 1 : 0
+      dayCount: summaryRows.length ? summaryRows.length - 1 : 0,
+      boardSkus: skuCols,
+      summaryRows: summaryRows,
+      detailRows: detailRows
     };
   }
 
@@ -10820,7 +10836,11 @@ function toast(msg, err) {
   bindCopy('roCopyWeekly', buildWeeklyCopy, 'Weekly attendance copied');
   bindCopy('roCopyWeeklyCard', buildWeeklyCopy, 'Weekly attendance copied');
 
-  window.__weekTracker = { refresh: refresh };
+  window.__weekTracker = {
+    refresh: refresh,
+    getByDate: function(){ return state.byDate || {}; },
+    getWeekStart: function(){ return state.weekStart || startOfWeek(new Date()); }
+  };
   window.__rosterTracker = window.__weekTracker;
   loadState().then(refresh);
 })();
@@ -10863,7 +10883,9 @@ function toast(msg, err) {
     });
   }
   function formatAU(dateKey){
-    if (window.PackerAnalytics && PackerAnalytics.formatDateAU) return PackerAnalytics.formatDateAU(dateKey);
+    if (window.PackerAnalytics && typeof window.PackerAnalytics.formatDateAU === 'function'){
+      return window.PackerAnalytics.formatDateAU(dateKey);
+    }
     var p = String(dateKey||'').split('-');
     if (p.length !== 3) return dateKey || '';
     return p[2] + '/' + p[1] + '/' + p[0];
@@ -10889,23 +10911,36 @@ function toast(msg, err) {
   function kpi(n, l){
     return '<div class="ex-kpi"><div class="n">' + escapeHtml(n) + '</div><div class="l">' + escapeHtml(l) + '</div></div>';
   }
+  function resolveWeek(){
+    var dash = window.__packerDashboard;
+    if (dash && typeof dash.getWeekStart === 'function'){
+      var ws = dash.getWeekStart();
+      if (ws instanceof Date && !isNaN(ws.getTime())) return { ws: ws, weekKey: ymd(ws) };
+    }
+    var roster = window.__weekTracker || window.__rosterTracker;
+    if (roster && typeof roster.getWeekStart === 'function'){
+      var rws = roster.getWeekStart();
+      if (rws instanceof Date && !isNaN(rws.getTime())) return { ws: rws, weekKey: ymd(rws) };
+    }
+    var ws0 = startOfWeek(new Date());
+    return { ws: ws0, weekKey: ymd(ws0) };
+  }
 
-  async function buildPackerSection(weekKey, ws){
+  async function buildPackerSection(weekKey){
     var dash = window.__packerDashboard;
     var byDate = {};
     if (dash && typeof dash.getByDate === 'function') byDate = dash.getByDate() || {};
     var review = null;
-    if (dash && typeof dash.buildWeeklySkuReview === 'function'){
-      review = dash.buildWeeklySkuReview(byDate, weekKey);
-    }
+    var build = dash && typeof dash.buildWeeklySkuReview === 'function'
+      ? dash.buildWeeklySkuReview.bind(dash)
+      : null;
+    if (build) review = build(byDate, weekKey);
     if ((!review || !review.hasData)){
       var stored = await readStorage('packer-shift-data');
       if (stored){
         byDate = stored.byDate || byDate;
         if (stored.activeWeekKey) weekKey = stored.activeWeekKey;
-        if (dash && typeof dash.buildWeeklySkuReview === 'function'){
-          review = dash.buildWeeklySkuReview(byDate, weekKey);
-        }
+        if (build) review = build(byDate, weekKey);
       }
     }
     var totalBoxes = 0;
@@ -10913,41 +10948,57 @@ function toast(msg, err) {
     var html = '<section class="ex-section"><h2>1. Packer performance</h2>';
     if (!review || !review.hasData){
       html += '<p class="ex-empty">No Boxes Packed uploads for this week yet.</p></section>';
-      return { html: html, totalBoxes: 0, dayRows: 0 };
+      return { html: html, totalBoxes: 0, dayRows: 0, weekKey: weekKey };
     }
-    var skus = review.boardSkus || [];
-    (review.summaryRows || []).forEach(function(row){
+    var allSkus = review.boardSkus || [];
+    var rows = review.summaryRows || [];
+    var skus = allSkus.filter(function(s, idx){
+      return rows.some(function(row){
+        var v = row[2 + idx];
+        return v !== '' && v != null && Number(v) !== 0;
+      });
+    });
+    if (!skus.length) skus = allSkus.slice();
+    rows.forEach(function(row){
       if (String(row[0]).indexOf('WEEK TOTAL') === 0){
-        totalBoxes = Number(row[row.length - 2]) || 0;
+        totalBoxes = Number(row[2 + allSkus.length]) || 0;
       } else {
         dayRows++;
       }
     });
     html += '<div class="ex-grid">' +
       kpi(String(totalBoxes || 0), 'Boxes this week') +
-      kpi(String(dayRows), 'Shift slots with data') +
-      kpi(String(skus.length), 'Board SKUs') +
-      kpi(weekKey, 'Week key') +
+      kpi(String(dayRows || review.dayCount || 0), 'Shift slots with data') +
+      kpi(String(skus.length), 'SKUs with volume') +
+      kpi(formatAU(weekKey), 'Week starting') +
       '</div>';
     html += '<table class="ex-table"><thead><tr><th>Date</th><th>Shift</th>' +
       skus.map(function(s){ return '<th class="r">' + escapeHtml(s) + '</th>'; }).join('') +
       '<th class="r">Total</th></tr></thead><tbody>';
-    (review.summaryRows || []).forEach(function(row){
+    rows.forEach(function(row){
       var isTotal = String(row[0]).indexOf('WEEK TOTAL') === 0;
-      // Date, Shift, skus..., Total, Other — drop Other for cleaner presentation
-      var cells = row.slice(0, 2 + skus.length + 1);
+      var cells = [row[0], row[1]];
+      skus.forEach(function(s){ cells.push(row[2 + allSkus.indexOf(s)]); });
+      cells.push(row[2 + allSkus.length]);
       html += '<tr' + (isTotal ? ' class="total"' : '') + '>' + cells.map(function(c, i){
         var cls = i >= 2 ? ' class="r"' : '';
         return '<td' + cls + '>' + escapeHtml(c === '' || c == null ? '\u2014' : c) + '</td>';
       }).join('') + '</tr>';
     });
     html += '</tbody></table></section>';
-    return { html: html, totalBoxes: totalBoxes, dayRows: dayRows };
+    return { html: html, totalBoxes: totalBoxes, dayRows: dayRows, weekKey: weekKey };
   }
 
   async function buildRosterSection(ws){
     var data = await readStorage('shiftWeekAttendance');
     var byDate = (data && data.byDate) || {};
+    // Prefer live in-memory roster state when available (fresher than storage debounce)
+    if (window.__weekTracker && typeof window.__weekTracker.getByDate === 'function'){
+      try{
+        var live = window.__weekTracker.getByDate();
+        if (live && typeof live === 'object') byDate = live;
+      }catch(e){}
+    }
     var counts = { here:0, late:0, left_early:0, absent:0, holiday:0 };
     var DAY = ['Mon','Tue','Wed','Thu','Fri'];
     var dayLines = [];
@@ -10979,17 +11030,26 @@ function toast(msg, err) {
   }
 
   async function buildBreaksSection(){
-    var data = await readStorage('breakPlanner');
+    var data = null;
+    // Live break planner memory first (offline / unsynced edits)
+    try{
+      if (window.__breakPlanner && typeof window.__breakPlanner.getData === 'function'){
+        data = window.__breakPlanner.getData();
+      }
+    }catch(e){}
+    if (!data) data = await readStorage('breakPlanner');
     var html = '<section class="ex-section"><h2>3. Break groups</h2>';
     if (!data){
       html += '<p class="ex-empty">No break planner data saved.</p></section>';
       return { html: html };
     }
+    var any = false;
     ['morning','afternoon'].forEach(function(shift){
       var groups = (data[shift] && data[shift].groups) || [];
       var label = shift === 'afternoon' ? 'Afternoon' : 'Day';
       html += '<p><b>' + label + ' shift</b> \u2014 ' + groups.length + ' group' + (groups.length === 1 ? '' : 's') + '</p>';
       if (!groups.length) return;
+      any = true;
       html += '<table class="ex-table"><thead><tr><th>Group</th><th>Stations</th><th>Tea</th><th>Meal</th><th>People</th></tr></thead><tbody>';
       groups.forEach(function(g){
         var tea = (g.teaStart && g.teaEnd) ? (fmtTime(g.teaStart) + '\u2013' + fmtTime(g.teaEnd)) : '\u2014';
@@ -11000,22 +11060,26 @@ function toast(msg, err) {
       });
       html += '</tbody></table>';
     });
+    if (!any) html += '<p class="ex-empty">No break groups set up yet.</p>';
     html += '</section>';
     return { html: html };
   }
 
+  var lastExportWeekKey = '';
+
   async function refresh(){
     if (!paper) return;
-    var ws = startOfWeek(new Date());
-    var weekKey = ymd(ws);
-    var dash = window.__packerDashboard;
-    if (dash && typeof dash.getWeekStart === 'function' && dash.getWeekStart()){
-      ws = dash.getWeekStart();
-      weekKey = ymd(ws);
-    }
+    var resolved = resolveWeek();
+    var ws = resolved.ws;
+    var weekKey = resolved.weekKey;
     paper.innerHTML = '<p class="ex-empty">Building week summary\u2026</p>';
     try{
-      var packer = await buildPackerSection(weekKey, ws);
+      var packer = await buildPackerSection(weekKey);
+      if (packer.weekKey && packer.weekKey !== weekKey){
+        weekKey = packer.weekKey;
+        ws = startOfWeek(new Date(weekKey + 'T00:00:00'));
+      }
+      lastExportWeekKey = weekKey;
       var roster = await buildRosterSection(ws);
       var breaks = await buildBreaksSection();
       var lead = 'A one-page look at Packer output, attendance marks, and break coverage for the Mon\u2013Fri week.';
@@ -11046,7 +11110,7 @@ function toast(msg, err) {
       '</style></head><body>' + paper.innerHTML + '</body></html>';
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\ufeff' + html], { type: 'application/msword' }));
-    a.download = 'week-summary-' + ymd(startOfWeek(new Date())) + '.doc';
+    a.download = 'week-summary-' + (lastExportWeekKey || ymd(startOfWeek(new Date()))) + '.doc';
     a.click();
     setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 2000);
     toast('Word document downloaded');

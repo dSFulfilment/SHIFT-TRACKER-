@@ -411,7 +411,10 @@
       hasData: summaryRows.length > 0,
       summaryCsv: summaryCsv,
       detailCsv: detailCsv,
-      dayCount: summaryRows.length ? summaryRows.length - 1 : 0
+      dayCount: summaryRows.length ? summaryRows.length - 1 : 0,
+      boardSkus: skuCols,
+      summaryRows: summaryRows,
+      detailRows: detailRows
     };
   }
 
