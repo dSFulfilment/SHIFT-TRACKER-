@@ -63,6 +63,20 @@ check(html.indexOf("data-tab=\"settings\"") !== -1, 'Settings tab button');
 check(html.indexOf('function showTab') !== -1, 'showTab switcher exists');
 check(html.indexOf("__floorAttGlance") !== -1, 'Attendance glance refresh hook');
 
+console.log('\nOps smoke — Tracker remaining-time on Floor headcount change');
+check(html.indexOf('window.__shiftTrackerRefresh = loadBreakPlannerData') !== -1,
+  'Tracker refresh hook is assigned');
+check(html.indexOf('countPackers: countLiveStationPackers') !== -1,
+  'Floor exposes live station packer count');
+check(html.indexOf('function captureHeadcountChange') !== -1,
+  'Headcount-change capture exists');
+check(html.indexOf('function estimateBoxesLeft') !== -1,
+  'From-now boxes-left estimate exists');
+check(html.indexOf('remaining finish reworked from now') !== -1,
+  'Toast mentions reworked remaining finish');
+check(html.indexOf("__shiftTrackerRefresh()") !== -1,
+  'Floor clear / remove paths ping Tracker');
+
 console.log('\nOps smoke — backup round-trip helpers');
 check(html.indexOf('shift-floor-planner-backup') !== -1, 'Whole-app backup type present');
 check(html.indexOf('exportBackup') !== -1, 'exportBackup present');
