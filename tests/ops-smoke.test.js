@@ -33,8 +33,8 @@ check(html.indexOf("PREFIX = 'shift-tracker:'") !== -1, 'Storage polyfill uses s
 check(html.indexOf("LOCAL_KEY_PREFIX = 'shift-tracker:'") !== -1, 'Floor offline path uses same prefix');
 check(html.indexOf("LEGACY_PREFIXES = ['shift-floor-planner:', 'shiftFloorPlanner:']") !== -1
   || html.indexOf('shift-floor-planner:') !== -1, 'Legacy prefix migration retained');
-check(html.indexOf("KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance']") !== -1,
-  'Settings keys cover Floor/Breaks/Packer/Roster');
+check(html.indexOf("KEYS = ['planner', 'breakPlanner', 'shiftTracker', 'packer-shift-data', 'shiftWeekAttendance']") !== -1,
+  'Settings keys cover Floor/Breaks/Tracker/Packer/Roster');
 
 console.log('\nOps smoke — Breaks offline save');
 check(html.indexOf('function writeLocalJson') !== -1, 'Local JSON write helper exists');
@@ -87,6 +87,13 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
+console.log('\nOps smoke — Shift Tracker persists across refresh');
+check(html.indexOf("TRACKER_KEY = 'shiftTracker'") !== -1, 'Tracker storage key exists');
+check(html.indexOf('function loadTrackerState') !== -1 && html.indexOf('function scheduleTrackerSave') !== -1,
+  'Tracker load/save helpers exist');
+check(html.indexOf('await loadTrackerState()') !== -1, 'Tracker restores before first onInput');
+check(html.indexOf('No auto day-rollover') !== -1, 'Tracker does not auto-clear on new day');
+
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');
 check(html.indexOf('id="bpFreePrev"') !== -1 && html.indexOf('id="bpFreeNext"') !== -1, 'Free-person arrow buttons exist');
@@ -126,16 +133,22 @@ console.log('\nOps smoke — storage round-trip (in-memory)');
   set('breakPlanner', JSON.stringify({ morning: { groups: [{ id: 'g1' }] }, afternoon: { groups: [] } }));
   var bp = JSON.parse(get('breakPlanner'));
   check(bp.morning.groups[0].id === 'g1', 'Breaks payload round-trips');
-  var keys = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
+  set('shiftTracker', JSON.stringify({
+    shiftStart: '14:00', shiftEnd: '22:00', bpph: '15', startBoxes: '2400',
+    targetFinish: '', actuals: [2200, 2000], remainingAnchor: null, lockedPastPlan: null
+  }));
+  var keys = ['planner', 'breakPlanner', 'shiftTracker', 'packer-shift-data', 'shiftWeekAttendance'];
   var backup = { type: 'shift-floor-planner-backup', keys: {} };
   keys.forEach(function (k) { backup.keys[k] = get(k); });
   check(backup.keys.breakPlanner != null, 'backup includes breakPlanner');
+  check(backup.keys.shiftTracker != null, 'backup includes shiftTracker');
   // restore
   store = {};
   keys.forEach(function (k) {
     if (backup.keys[k] != null) set(k, backup.keys[k]);
   });
   check(JSON.parse(get('breakPlanner')).morning.groups[0].id === 'g1', 'restore round-trip keeps groups');
+  check(JSON.parse(get('shiftTracker')).actuals[1] === 2000, 'restore round-trip keeps tracker actuals');
 })();
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

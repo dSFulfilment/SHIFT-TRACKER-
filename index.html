@@ -1636,13 +1636,13 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   <div class="stn-shell">
     <div class="stn-chrome">
       <h1 class="stn-title">Settings</h1>
-      <div class="stn-sub">Backup and restore your Floor, Breaks, Packer, and Roster data. Wipe asks Confirm? then reloads.</div>
+      <div class="stn-sub">Backup and restore your Floor, Breaks, Tracker, Packer, and Roster data. Wipe asks Confirm? then reloads.</div>
     </div>
     <div class="stn-body" id="settingsBody">
       <div class="stn-sec">Saved data</div>
       <div class="stn-card">
         <h2>Whole app</h2>
-        <p>Floor, Breaks, Packer uploads, and Roster marks in one JSON backup.</p>
+        <p>Floor, Breaks, Tracker, Packer uploads, and Roster marks in one JSON backup.</p>
         <div class="stn-actions">
           <button type="button" class="primary" id="stnBackupAll">Download backup</button>
           <button type="button" id="stnRestoreAll">Restore backup</button>
@@ -1666,6 +1666,15 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <button type="button" class="primary" data-export="breakPlanner">Download</button>
           <button type="button" data-restore="breakPlanner">Restore</button>
           <button type="button" class="danger" data-wipe="breakPlanner">Wipe</button>
+        </div>
+      </div>
+      <div class="stn-card">
+        <h2>Shift Tracker</h2>
+        <p>Shift times, starting boxes, actuals, and mid-shift progress. Kept across refresh until you clear it.</p>
+        <div class="stn-actions">
+          <button type="button" class="primary" data-export="shiftTracker">Download</button>
+          <button type="button" data-restore="shiftTracker">Restore</button>
+          <button type="button" class="danger" data-wipe="shiftTracker">Wipe</button>
         </div>
       </div>
       <div class="stn-card">
@@ -1974,7 +1983,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         <div class="st-target">
           <div class="st-field">
             <label>Target finish</label>
-            <input type="time" id="targetFinish" oninput="updateTarget()">
+            <input type="time" id="targetFinish" oninput="updateTarget(); scheduleTrackerSave();">
           </div>
           <div id="targetResult" class="st-target-result">
             <div class="st-muted">Set a target time to check if you can make it</div>
@@ -6790,9 +6799,135 @@ var actuals  = [];
 var darkMode = false;
 var lastCfg  = null;
 var lastPlan = null;
+var remainingAnchor = null; // { atMin, boxesLeft, oldStaff, newStaff } when headcount changes mid-shift
+var lockedPastPlan = null; // past half-hour rows frozen at the last headcount change
+
+// Persist setup + actuals across refresh. No auto day-rollover — clear manually when you want.
+var TRACKER_KEY = 'shiftTracker';
+var trackerReady = false;
+var trackerHydrating = false;
+var trackerSaveTimer = null;
+
+function hasTrackerSync(){
+  return typeof window !== 'undefined' && !!window.SharedSync;
+}
+function hasTrackerStore(){
+  return typeof window !== 'undefined' && window.storage
+    && typeof window.storage.get === 'function' && typeof window.storage.set === 'function';
+}
+function collectTrackerState(){
+  return {
+    shiftStart: document.getElementById('shiftStart').value || '',
+    shiftEnd: document.getElementById('shiftEnd').value || '',
+    bpph: document.getElementById('bpph').value || '',
+    startBoxes: document.getElementById('startBoxes').value || '',
+    targetFinish: document.getElementById('targetFinish').value || '',
+    actuals: actuals.slice(),
+    remainingAnchor: remainingAnchor
+      ? { atMin: remainingAnchor.atMin, boxesLeft: remainingAnchor.boxesLeft,
+          oldStaff: remainingAnchor.oldStaff, newStaff: remainingAnchor.newStaff }
+      : null,
+    lockedPastPlan: lockedPastPlan
+      ? lockedPastPlan.map(function(row){
+          return {
+            i: row.i, from: row.from, to: row.to, eff: row.eff,
+            done: row.done, cum: row.cum, pLeft: row.pLeft
+          };
+        })
+      : null
+  };
+}
+function applyTrackerState(data){
+  if (!data || typeof data !== 'object') return false;
+  trackerHydrating = true;
+  try{
+    var ss = document.getElementById('shiftStart');
+    var se = document.getElementById('shiftEnd');
+    var bp = document.getElementById('bpph');
+    var sb = document.getElementById('startBoxes');
+    var tf = document.getElementById('targetFinish');
+    if (ss && data.shiftStart != null) ss.value = data.shiftStart;
+    if (se && data.shiftEnd != null) se.value = data.shiftEnd;
+    if (bp && data.bpph != null) bp.value = data.bpph;
+    if (sb && data.startBoxes != null) sb.value = data.startBoxes;
+    if (tf && data.targetFinish != null) tf.value = data.targetFinish;
+    actuals = Array.isArray(data.actuals) ? data.actuals.map(function(v){
+      if (v == null || v === '') return null;
+      var n = typeof v === 'number' ? v : parseFloat(v);
+      return isNaN(n) ? null : n;
+    }) : [];
+    remainingAnchor = (data.remainingAnchor && typeof data.remainingAnchor === 'object')
+      ? data.remainingAnchor
+      : null;
+    lockedPastPlan = Array.isArray(data.lockedPastPlan) ? data.lockedPastPlan : null;
+  } finally {
+    trackerHydrating = false;
+  }
+  return true;
+}
+function scheduleTrackerSave(delay){
+  if (!trackerReady || trackerHydrating) return;
+  var snap = collectTrackerState();
+  if (hasTrackerSync()){
+    window.SharedSync.scheduleSharedSave(TRACKER_KEY, function(latest){
+      latest.shiftStart = snap.shiftStart;
+      latest.shiftEnd = snap.shiftEnd;
+      latest.bpph = snap.bpph;
+      latest.startBoxes = snap.startBoxes;
+      latest.targetFinish = snap.targetFinish;
+      latest.actuals = snap.actuals;
+      latest.remainingAnchor = snap.remainingAnchor;
+      latest.lockedPastPlan = snap.lockedPastPlan;
+      return latest;
+    }, delay == null ? 400 : delay);
+    return;
+  }
+  clearTimeout(trackerSaveTimer);
+  trackerSaveTimer = setTimeout(function(){
+    if (!hasTrackerStore()) return;
+    window.storage.set(TRACKER_KEY, JSON.stringify(snap), false).catch(function(err){
+      console.error('shiftTracker local save failed', err);
+    });
+  }, delay == null ? 400 : delay);
+}
+async function loadTrackerState(){
+  var data = null;
+  if (hasTrackerSync()){
+    try{ data = await window.SharedSync.readSharedState(TRACKER_KEY); }
+    catch(e){
+      console.error('shiftTracker load failed', e);
+    }
+  } else if (hasTrackerStore()){
+    try{
+      var r = await window.storage.get(TRACKER_KEY, false);
+      if (r && r.value != null && r.value !== ''){
+        data = typeof r.value === 'string' ? JSON.parse(r.value) : r.value;
+      }
+    }catch(e){
+      console.error('shiftTracker local load failed', e);
+    }
+  }
+  if (data) applyTrackerState(data);
+  trackerReady = true;
+}
+async function handleExternalTrackerChange(){
+  if (!hasTrackerSync() || trackerHydrating) return;
+  var el = document.activeElement;
+  if (el && (el.id === 'shiftStart' || el.id === 'shiftEnd' || el.id === 'bpph'
+    || el.id === 'startBoxes' || el.id === 'targetFinish' || (el.classList && el.classList.contains('aip')))){
+    return;
+  }
+  try{
+    var res = await window.SharedSync.refreshSharedState(TRACKER_KEY);
+    if (res && res.changed && res.data){
+      applyTrackerState(res.data);
+      onInput();
+    }
+  }catch(e){ console.error('external shiftTracker refresh failed', e); }
+}
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
-window.onload = function() {
+window.onload = async function() {
   try {
     if (localStorage.getItem('dark') === '1') {
       darkMode = true;
@@ -6804,9 +6939,16 @@ window.onload = function() {
       }
     }
   } catch(e) {}
+  await loadTrackerState();
   onInput();
   loadBreakPlannerData();
   setInterval(function(){ if (!document.hidden) liveTick(); }, 1000);
+  if (hasTrackerSync()){
+    window.SharedSync.onExternalChange(TRACKER_KEY, function(){ handleExternalTrackerChange(); });
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) scheduleTrackerSave(0);
+  });
 };
 
 // ── DARK MODE ────────────────────────────────────────────────────────────────
@@ -7075,6 +7217,7 @@ function captureHeadcountChange(cfg, plan, oldStaff, newStaff) {
     ' — remaining finish reworked from now (' +
     Math.round(boxesLeft).toLocaleString() + ' boxes left)'
   );
+  scheduleTrackerSave(0);
 }
 
 function estimateBoxesLeft(cfg, plan) {
@@ -7188,6 +7331,7 @@ function onInput() {
     else reason = 'Fill in Shift Start, Shift End and Starting Boxes Left above.';
     document.getElementById('planBody').innerHTML = '<tr><td colspan="8" class="empty-td">' + reason + '</td></tr>';
     lastCfg = null; lastPlan = null;
+    scheduleTrackerSave();
     return;
   }
 
@@ -7204,6 +7348,7 @@ function onInput() {
   var plan = buildPlan(cfg);
   lastCfg = cfg; lastPlan = plan;
   updateAll(plan, cfg, true);
+  scheduleTrackerSave();
 }
 
 // ── LIVE TICK ────────────────────────────────────────────────────────────────
@@ -7440,6 +7585,7 @@ function renderTable(plan, cfg) {
 function handleActualInput(idx, val) {
   var v = val === '' ? null : parseFloat(val);
   actuals[idx] = (v == null || isNaN(v)) ? null : v;
+  scheduleTrackerSave();
   if (!lastCfg) return;
   var plan = buildPlan(lastCfg);
   lastPlan = plan;
@@ -7520,6 +7666,7 @@ function clearActuals() {
   actuals = [];
   resetProgressMemory();
   onInput();
+  scheduleTrackerSave(0);
   toast('Actuals cleared');
 }
 (function bindClearActualsConfirm() {
@@ -7578,6 +7725,7 @@ function loadExample() {
   resetProgressMemory();
   onInput();
   loadBreakPlannerData(); // repopulates "Packers on Shift" from the Floor Plan
+  scheduleTrackerSave(0);
   toast('Example loaded');
 }
 
@@ -11302,10 +11450,11 @@ function toast(msg, err) {
 <script>
 /* Settings: backup / restore / wipe */
 (function(){
-  var KEYS = ['planner', 'breakPlanner', 'packer-shift-data', 'shiftWeekAttendance'];
+  var KEYS = ['planner', 'breakPlanner', 'shiftTracker', 'packer-shift-data', 'shiftWeekAttendance'];
   var KEY_LABELS = {
     planner: 'Floor Plan',
     breakPlanner: 'Breaks',
+    shiftTracker: 'Shift Tracker',
     'packer-shift-data': 'Packer',
     shiftWeekAttendance: 'Roster marks'
   };
@@ -11349,6 +11498,14 @@ function toast(msg, err) {
     }
     if (key === 'breakPlanner') {
       return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] } });
+    }
+    if (key === 'shiftTracker') {
+      return JSON.stringify({
+        schemaVersion: 1, revision: 0,
+        shiftStart: '', shiftEnd: '', bpph: '', startBoxes: '', targetFinish: '',
+        actuals: [], remainingAnchor: null, lockedPastPlan: null,
+        updatedAt: now
+      });
     }
     if (key === 'packer-shift-data') {
       return JSON.stringify({
