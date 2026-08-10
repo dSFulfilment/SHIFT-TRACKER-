@@ -700,75 +700,15 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     width:100%;
   }
 
-  #breakPlannerTab .bp-chrome,
   #tabPacker .pk-chrome,
   #tabRoster .ro-chrome{ padding:12px 20px 14px; }
   #tabTracker .st-chrome{ padding:14px 20px; }
   #tabSettings .stn-chrome{ padding:14px 20px; }
-  #breakPlannerTab .bp-list-wrap,
   #tabPacker .pk-body,
   #tabRoster .ro-list-wrap,
   #tabTracker .st-body{
     padding:12px 20px 72px;
   }
-  /* Breaks: pool left + groups right */
-  #breakPlannerTab .bp-shell{
-    display:grid;
-    grid-template-columns:minmax(240px,300px) minmax(0,1fr);
-    grid-template-rows:auto minmax(0,1fr);
-    column-gap:0;
-  }
-  #breakPlannerTab .bp-chrome{
-    grid-column:1 / -1;
-    border-bottom:1px solid #E1E4EA;
-  }
-  #breakPlannerTab .bp-pool{
-    grid-column:1;
-    grid-row:2;
-    margin:12px 0 12px 20px;
-    min-height:0;
-    max-height:calc(100dvh - 120px);
-    overflow:auto;
-    align-self:start;
-  }
-  #breakPlannerTab .bp-pool-list{ align-content:flex-start; }
-  #breakPlannerTab .bp-list-wrap{
-    grid-column:2;
-    grid-row:2;
-    margin:0;
-    padding:12px 20px 72px 12px;
-    border-left:1px solid #E1E4EA;
-    background:#F7F8FA;
-  }
-  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
-    grid-template-columns:minmax(0,1fr);
-  }
-  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
-    grid-column:1;
-    border-left:none;
-    padding-left:20px;
-    background:transparent;
-  }
-
-  /* Clean Breaks times — flat table, no nested amber cards */
-  #breakPlannerTab .bp-table th.bp-col-group{ width:96px; }
-  #breakPlannerTab .bp-table th.bp-col-st{ width:88px; }
-  #breakPlannerTab .bp-table th.bp-col-time{ width:150px; }
-  #breakPlannerTab .bp-table th.bp-col-actions{ width:44px; }
-  #breakPlannerTab .bp-group-card td{ padding:8px 8px; }
-  #breakPlannerTab .bp-time-pair{
-    background:transparent; border:none; border-radius:0; padding:0;
-  }
-  #breakPlannerTab .bp-time-range{ font-size:14px; margin-bottom:2px; }
-  #breakPlannerTab .bp-time-block{
-    display:flex; flex-direction:row; gap:4px; align-items:center;
-  }
-  #breakPlannerTab .bp-time-block input[type=time]{
-    width:auto; min-width:7.2em; flex:1; font-size:12px; padding:4px 5px; min-height:28px;
-    background:#fff;
-  }
-  #breakPlannerTab .bp-time-cell-lbl{ display:none; } /* thead already labels Tea/Meal */
-
   /* Tracker — single viewport: compact strip + full plan table */
   #tabTracker .st-chrome{ padding:8px 16px 8px; }
   #tabTracker .st-body{
@@ -830,8 +770,79 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
 }
 
+/* Breaks desktop: pool left + groups right (from 900px so mid-width screens unclump too) */
+@media (min-width:900px){
+  #breakPlannerTab .bp-shell{
+    display:grid;
+    grid-template-columns:minmax(220px,280px) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);
+    column-gap:0;
+    max-width:none;
+  }
+  #breakPlannerTab .bp-chrome{
+    grid-column:1 / -1;
+    border-bottom:1px solid #E1E4EA;
+    padding:12px 20px 14px;
+  }
+  #breakPlannerTab .bp-pool{
+    grid-column:1;
+    grid-row:2;
+    margin:16px 0 16px 20px;
+    min-height:0;
+    max-height:calc(100dvh - 140px);
+    overflow:auto;
+    align-self:stretch;
+    padding:12px;
+  }
+  /* Sidebar names — one per row so they stop reading as a clump */
+  #breakPlannerTab .bp-pool-list{
+    display:flex;
+    flex-direction:column;
+    flex-wrap:nowrap;
+    gap:6px;
+    align-content:flex-start;
+  }
+  #breakPlannerTab .bp-pool-list .bp-chip{ width:100%; }
+  #breakPlannerTab .bp-list-wrap{
+    grid-column:2;
+    grid-row:2;
+    margin:0;
+    padding:16px 20px 80px 16px;
+    border-left:1px solid #E1E4EA;
+    background:#F7F8FA;
+  }
+  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
+    grid-template-columns:minmax(0,1fr);
+  }
+  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
+    grid-column:1;
+    border-left:none;
+    padding-left:20px;
+    background:transparent;
+  }
+
+  /* One compact start–end row (drop duplicate range line) */
+  #breakPlannerTab .bp-table th.bp-col-group{ width:100px; }
+  #breakPlannerTab .bp-table th.bp-col-st{ width:96px; }
+  #breakPlannerTab .bp-table th.bp-col-time{ width:190px; }
+  #breakPlannerTab .bp-table th.bp-col-actions{ width:48px; }
+  #breakPlannerTab .bp-group-card td{ padding:12px 12px; }
+  #breakPlannerTab .bp-time-pair{
+    background:transparent; border:none; border-radius:0; padding:0;
+  }
+  #breakPlannerTab .bp-time-range{ display:none; }
+  #breakPlannerTab .bp-time-block{
+    display:flex; flex-direction:row; flex-wrap:nowrap; gap:6px; align-items:center;
+  }
+  #breakPlannerTab .bp-time-block input[type=time]{
+    width:auto; min-width:7.4em; flex:1; font-size:12px; padding:6px 7px; min-height:32px;
+    background:#fff;
+  }
+  #breakPlannerTab .bp-time-cell-lbl{ display:none; }
+  #breakPlannerTab .bp-people{ gap:6px; }
+}
 @media (min-width:1440px){
-  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,340px) minmax(0,1fr); }
+  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,300px) minmax(0,1fr); }
 }
 
 #breakPlannerTab{
@@ -847,97 +858,100 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #breakPlannerTab .bp-chrome{
   flex:0 0 auto; background:var(--tab-breaks-soft); backdrop-filter:blur(10px);
   border-bottom:1px solid #E1E4EA; border-top:3px solid var(--tab-breaks);
-  padding:6px 10px 7px; z-index:5;
+  padding:10px 14px 12px; z-index:5;
 }
 #breakPlannerTab .bp-bar{
-  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
 }
 #breakPlannerTab .bp-title{
-  margin:0; font-size:14px; font-weight:800; letter-spacing:-.02em; flex:0 0 auto;
+  margin:0; font-size:16px; font-weight:800; letter-spacing:-.02em; flex:0 0 auto;
   color:var(--tab-breaks);
 }
 #breakPlannerTab .bp-shiftgroup{
   display:inline-flex; border:1px solid #D8DCE3; border-radius:8px; overflow:hidden; background:#fff;
 }
 #breakPlannerTab .bp-shift-btn{
-  border:none; background:#fff; padding:5px 10px; font-size:11px; font-weight:800;
+  border:none; background:#fff; padding:6px 12px; font-size:12px; font-weight:800;
   color:#6E6E73; cursor:pointer; font-family:inherit;
 }
 #breakPlannerTab .bp-shift-btn.active{ background:#1C2430; color:#fff; }
 #breakPlannerTab .bp-summary{
-  display:flex; gap:4px; flex-wrap:wrap; align-items:center; flex:1; min-width:0;
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:1; min-width:0;
 }
 #breakPlannerTab .bp-summary-item{
-  font-size:10px; font-weight:700; color:#6E6E73; background:#fff; border:1px solid #E5E8EF;
-  border-radius:7px; padding:3px 7px; white-space:nowrap;
+  font-size:11px; font-weight:700; color:#6E6E73; background:#fff; border:1px solid #E5E8EF;
+  border-radius:8px; padding:5px 9px; white-space:nowrap;
 }
 #breakPlannerTab .bp-summary-item b{ font-variant-numeric:tabular-nums; color:#1D1D1F; }
 #breakPlannerTab .bp-summary-item.short{ background:#FFFBF0; border-color:#F5E2B8; }
 #breakPlannerTab .bp-summary-item.short b{ color:#A05D00; }
-#breakPlannerTab .bp-actions{ display:flex; gap:4px; flex-wrap:wrap; margin-left:auto; }
+#breakPlannerTab .bp-actions{ display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
 #breakPlannerTab .bp-btn{
-  border:1px solid #D8DCE3; border-radius:7px; padding:4px 8px; font-size:10px; font-weight:700;
+  border:1px solid #D8DCE3; border-radius:8px; padding:6px 11px; font-size:11px; font-weight:700;
   cursor:pointer; background:#fff; color:#1D1D1F; font-family:inherit; white-space:nowrap;
 }
 #breakPlannerTab .bp-btn:hover{ background:#F2F2F7; }
 #breakPlannerTab .bp-btn.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
 #breakPlannerTab .bp-btn.bp-btn-warn{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
 #breakPlannerTab .bp-pool{
-  margin-top:6px; min-width:0; background:#fff; border:1px solid #E5E8EF; border-radius:10px; padding:6px 8px;
+  margin:10px 14px 0; min-width:0; background:#fff; border:1px solid #E5E8EF; border-radius:12px;
+  padding:10px 12px; max-height:min(34dvh, 220px); overflow:auto;
 }
 #breakPlannerTab .bp-pool.is-empty{ display:none; }
 #breakPlannerTab .bp-pool-head{
-  display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:8px;
 }
 #breakPlannerTab .bp-pool-lbl{
-  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93;
+  font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#8E8E93;
 }
-#breakPlannerTab .bp-pool-hint{ font-size:10px; color:#8E8E93; }
+#breakPlannerTab .bp-pool-hint{ font-size:11px; color:#8E8E93; }
 #breakPlannerTab .bp-pool.picking{ border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7; }
 #breakPlannerTab .bp-pool.picking .bp-pool-hint{ color:#2554C7; font-weight:700; }
-#breakPlannerTab .bp-pool-list{ display:flex; flex-wrap:wrap; gap:4px; min-width:0; }
+#breakPlannerTab .bp-pool-list{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:6px; min-width:0;
+}
 #breakPlannerTab .bp-list-wrap{
-  flex:1; min-height:0; overflow:auto; padding:8px 10px calc(76px + env(safe-area-inset-bottom, 0px));
+  flex:1; min-height:0; overflow:auto; padding:12px 14px calc(80px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling:touch;
 }
 #breakPlannerTab .bp-groups{ width:100%; }
 #breakPlannerTab .bp-empty{
-  text-align:center; color:#8E8E93; font-size:12px; padding:28px 12px;
-  background:#fff; border:1px dashed #D8DCE3; border-radius:10px;
+  text-align:center; color:#8E8E93; font-size:13px; padding:36px 16px;
+  background:#fff; border:1px dashed #D8DCE3; border-radius:12px;
 }
 #breakPlannerTab .bp-table{
-  width:100%; border-collapse:separate; border-spacing:0 4px; table-layout:fixed;
+  width:100%; border-collapse:separate; border-spacing:0 10px; table-layout:fixed;
 }
 #breakPlannerTab .bp-table th{
-  font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
-  color:#8E8E93; text-align:left; padding:0 6px 2px; font-weight:800;
+  font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+  color:#8E8E93; text-align:left; padding:0 10px 4px;
 }
 #breakPlannerTab .bp-table th.bp-col-actions{ width:44px; }
-#breakPlannerTab .bp-table th.bp-col-group{ width:72px; }
-#breakPlannerTab .bp-table th.bp-col-st{ width:72px; }
-#breakPlannerTab .bp-table th.bp-col-time{ width:132px; }
+#breakPlannerTab .bp-table th.bp-col-group{ width:88px; }
+#breakPlannerTab .bp-table th.bp-col-st{ width:88px; }
+#breakPlannerTab .bp-table th.bp-col-time{ width:168px; }
 #breakPlannerTab .bp-time-pair{
   min-width:0; background:transparent; border:none; border-radius:0; padding:0;
 }
 #breakPlannerTab .bp-group-card td{
   background:#fff; border-top:1px solid #E5E8EF; border-bottom:1px solid #E5E8EF;
-  padding:5px 6px; vertical-align:middle;
+  padding:10px 10px; vertical-align:middle;
 }
-#breakPlannerTab .bp-group-card td:first-child{ border-left:1px solid #E5E8EF; border-radius:8px 0 0 8px; }
-#breakPlannerTab .bp-group-card td:last-child{ border-right:1px solid #E5E8EF; border-radius:0 8px 8px 0; }
+#breakPlannerTab .bp-group-card td:first-child{ border-left:1px solid #E5E8EF; border-radius:10px 0 0 10px; }
+#breakPlannerTab .bp-group-card td:last-child{ border-right:1px solid #E5E8EF; border-radius:0 10px 10px 0; }
 #breakPlannerTab .bp-pool.picking .bp-group-card td{
   background:#F7F9FF; border-color:#9FB5F5; cursor:pointer;
 }
 #breakPlannerTab .bp-group-label{
-  font-size:12px; font-weight:800; border:1px solid transparent; background:transparent;
-  padding:2px 4px; border-radius:6px; font-family:inherit; width:100%; color:#1D1D1F; box-sizing:border-box;
+  font-size:13px; font-weight:800; border:1px solid transparent; background:transparent;
+  padding:4px 6px; border-radius:7px; font-family:inherit; width:100%; color:#1D1D1F; box-sizing:border-box;
 }
 #breakPlannerTab .bp-group-label:focus{ outline:none; background:#F5F6FA; border-color:#D8DCE3; }
 #breakPlannerTab .bp-group-stations{
-  font-size:11px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:6px;
-  padding:3px 5px; font-family:inherit; width:100%; background:#fff; box-sizing:border-box;
+  font-size:12px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:7px;
+  padding:5px 7px; font-family:inherit; width:100%; background:#fff; box-sizing:border-box;
 }
-#breakPlannerTab .bp-time-cell{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+#breakPlannerTab .bp-time-cell{ display:flex; flex-direction:column; gap:4px; min-width:0; }
 #breakPlannerTab .bp-time-cell-lbl{
   font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93; line-height:1;
 }
@@ -946,11 +960,14 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   letter-spacing:-.01em; line-height:1.15; white-space:nowrap;
 }
 #breakPlannerTab .bp-time-range.is-empty{ color:#C7C7CC; font-weight:700; font-size:12px; }
-#breakPlannerTab .bp-time-block{ display:flex; flex-direction:row; flex-wrap:wrap; gap:4px; align-items:center; min-width:0; }
+#breakPlannerTab .bp-time-block{ display:flex; flex-direction:row; flex-wrap:nowrap; gap:6px; align-items:center; min-width:0; }
+#breakPlannerTab .bp-time-sep{
+  flex:0 0 auto; color:#C7C7CC; font-weight:800; font-size:13px; line-height:1; user-select:none;
+}
 #breakPlannerTab .bp-time-block input[type=time]{
-  font-size:12px; font-weight:700; border:1px solid #D8DCE3; border-radius:6px; padding:4px 5px;
+  font-size:12px; font-weight:700; border:1px solid #D8DCE3; border-radius:7px; padding:5px 6px;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:#fff; color:#1D1D1F;
-  width:7.4em; min-width:7.4em; max-width:100%;
+  width:7.6em; min-width:0; flex:1 1 7.2em; max-width:100%;
   box-sizing:border-box; font-variant-numeric:tabular-nums;
 }
 #breakPlannerTab .bp-time-block input[type=time]:focus{
@@ -958,37 +975,39 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 }
 /* Chromium often needs extra room for the native HH:MM + AM/PM control */
 @supports (-webkit-appearance:none){
-  #breakPlannerTab .bp-time-block input[type=time]{ min-height:30px; }
+  #breakPlannerTab .bp-time-block input[type=time]{ min-height:32px; }
 }
 #breakPlannerTab .bp-group-rm,
 #breakPlannerTab .bp-add-people{
-  border:1px solid #D8DCE3; border-radius:7px; background:#fff; color:#1D1D1F;
-  font-size:11px; font-weight:800; font-family:inherit; cursor:pointer; padding:4px 7px;
+  border:1px solid #D8DCE3; border-radius:8px; background:#fff; color:#1D1D1F;
+  font-size:12px; font-weight:800; font-family:inherit; cursor:pointer; padding:5px 9px;
 }
 #breakPlannerTab .bp-add-people{ background:#1C2430; color:#fff; border-color:#1C2430; }
 #breakPlannerTab .bp-row-actions{ display:flex; align-items:center; gap:4px; justify-content:flex-end; }
 #breakPlannerTab .bp-group-rm{
-  width:26px; height:26px; padding:0; color:#C7C7CC; border:none; background:transparent; font-size:16px;
+  width:28px; height:28px; padding:0; color:#C7C7CC; border:none; background:transparent; font-size:18px;
 }
 #breakPlannerTab .bp-group-rm:hover{ color:#FF3B30; background:#FFF5F4; }
 #breakPlannerTab .bp-people{
-  display:flex; align-items:center; gap:3px; flex-wrap:wrap; min-height:24px;
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:28px;
 }
 @media (max-width:860px){
   #breakPlannerTab .bp-table thead{ display:none; }
+  #breakPlannerTab .bp-table{ border-spacing:0; }
   #breakPlannerTab .bp-group-card,
   #breakPlannerTab .bp-group-card td{
-    display:block; width:100%; border:none; border-radius:0; padding:4px 8px;
+    display:block; width:100%; border:none; border-radius:0; padding:6px 12px;
   }
   #breakPlannerTab .bp-group-card{
-    display:block; background:#fff; border:1px solid #E5E8EF !important; border-radius:10px !important;
-    padding:6px 0; margin-bottom:4px;
+    display:block; background:#fff; border:1px solid #E5E8EF !important; border-radius:12px !important;
+    padding:8px 0; margin-bottom:10px;
   }
-  #breakPlannerTab .bp-group-card td:first-child{ padding-top:6px; }
-  #breakPlannerTab .bp-group-card td.bp-td-time{ padding:6px 8px; }
+  #breakPlannerTab .bp-group-card td:first-child{ padding-top:8px; }
+  #breakPlannerTab .bp-group-card td.bp-td-time{ padding:8px 12px; }
   #breakPlannerTab .bp-time-cell-lbl{ display:block; margin-bottom:2px; }
   #breakPlannerTab .bp-time-range{ font-size:15px; }
-  #breakPlannerTab .bp-row-actions{ justify-content:flex-start; padding-bottom:6px; }
+  #breakPlannerTab .bp-row-actions{ justify-content:flex-start; padding-bottom:8px; }
+  #breakPlannerTab .bp-pool-list{ grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); }
 }
 #breakPlannerTab .bp-role-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
 #breakPlannerTab .bp-role-dot.packer{ background:var(--staff); }
@@ -996,9 +1015,12 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #breakPlannerTab .bp-role-dot.boxmaker{ background:var(--boxmaker); }
 #breakPlannerTab .bp-role-dot.unassigned{ background:#B9BEC7; }
 #breakPlannerTab .bp-chip{
-  display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700;
-  border-radius:7px; padding:4px 7px; border:1px solid transparent; line-height:1.25; cursor:pointer;
-  user-select:none; -webkit-tap-highlight-color:transparent;
+  display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700;
+  border-radius:8px; padding:6px 9px; border:1px solid transparent; line-height:1.25; cursor:pointer;
+  user-select:none; -webkit-tap-highlight-color:transparent; min-width:0;
+}
+#breakPlannerTab .bp-pool-list .bp-chip{
+  width:100%; box-sizing:border-box; justify-content:flex-start;
 }
 #breakPlannerTab .bp-chip.packer{ background:var(--staff-bg); color:var(--staff); }
 #breakPlannerTab .bp-chip.runner{ background:var(--runner-bg); color:var(--runner); }
@@ -6408,6 +6430,7 @@ function renderGroups(){
         '<div class="bp-time-range' + emptyCls + '">' + escapeHtml(range) + '</div>' +
         '<div class="bp-time-block">' +
         '<input type="time" data-time="' + g.id + '|' + startKey + '" value="' + escapeHtml(startVal || '') + '" aria-label="' + label + ' start">' +
+        '<span class="bp-time-sep" aria-hidden="true">\u2013</span>' +
         '<input type="time" data-time="' + g.id + '|' + endKey + '" value="' + escapeHtml(endVal || '') + '" aria-label="' + label + ' end">' +
         '</div></div></div></td>';
     }
