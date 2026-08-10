@@ -1142,7 +1142,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabTracker tr.row-now, #tabPacker tr.row-now{background:var(--bbg)!important}
 #tabTracker tr.row-now td, #tabPacker tr.row-now td{font-weight:600}
 #tabTracker tr.row-past td, #tabPacker tr.row-past td{opacity:.65}
-#tabTracker .aip, #tabPacker .aip{width:90px;padding:.32rem .48rem;border:1px solid var(--bdr2);border-radius:var(--rs);font-family:monospace;font-size:.9rem;font-weight:600;color:var(--txt);background:var(--sur);text-align:right;-webkit-appearance:none;appearance:none}
+#tabTracker .aip, #tabPacker .aip{width:90px;padding:.32rem .48rem;border:1px solid var(--bdr2);border-radius:var(--rs);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem;font-weight:600;color:var(--txt);background:var(--sur);text-align:right;-webkit-appearance:none;appearance:none;font-variant-numeric:tabular-nums}
 #tabTracker .aip:focus, #tabPacker .aip:focus{outline:none;border-color:#7baaf7;box-shadow:0 0 0 2px rgba(123,170,247,.2)}
 #tabTracker .aip::placeholder, #tabPacker .aip::placeholder{color:var(--fnt);font-weight:400;font-size:.78rem}
 #tabTracker .empty-td, #tabPacker .empty-td{text-align:center;padding:2.5rem;color:var(--fnt);font-size:.82rem}
@@ -1186,10 +1186,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabTracker .st-actions .btn{padding:.28rem .6rem;font-size:.7rem}
 #tabTracker .st-setup{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(110px,1.15fr) minmax(160px,1.5fr);gap:5px;align-items:end}
 #tabTracker .st-field label{display:block;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
-#tabTracker .st-field input{width:100%;height:28px;border:1px solid var(--bdr2);border-radius:6px;padding:0 7px;background:var(--sur);color:var(--txt);font-family:inherit;font-size:12px;font-weight:600;box-sizing:border-box}
-#tabTracker .st-field input[type=time],#tabTracker .st-field input[type=number]{font-variant-numeric:tabular-nums}
+#tabTracker .st-field input{width:100%;height:32px;border:1px solid var(--bdr2);border-radius:6px;padding:0 8px;background:var(--sur);color:var(--txt);font-family:inherit;font-size:13px;font-weight:600;box-sizing:border-box}
+#tabTracker .st-field input[type=time],#tabTracker .st-field input[type=number],#tabTracker .st-field input[inputmode=numeric]{font-variant-numeric:tabular-nums}
+#tabTracker .st-field input:focus{outline:none;border-color:var(--tab-tracker);box-shadow:0 0 0 2px rgba(15,118,110,.18)}
 #tabTracker .st-field input[readonly]{background:var(--bg);color:var(--mut)}
-#tabTracker .st-field-wide input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;font-weight:800}
+#tabTracker .st-field-wide input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;font-weight:800}
 #tabTracker .st-rate{display:flex;align-items:center;gap:7px;min-width:0;background:var(--sur);border:1px solid var(--bdr);border-radius:7px;padding:3px 7px;min-height:28px}
 #tabTracker .st-rate .rate-chip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95rem;font-weight:800;color:var(--blu);background:var(--bbg);border:1px solid var(--bbd);border-radius:6px;padding:.05rem .45rem;min-width:52px;text-align:center;line-height:1.2}
 #tabTracker .st-rate .rate-desc{font-size:10px;color:var(--mut);line-height:1.25;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -1220,7 +1221,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabTracker .st-body table{width:100%;border-collapse:collapse}
 #tabTracker .st-body thead th{padding:3px 5px;font-size:.52rem;position:sticky;top:0;background:var(--sur);z-index:1}
 #tabTracker .st-body tbody td{padding:1px 5px;font-size:.7rem;line-height:1.2;vertical-align:middle}
-#tabTracker .st-body .aip{width:72px;height:22px;padding:0 4px;font-size:.72rem;border-radius:5px}
+#tabTracker .st-body .aip{width:88px;min-width:88px;height:28px;padding:0 6px;font-size:.8rem;border-radius:6px}
 #tabTracker .st-body .pill{font-size:.58rem;padding:.08rem .35rem}
 #tabTracker .st-body .empty-td{padding:1.2rem;font-size:.75rem}
 @media(max-width:900px){
@@ -1245,8 +1246,8 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #tabTracker .st-live .finish-hero{grid-area:finish}
   #tabTracker .st-live .st-target{grid-area:target;align-content:center}
   #tabTracker .st-live .kgrid{grid-area:kpis}
-  #tabTracker .st-body tbody td{padding:0 6px;font-size:.66rem;height:22px}
-  #tabTracker .st-body .aip{height:18px;font-size:.66rem;width:64px}
+  #tabTracker .st-body tbody td{padding:1px 6px;font-size:.66rem;height:26px}
+  #tabTracker .st-body .aip{height:24px;font-size:.72rem;width:84px;min-width:84px}
   #tabTracker .st-body thead th{padding:2px 6px;font-size:.48rem}
   #tabTracker .st-live .fh-val{font-size:1.1rem}
   #tabTracker .st-body .kc-v{font-size:.95rem}
@@ -1940,11 +1941,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
       </div>
 
       <div class="st-setup">
-        <div class="st-field"><label>Start</label><input type="time" id="shiftStart" value="14:00" oninput="onInput(); loadBreakPlannerData();"></div>
-        <div class="st-field"><label>End</label><input type="time" id="shiftEnd" value="22:00" oninput="onInput()"></div>
+        <div class="st-field"><label>Start</label><input type="time" id="shiftStart" value="14:00" oninput="onTrackerSetupInput(true)" onchange="onTrackerSetupInput(true)"></div>
+        <div class="st-field"><label>End</label><input type="time" id="shiftEnd" value="22:00" oninput="onTrackerSetupInput(false)" onchange="onTrackerSetupInput(false)"></div>
         <div class="st-field"><label>Packers</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="Live count of packers on Floor stations — updates remaining finish when people leave"></div>
-        <div class="st-field"><label>Box / person / hr</label><input type="number" id="bpph" value="15" min="0.5" step="0.5" oninput="onInput()"></div>
-        <div class="st-field st-field-wide"><label>Starting boxes left</label><input type="number" id="startBoxes" placeholder="e.g. 2400" min="0" oninput="onInput()"></div>
+        <div class="st-field"><label>Box / person / hr</label><input type="text" id="bpph" value="15" inputmode="decimal" autocomplete="off" spellcheck="false" oninput="onTrackerSetupInput(false)" onblur="onTrackerSetupCommit()"></div>
+        <div class="st-field st-field-wide"><label>Starting boxes left</label><input type="text" id="startBoxes" placeholder="e.g. 2400" inputmode="numeric" autocomplete="off" spellcheck="false" oninput="onTrackerSetupInput(false)" onblur="onTrackerSetupCommit()"></div>
         <div class="st-rate">
           <div class="rate-chip" id="rateChip">&#8212;</div>
           <div class="rate-desc" id="rateDesc">Loading packers&hellip;</div>
@@ -7103,7 +7104,8 @@ async function loadBreakPlannerData() {
   }
   floorPackerLoadAttempted = true;
   updateBreakStatusLine(breakReadError);
-  onInput();
+  // Never rebuild the actuals table while a row is being typed — that steals focus.
+  onInput({ skipTable: trackerEditingActual() || trackerEditingSetup() });
 }
 
 window.__shiftTrackerRefresh = loadBreakPlannerData;
@@ -7277,7 +7279,33 @@ function latestIdx(plan) {
 }
 
 // ── ON INPUT ─────────────────────────────────────────────────────────────────
-function onInput() {
+function trackerEditingActual() {
+  var el = document.activeElement;
+  return !!(el && el.classList && el.classList.contains('aip'));
+}
+function trackerEditingSetup() {
+  var el = document.activeElement;
+  if (!el || !el.id) return false;
+  return el.id === 'shiftStart' || el.id === 'shiftEnd' || el.id === 'bpph'
+    || el.id === 'startBoxes' || el.id === 'targetFinish';
+}
+var trackerSetupTimer = null;
+function onTrackerSetupInput(reloadBreaks) {
+  clearTimeout(trackerSetupTimer);
+  trackerSetupTimer = setTimeout(function(){
+    onInput({ skipTable: trackerEditingActual() });
+    if (reloadBreaks) loadBreakPlannerData();
+  }, 280);
+}
+function onTrackerSetupCommit() {
+  clearTimeout(trackerSetupTimer);
+  onInput({ commitSetup: true });
+}
+
+function onInput(opts) {
+  opts = opts || {};
+  var skipTable = !!opts.skipTable || trackerEditingActual();
+  var editingSetup = trackerEditingSetup() && !opts.commitSetup;
   var st = floorPackerCount != null ? floorPackerCount : 0;
   var bp = parseFloat(document.getElementById('bpph').value)  || 0;
   var pr = st * bp;
@@ -7320,6 +7348,11 @@ function onInput() {
 
   var cfg = readCfg();
   if (!cfg) {
+    // Mid-edit (e.g. clearing Starting boxes to retype) — keep the table and focus.
+    if (editingSetup || skipTable) {
+      scheduleTrackerSave();
+      return;
+    }
     var reason;
     if (floorPackerCount == null) reason = floorPackerLoadAttempted
       ? 'Can\u2019t reach the Floor Plan right now, so packers on shift is unknown. Your other data is safe \u2014 this will resume once it reconnects.'
@@ -7334,7 +7367,8 @@ function onInput() {
   }
 
   // Shift window / starting boxes changed → drop frozen mid-shift progress
-  if (lastCfg && (lastCfg.sm !== cfg.sm || lastCfg.em !== cfg.em || lastCfg.sb !== cfg.sb)) {
+  // (wait until setup blur so typing "2400" digit-by-digit doesn't wipe anchors)
+  if (!editingSetup && lastCfg && (lastCfg.sm !== cfg.sm || lastCfg.em !== cfg.em || lastCfg.sb !== cfg.sb)) {
     resetProgressMemory();
   }
 
@@ -7345,7 +7379,7 @@ function onInput() {
 
   var plan = buildPlan(cfg);
   lastCfg = cfg; lastPlan = plan;
-  updateAll(plan, cfg, true);
+  updateAll(plan, cfg, !skipTable);
   scheduleTrackerSave();
 }
 
@@ -7364,7 +7398,7 @@ function liveTick() {
     }
   }
   // Update finish cards + row highlight (no table re-render)
-  if (lastCfg && lastPlan) {
+  if (lastCfg && lastPlan && !trackerEditingActual()) {
     updateFinish(lastPlan, lastCfg);
     updateTarget();
     updateRowClasses(lastPlan);
@@ -7372,6 +7406,8 @@ function liveTick() {
   // Refresh Floor packer count + breaks often so leavers update remaining finish quickly
   liveTick._breakTick = (liveTick._breakTick || 0) + 1;
   var trackerOpen = document.documentElement.getAttribute('data-active-tab') === 'tracker';
+  // Pause background reloads while typing so focus/caret aren't stolen.
+  if (trackerEditingActual() || trackerEditingSetup()) return;
   if (liveTick._breakTick % (trackerOpen ? 3 : 20) === 0) loadBreakPlannerData();
 }
 
@@ -7559,7 +7595,7 @@ function renderTable(plan, cfg) {
       + '<td class="r mn">' + Math.round(row.eff) + '</td>'
       + '<td class="r mn">' + Math.round(row.done).toLocaleString() + '</td>'
       + '<td class="r mn">' + Math.round(row.pLeft).toLocaleString() + '</td>'
-      + '<td class="r"><input class="aip" type="number" min="0" placeholder="\u2014" data-row="' + k + '" value="' + (row.actual !== null ? row.actual : '') + '"></td>'
+      + '<td class="r"><input class="aip" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="\u2014" data-row="' + k + '" value="' + (row.actual !== null ? row.actual : '') + '"></td>'
       + '<td class="r mn"' + (doneColor ? ' style="color:' + doneColor + ';font-weight:700"' : '') + '>' + done + '</td>'
       + '<td class="r mn"' + (varColor  ? ' style="color:' + varColor  + ';font-weight:700"' : '') + '>' + varTxt + '</td>'
       + '<td>' + pill + '</td>'
@@ -7574,14 +7610,26 @@ function renderTable(plan, cfg) {
     (function(inp) {
       var idx = parseInt(inp.getAttribute('data-row'), 10);
       inp.addEventListener('input', function() { handleActualInput(idx, inp.value); });
-      inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') inp.blur(); });
+      inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+      });
+      inp.addEventListener('focus', function() { try { inp.select(); } catch (err) {} });
     })(inputs[j]);
   }
 }
 
 // ── HANDLE ACTUAL INPUT ──────────────────────────────────────────────────────
 function handleActualInput(idx, val) {
-  var v = val === '' ? null : parseFloat(val);
+  var cleaned = String(val == null ? '' : val).replace(/[^\d.]/g, '');
+  if (cleaned !== String(val == null ? '' : val)) {
+    var el = document.querySelector('.aip[data-row="' + idx + '"]');
+    if (el && document.activeElement === el) {
+      var sel = el.selectionStart;
+      el.value = cleaned;
+      try { el.setSelectionRange(Math.min(sel, cleaned.length), Math.min(sel, cleaned.length)); } catch (e) {}
+    }
+  }
+  var v = cleaned === '' ? null : parseFloat(cleaned);
   actuals[idx] = (v == null || isNaN(v)) ? null : v;
   scheduleTrackerSave();
   if (!lastCfg) return;

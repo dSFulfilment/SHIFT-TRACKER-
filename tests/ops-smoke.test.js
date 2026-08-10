@@ -94,6 +94,15 @@ check(html.indexOf('function loadTrackerState') !== -1 && html.indexOf('function
 check(html.indexOf('await loadTrackerState()') !== -1, 'Tracker restores before first onInput');
 check(html.indexOf('No auto day-rollover') !== -1, 'Tracker does not auto-clear on new day');
 
+console.log('\nOps smoke — Tracker typing-safe inputs');
+check(html.indexOf('function trackerEditingActual') !== -1 && html.indexOf('function onTrackerSetupInput') !== -1,
+  'Tracker typing guards exist');
+check(html.indexOf('skipTable: trackerEditingActual()') !== -1, 'Background reload skips table while typing');
+check(html.indexOf('inputmode="numeric"') !== -1 && html.indexOf('class="aip" type="text"') !== -1,
+  'Actuals use text + numeric keypad');
+check(html.indexOf('id="startBoxes"') !== -1 && html.indexOf('onTrackerSetupCommit()') !== -1,
+  'Setup fields debounce / commit on blur');
+
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');
 check(html.indexOf('id="bpFreePrev"') !== -1 && html.indexOf('id="bpFreeNext"') !== -1, 'Free-person arrow buttons exist');
