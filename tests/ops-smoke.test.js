@@ -87,6 +87,16 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
+console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
+check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');
+check(html.indexOf('id="bpFreePrev"') !== -1 && html.indexOf('id="bpFreeNext"') !== -1, 'Free-person arrow buttons exist');
+check(html.indexOf('function openFreePoolSheet') !== -1 && html.indexOf('function cycleFreePerson') !== -1,
+  'Free pool popup + arrow cycle helpers exist');
+check(html.indexOf('bp-col-st') === -1 && html.indexOf('bp-group-stations') === -1,
+  'Stations column removed from Breaks table UI');
+check(html.indexOf('id="bpPool"') !== -1 && /id="bpPool"[^>]*\bhidden\b/.test(html),
+  'Always-visible free pool is hidden');
+
 console.log('\nOps smoke — backup round-trip helpers');
 check(html.indexOf('shift-floor-planner-backup') !== -1, 'Whole-app backup type present');
 check(html.indexOf('exportBackup') !== -1, 'exportBackup present');

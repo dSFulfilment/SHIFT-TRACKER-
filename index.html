@@ -818,23 +818,27 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #breakPlannerTab .bp-btn:hover{ background:#F2F2F7; }
 #breakPlannerTab .bp-btn.primary{ background:#1C2430; color:#fff; border-color:#1C2430; }
 #breakPlannerTab .bp-btn.bp-btn-warn{ background:#FFF5F4; color:#B8251C; border-color:#F0CFCF; }
-#breakPlannerTab .bp-pool{
-  margin:10px 14px 0; min-width:0; background:#fff; border:1px solid #E5E8EF; border-radius:12px;
-  padding:10px 12px; max-height:min(34dvh, 220px); overflow:auto;
+#breakPlannerTab .bp-free-nav{
+  display:inline-flex; align-items:center; gap:2px;
+  padding:2px; border-radius:10px; border:1px solid #D8DCE3; background:#F7F8FA;
 }
-#breakPlannerTab .bp-pool.is-empty{ display:none; }
-#breakPlannerTab .bp-pool-head{
-  display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:8px;
+#breakPlannerTab .bp-free-arrow{
+  width:32px; height:32px; padding:0; font-size:18px; font-weight:800; line-height:1;
+  border-radius:8px;
 }
-#breakPlannerTab .bp-pool-lbl{
-  font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#8E8E93;
+#breakPlannerTab .bp-free-arrow:disabled{ opacity:.35; cursor:default; }
+#breakPlannerTab .bp-free-open{
+  min-width:7.25rem; height:32px; padding:0 10px; border-radius:8px;
+  font-size:11px; white-space:nowrap;
 }
-#breakPlannerTab .bp-pool-hint{ font-size:11px; color:#8E8E93; }
-#breakPlannerTab .bp-pool.picking{ border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7; }
-#breakPlannerTab .bp-pool.picking .bp-pool-hint{ color:#2554C7; font-weight:700; }
-#breakPlannerTab .bp-pool-list{
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:6px; min-width:0;
+#breakPlannerTab .bp-free-open .bp-free-count{
+  display:inline-block; min-width:1.25em; margin-left:4px;
+  font-variant-numeric:tabular-nums; font-weight:800; color:#A05D00;
 }
+#breakPlannerTab .bp-free-nav.is-empty .bp-free-open .bp-free-count{ color:#8E8E93; }
+#breakPlannerTab .bp-pool[hidden],
+#breakPlannerTab .bp-pool.is-empty{ display:none !important; }
+#breakPlannerTab .bp-pool-list{ display:none; }
 #breakPlannerTab .bp-list-wrap{
   flex:1; min-height:0; overflow:auto; padding:12px 14px calc(80px + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling:touch;
@@ -852,8 +856,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   color:#8E8E93; text-align:left; padding:0 10px 4px;
 }
 #breakPlannerTab .bp-table th.bp-col-actions{ width:44px; }
-#breakPlannerTab .bp-table th.bp-col-group{ width:88px; }
-#breakPlannerTab .bp-table th.bp-col-st{ width:88px; }
+#breakPlannerTab .bp-table th.bp-col-group{ width:96px; }
 #breakPlannerTab .bp-table th.bp-col-time{ width:168px; }
 #breakPlannerTab .bp-time-pair{
   min-width:0; background:transparent; border:none; border-radius:0; padding:0;
@@ -864,18 +867,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 }
 #breakPlannerTab .bp-group-card td:first-child{ border-left:1px solid #E5E8EF; border-radius:10px 0 0 10px; }
 #breakPlannerTab .bp-group-card td:last-child{ border-right:1px solid #E5E8EF; border-radius:0 10px 10px 0; }
-#breakPlannerTab .bp-pool.picking .bp-group-card td{
-  background:#F7F9FF; border-color:#9FB5F5; cursor:pointer;
-}
 #breakPlannerTab .bp-group-label{
   font-size:13px; font-weight:800; border:1px solid transparent; background:transparent;
   padding:4px 6px; border-radius:7px; font-family:inherit; width:100%; color:#1D1D1F; box-sizing:border-box;
 }
 #breakPlannerTab .bp-group-label:focus{ outline:none; background:#F5F6FA; border-color:#D8DCE3; }
-#breakPlannerTab .bp-group-stations{
-  font-size:12px; color:#6E6E73; border:1px solid #D8DCE3; border-radius:7px;
-  padding:5px 7px; font-family:inherit; width:100%; background:#fff; box-sizing:border-box;
-}
 #breakPlannerTab .bp-time-cell{ display:flex; flex-direction:column; gap:4px; min-width:0; }
 #breakPlannerTab .bp-time-cell-lbl{
   font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#8E8E93; line-height:1;
@@ -932,7 +928,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #breakPlannerTab .bp-time-cell-lbl{ display:block; margin-bottom:2px; }
   #breakPlannerTab .bp-time-range{ font-size:15px; }
   #breakPlannerTab .bp-row-actions{ justify-content:flex-start; padding-bottom:8px; }
-  #breakPlannerTab .bp-pool-list{ grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); }
+  #breakPlannerTab .bp-actions{ width:100%; margin-left:0; }
+  #breakPlannerTab .bp-free-nav{ order:-1; width:100%; justify-content:space-between; }
+  #breakPlannerTab .bp-free-open{ flex:1; }
 }
 #breakPlannerTab .bp-role-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:0 0 auto; }
 #breakPlannerTab .bp-role-dot.packer{ background:var(--staff); }
@@ -952,10 +950,6 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #breakPlannerTab .bp-chip.boxmaker{ background:var(--boxmaker-bg); color:var(--boxmaker); }
 #breakPlannerTab .bp-chip.unassigned{ background:#F0F0EE; color:#8E8E93; }
 #breakPlannerTab .bp-chip.selected{ outline:2px solid #2554C7; outline-offset:1px; }
-#breakPlannerTab .bp-st-badge{
-  display:inline-block; font-size:9px; font-weight:800; letter-spacing:.02em;
-  background:rgba(37,84,199,.14); color:var(--staff); border-radius:4px; padding:0 3px;
-}
 #breakPlannerTab .bp-chip .x{
   cursor:pointer; color:inherit; opacity:.45; font-weight:700; line-height:1; padding:0 1px; font-size:12px;
 }
@@ -991,62 +985,26 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   overflow:hidden; text-overflow:ellipsis; }
 .bp-toast.show{ opacity:1; }
 @media (max-width:720px){
-  #breakPlannerTab .bp-group-stations{ width:84px; }
   #breakPlannerTab .bp-group-label{ width:70px; }
 }
-/* Breaks desktop — must come after base Breaks rules so grid/sidebar actually wins */
+/* Breaks desktop — single list (free people live in the popup + arrows) */
 @media (min-width:900px){
   #breakPlannerTab .bp-shell{
-    display:grid;
-    grid-template-columns:minmax(220px,280px) minmax(0,1fr);
-    grid-template-rows:auto minmax(0,1fr);
-    column-gap:0;
+    display:flex;
+    flex-direction:column;
     max-width:none;
   }
   #breakPlannerTab .bp-chrome{
-    grid-column:1 / -1;
     border-bottom:1px solid #E1E4EA;
     padding:12px 20px 14px;
   }
-  #breakPlannerTab .bp-pool{
-    grid-column:1;
-    grid-row:2;
-    margin:16px 0 16px 20px;
-    min-height:0;
-    max-height:none;
-    height:100%;
-    overflow:auto;
-    align-self:stretch;
-    padding:12px;
-  }
-  /* Sidebar names — one per row so they stop reading as a clump */
-  #breakPlannerTab .bp-pool-list{
-    display:flex;
-    flex-direction:column;
-    flex-wrap:nowrap;
-    gap:6px;
-    align-content:flex-start;
-  }
-  #breakPlannerTab .bp-pool-list .bp-chip{ width:100%; }
   #breakPlannerTab .bp-list-wrap{
-    grid-column:2;
-    grid-row:2;
     margin:0;
-    padding:16px 20px 80px 16px;
-    border-left:1px solid #E1E4EA;
-    background:#F7F8FA;
+    padding:16px 20px 80px;
+    flex:1;
+    min-height:0;
   }
-  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
-    grid-template-columns:minmax(0,1fr);
-  }
-  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
-    grid-column:1;
-    border-left:none;
-    padding-left:20px;
-    background:transparent;
-  }
-  #breakPlannerTab .bp-table th.bp-col-group{ width:100px; }
-  #breakPlannerTab .bp-table th.bp-col-st{ width:96px; }
+  #breakPlannerTab .bp-table th.bp-col-group{ width:110px; }
   #breakPlannerTab .bp-table th.bp-col-time{ width:190px; }
   #breakPlannerTab .bp-table th.bp-col-actions{ width:48px; }
   #breakPlannerTab .bp-group-card td{ padding:12px 12px; }
@@ -1063,9 +1021,6 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   }
   #breakPlannerTab .bp-time-cell-lbl{ display:none; }
   #breakPlannerTab .bp-people{ gap:6px; }
-}
-@media (min-width:1440px){
-  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,300px) minmax(0,1fr); }
 }
 #tabTracker *, #tabTracker *::before, #tabTracker *::after, #tabPacker *, #tabPacker *::before, #tabPacker *::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1594,6 +1549,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         </div>
         <div class="bp-summary" id="bpSummary"></div>
         <div class="bp-actions">
+          <div class="bp-free-nav" id="bpFreeNav" title="People not on a break yet">
+            <button type="button" class="bp-btn bp-free-arrow" id="bpFreePrev" aria-label="Previous free person">‹</button>
+            <button type="button" class="bp-btn bp-free-open" id="bpFreeOpen">Not on break <b class="bp-free-count" id="bpFreeCount">0</b></button>
+            <button type="button" class="bp-btn bp-free-arrow" id="bpFreeNext" aria-label="Next free person">›</button>
+          </div>
           <button class="bp-btn" id="bpImportBreaks" title="Rebuild break groups from floor break rows / stations">Sync</button>
           <button class="bp-btn primary" id="bpAutoAssign" title="Put each floor-assigned packer into the break group for their station">Auto-assign</button>
           <button class="bp-btn" id="bpAddGroup">+ Group</button>
@@ -1601,11 +1561,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         </div>
       </div>
     </div>
-    <div class="bp-pool" id="bpPool">
-      <div class="bp-pool-head">
-        <span class="bp-pool-lbl">Not on a break</span>
-        <span class="bp-pool-hint" id="bpPoolHint">Tap a name → pick a group</span>
-      </div>
+    <div class="bp-pool is-empty" id="bpPool" hidden aria-hidden="true">
       <div class="bp-pool-list" id="bpRosterSections"></div>
     </div>
     <div class="bp-list-wrap">
@@ -5871,9 +5827,15 @@ var shiftAfternoonBtn = document.getElementById('bpShiftAfternoon');
 var toastEl = document.getElementById('bpToast');
 var poolEl = document.getElementById('bpPool');
 var poolHintEl = document.getElementById('bpPoolHint');
+var freeNavEl = document.getElementById('bpFreeNav');
+var freeCountEl = document.getElementById('bpFreeCount');
+var freePrevBtn = document.getElementById('bpFreePrev');
+var freeNextBtn = document.getElementById('bpFreeNext');
+var freeOpenBtn = document.getElementById('bpFreeOpen');
 var sheetEl = document.getElementById('bpAssignSheet');
 var sheetScrimEl = document.getElementById('bpSheetScrim');
 var pendingAssign = null; // { id, role, name } when tapping from Still free / Tap to add
+var freeNavIndex = 0; // index into freePeopleForShift() for ‹ › arrows
 
 // ── UTIL ─────────────────────────────────────────────────────────────
 function uid(){ return 'bp' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -6361,35 +6323,84 @@ function openPickGroupSheet(person){
   var role = (person.role && ROLE_KEYS.indexOf(person.role) !== -1) ? person.role : 'packer';
   var btns = sd.groups.map(function(g){
     var tea = (g.teaStart && g.teaEnd) ? (g.teaStart + '\u2013' + g.teaEnd) : 'no tea time';
+    var meal = (g.mealStart && g.mealEnd) ? (g.mealStart + '\u2013' + g.mealEnd) : '';
+    var times = meal ? (tea + ' · meal ' + meal) : tea;
     return '<button type="button" class="bp-chip packer" style="padding:8px 12px;font-size:12px" data-sheet-add="' +
       g.id + '|' + role + '|' + person.id + '">' + escapeHtml(g.label || 'Group') +
-      (g.stations ? ' · ' + escapeHtml(g.stations) : '') +
-      '<span style="opacity:.65;font-weight:600;margin-left:6px">' + escapeHtml(tea) + '</span></button>';
+      '<span style="opacity:.65;font-weight:600;margin-left:6px">' + escapeHtml(times) + '</span></button>';
   }).join('');
   openSheetShell(
     'pick-group',
     'Add ' + escapeHtml(person.name),
-    'Tap a break group' + (person.role === 'unassigned' || !person.role ? ' (saved as packer)' : ''),
+    'Tap a break group' + (person.role === 'unassigned' || !person.role ? ' (saved as packer)' : '') +
+      ' · use ‹ › to jump to the next free person',
     '<div class="bp-sheet-list">' + btns + '</div>'
   );
   clearPendingAssign();
 }
-function renderRosterSections(){
+function openFreePoolSheet(){
   var free = freePeopleForShift();
   if (!free.length){
-    rosterSectionsEl.innerHTML = '';
-    if (poolEl) poolEl.classList.add('is-empty');
-    clearPendingAssign();
+    bpToast('Everyone is already on a break');
     return;
   }
-  if (poolEl) poolEl.classList.remove('is-empty');
-  if (poolHintEl) poolHintEl.textContent = 'Tap a name to put them on a break';
-  rosterSectionsEl.innerHTML = free.map(function(p){
-    var role = p.role || 'unassigned';
-    return '<button type="button" class="bp-chip ' + role + '" data-pool-pick="' + p.id + '" title="Tap to choose a break group">' +
-      escapeHtml(p.name) + '</button>';
+  var sections = ROLE_KEYS.concat(['unassigned']).map(function(role){
+    var list = free.filter(function(p){ return (p.role || 'unassigned') === role; });
+    if (!list.length) return '';
+    var chips = list.map(function(p){
+      return '<button type="button" class="bp-chip ' + role + '" data-pool-pick="' + p.id + '">' +
+        escapeHtml(p.name) + '</button>';
+    }).join('');
+    var shortRole = role === 'boxmaker' ? 'Box makers' : (role === 'unassigned' ? 'No role yet' : ROLE_LABELS[role] + 's');
+    return '<div class="bp-sheet-section"><div class="bp-sheet-section-lbl"><span class="bp-role-dot ' + role + '"></span> ' +
+      shortRole + '</div><div class="bp-sheet-list">' + chips + '</div></div>';
   }).join('');
-  if (poolEl) poolEl.classList.remove('picking');
+  openSheetShell(
+    'free-pool',
+    'Not on a break',
+    'Tap a name to choose their break group · ‹ › cycles names',
+    sections || '<div class="bp-sheet-empty">Everyone is already on a break</div>'
+  );
+  clearPendingAssign();
+}
+function updateFreeNav(){
+  var free = freePeopleForShift();
+  if (freeNavIndex >= free.length) freeNavIndex = Math.max(0, free.length - 1);
+  if (freeCountEl) freeCountEl.textContent = String(free.length);
+  if (freeNavEl) freeNavEl.classList.toggle('is-empty', !free.length);
+  if (freePrevBtn) freePrevBtn.disabled = free.length < 2;
+  if (freeNextBtn) freeNextBtn.disabled = free.length < 2;
+  if (freeOpenBtn){
+    freeOpenBtn.disabled = !free.length;
+    freeOpenBtn.title = free.length
+      ? (free.length + ' people not on a break — open list')
+      : 'Everyone is already on a break';
+  }
+}
+function cycleFreePerson(delta){
+  var free = freePeopleForShift();
+  if (!free.length){
+    bpToast('Everyone is already on a break');
+    return;
+  }
+  if (free.length === 1){
+    freeNavIndex = 0;
+    openPickGroupSheet(free[0]);
+    return;
+  }
+  freeNavIndex = (freeNavIndex + delta + free.length) % free.length;
+  openPickGroupSheet(free[freeNavIndex]);
+}
+function renderRosterSections(){
+  // Free people stay off the page — count + popup + arrows only.
+  if (poolEl){
+    poolEl.classList.add('is-empty');
+    poolEl.hidden = true;
+    poolEl.setAttribute('aria-hidden', 'true');
+  }
+  if (rosterSectionsEl) rosterSectionsEl.innerHTML = '';
+  updateFreeNav();
+  clearPendingAssign();
 }
 function renderSummary(){
   var sd = ensureShiftData(currentShift);
@@ -6415,18 +6426,13 @@ function renderGroups(){
     groupsEl.innerHTML = '<div class="bp-empty">No break groups yet — tap + Group to start.</div>';
     return;
   }
-  var stationByRoster = {};
-  var sm = floorStationMap(currentShift);
-  Object.keys(sm).forEach(function(L){ stationByRoster[sm[L]] = L; });
   var rows = sd.groups.map(function(g){
     var chips = [];
     ROLE_KEYS.forEach(function(role){
       (g[role] || []).forEach(function(pid){
         var p = people.filter(function(x){ return x.id === pid; })[0];
         if (!p) return;
-        var stLetter = role === 'packer' ? stationByRoster[pid] : null;
-        var stBadge = stLetter ? ' <span class="bp-st-badge" title="Station ' + stLetter + '">' + stLetter + '</span>' : '';
-        chips.push('<span class="bp-chip ' + role + '">' + escapeHtml(p.name) + stBadge +
+        chips.push('<span class="bp-chip ' + role + '">' + escapeHtml(p.name) +
           '<span class="x" data-lane-remove="' + g.id + '|' + role + '|' + pid + '">&times;</span></span>');
       });
     });
@@ -6453,7 +6459,6 @@ function renderGroups(){
     }
     return '<tr class="bp-group-card" data-group-card="' + g.id + '">' +
       '<td><input class="bp-group-label" data-group-label="' + g.id + '" value="' + escapeHtml(g.label) + '"></td>' +
-      '<td><input class="bp-group-stations" data-group-stations="' + g.id + '" placeholder="A\u2013D" value="' + escapeHtml(g.stations || '') + '"></td>' +
       timePairHtml('Tea', 'teaStart', 'teaEnd', g.teaStart, g.teaEnd) +
       timePairHtml('Meal', 'mealStart', 'mealEnd', g.mealStart, g.mealEnd) +
       '<td><div class="bp-people" data-drop-group="' + g.id + '">' +
@@ -6466,7 +6471,7 @@ function renderGroups(){
   }).join('');
   groupsEl.innerHTML =
     '<table class="bp-table"><thead><tr>' +
-    '<th class="bp-col-group">Group</th><th class="bp-col-st">Stations</th>' +
+    '<th class="bp-col-group">Group</th>' +
     '<th class="bp-col-time">Tea</th><th class="bp-col-time">Meal</th>' +
     '<th>People</th><th class="bp-col-actions"></th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>';
@@ -6573,15 +6578,26 @@ autoAssignBtn.addEventListener('click', async function(){
   }
 });
 
-// Tap someone in the free pool → pick which group to put them on.
-rosterSectionsEl.addEventListener('click', function(e){
-  var chip = e.target.closest ? e.target.closest('[data-pool-pick]') : null;
-  if (!chip) return;
-  var id = chip.getAttribute('data-pool-pick');
-  var person = personsForShift(currentShift).filter(function(p){ return p.id === id; })[0];
+function pickFreePersonById(id){
+  var free = freePeopleForShift();
+  var person = null;
+  var idx = -1;
+  for (var i = 0; i < free.length; i++){
+    if (free[i].id === id){ person = free[i]; idx = i; break; }
+  }
   if (!person) return;
+  freeNavIndex = idx;
   openPickGroupSheet(person);
-});
+}
+if (freeOpenBtn){
+  freeOpenBtn.addEventListener('click', function(){ openFreePoolSheet(); });
+}
+if (freePrevBtn){
+  freePrevBtn.addEventListener('click', function(){ cycleFreePerson(-1); });
+}
+if (freeNextBtn){
+  freeNextBtn.addEventListener('click', function(){ cycleFreePerson(1); });
+}
 
 // groups: label/time edits, remove, open add sheet, drop pending person
 groupsEl.addEventListener('input', function(e){
@@ -6591,13 +6607,6 @@ groupsEl.addEventListener('input', function(e){
   if (labelId){
     var g1 = sd.groups.filter(function(g){ return g.id === labelId; })[0];
     if (g1) g1.label = t.value;
-    scheduleOwnSave();
-    return;
-  }
-  var stationsId = t.getAttribute('data-group-stations');
-  if (stationsId){
-    var g1b = sd.groups.filter(function(g){ return g.id === stationsId; })[0];
-    if (g1b) g1b.stations = t.value;
     scheduleOwnSave();
     return;
   }
@@ -6679,6 +6688,15 @@ sheetScrimEl.addEventListener('click', closeAssignSheet);
 sheetEl.addEventListener('click', async function(e){
   var t = e.target;
   if (t.id === 'bpSheetClose'){ closeAssignSheet(); return; }
+  var poolPick = t.getAttribute('data-pool-pick');
+  if (!poolPick && t.closest){
+    var poolBtn = t.closest('[data-pool-pick]');
+    if (poolBtn) poolPick = poolBtn.getAttribute('data-pool-pick');
+  }
+  if (poolPick){
+    pickFreePersonById(poolPick);
+    return;
+  }
   var addAttr = t.getAttribute('data-sheet-add');
   if (!addAttr && t.closest) {
     var btn = t.closest('[data-sheet-add]');
@@ -6698,7 +6716,18 @@ sheetEl.addEventListener('click', async function(e){
     scheduleOwnSave();
     renderAll();
     if (mode === 'add-to-group') openAssignSheet(groupId);
-    else closeAssignSheet();
+    else if (mode === 'pick-group'){
+      // Keep assigning via arrows: jump to next free person if any remain.
+      var remaining = freePeopleForShift();
+      if (remaining.length){
+        if (freeNavIndex >= remaining.length) freeNavIndex = 0;
+        openPickGroupSheet(remaining[freeNavIndex]);
+      } else {
+        closeAssignSheet();
+      }
+    } else {
+      closeAssignSheet();
+    }
   }
 });
 
@@ -6719,8 +6748,7 @@ async function handleExternalBreakPlannerChange(){
       bpData = res.data;
       ensureShiftData('morning');
       ensureShiftData('afternoon');
-      renderGroups();
-      renderSummary();
+      renderAll();
       bpToast('Updated from another tab');
     }
   }catch(e){ console.error('external breakPlanner refresh failed', e); }
