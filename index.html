@@ -770,81 +770,6 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   #breakPlannerTab .bp-btn:hover{ background:#EEF1F6; }
 }
 
-/* Breaks desktop: pool left + groups right (from 900px so mid-width screens unclump too) */
-@media (min-width:900px){
-  #breakPlannerTab .bp-shell{
-    display:grid;
-    grid-template-columns:minmax(220px,280px) minmax(0,1fr);
-    grid-template-rows:auto minmax(0,1fr);
-    column-gap:0;
-    max-width:none;
-  }
-  #breakPlannerTab .bp-chrome{
-    grid-column:1 / -1;
-    border-bottom:1px solid #E1E4EA;
-    padding:12px 20px 14px;
-  }
-  #breakPlannerTab .bp-pool{
-    grid-column:1;
-    grid-row:2;
-    margin:16px 0 16px 20px;
-    min-height:0;
-    max-height:calc(100dvh - 140px);
-    overflow:auto;
-    align-self:stretch;
-    padding:12px;
-  }
-  /* Sidebar names — one per row so they stop reading as a clump */
-  #breakPlannerTab .bp-pool-list{
-    display:flex;
-    flex-direction:column;
-    flex-wrap:nowrap;
-    gap:6px;
-    align-content:flex-start;
-  }
-  #breakPlannerTab .bp-pool-list .bp-chip{ width:100%; }
-  #breakPlannerTab .bp-list-wrap{
-    grid-column:2;
-    grid-row:2;
-    margin:0;
-    padding:16px 20px 80px 16px;
-    border-left:1px solid #E1E4EA;
-    background:#F7F8FA;
-  }
-  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
-    grid-template-columns:minmax(0,1fr);
-  }
-  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
-    grid-column:1;
-    border-left:none;
-    padding-left:20px;
-    background:transparent;
-  }
-
-  /* One compact start–end row (drop duplicate range line) */
-  #breakPlannerTab .bp-table th.bp-col-group{ width:100px; }
-  #breakPlannerTab .bp-table th.bp-col-st{ width:96px; }
-  #breakPlannerTab .bp-table th.bp-col-time{ width:190px; }
-  #breakPlannerTab .bp-table th.bp-col-actions{ width:48px; }
-  #breakPlannerTab .bp-group-card td{ padding:12px 12px; }
-  #breakPlannerTab .bp-time-pair{
-    background:transparent; border:none; border-radius:0; padding:0;
-  }
-  #breakPlannerTab .bp-time-range{ display:none; }
-  #breakPlannerTab .bp-time-block{
-    display:flex; flex-direction:row; flex-wrap:nowrap; gap:6px; align-items:center;
-  }
-  #breakPlannerTab .bp-time-block input[type=time]{
-    width:auto; min-width:7.4em; flex:1; font-size:12px; padding:6px 7px; min-height:32px;
-    background:#fff;
-  }
-  #breakPlannerTab .bp-time-cell-lbl{ display:none; }
-  #breakPlannerTab .bp-people{ gap:6px; }
-}
-@media (min-width:1440px){
-  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,300px) minmax(0,1fr); }
-}
-
 #breakPlannerTab{
   position:fixed; inset:0; z-index:20; height:100dvh; max-height:100dvh;
   overflow:hidden; background:#EEF0F3; color:#1D1D1F;
@@ -1068,6 +993,79 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 @media (max-width:720px){
   #breakPlannerTab .bp-group-stations{ width:84px; }
   #breakPlannerTab .bp-group-label{ width:70px; }
+}
+/* Breaks desktop — must come after base Breaks rules so grid/sidebar actually wins */
+@media (min-width:900px){
+  #breakPlannerTab .bp-shell{
+    display:grid;
+    grid-template-columns:minmax(220px,280px) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);
+    column-gap:0;
+    max-width:none;
+  }
+  #breakPlannerTab .bp-chrome{
+    grid-column:1 / -1;
+    border-bottom:1px solid #E1E4EA;
+    padding:12px 20px 14px;
+  }
+  #breakPlannerTab .bp-pool{
+    grid-column:1;
+    grid-row:2;
+    margin:16px 0 16px 20px;
+    min-height:0;
+    max-height:none;
+    height:100%;
+    overflow:auto;
+    align-self:stretch;
+    padding:12px;
+  }
+  /* Sidebar names — one per row so they stop reading as a clump */
+  #breakPlannerTab .bp-pool-list{
+    display:flex;
+    flex-direction:column;
+    flex-wrap:nowrap;
+    gap:6px;
+    align-content:flex-start;
+  }
+  #breakPlannerTab .bp-pool-list .bp-chip{ width:100%; }
+  #breakPlannerTab .bp-list-wrap{
+    grid-column:2;
+    grid-row:2;
+    margin:0;
+    padding:16px 20px 80px 16px;
+    border-left:1px solid #E1E4EA;
+    background:#F7F8FA;
+  }
+  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty){
+    grid-template-columns:minmax(0,1fr);
+  }
+  #breakPlannerTab .bp-shell:has(.bp-pool.is-empty) .bp-list-wrap{
+    grid-column:1;
+    border-left:none;
+    padding-left:20px;
+    background:transparent;
+  }
+  #breakPlannerTab .bp-table th.bp-col-group{ width:100px; }
+  #breakPlannerTab .bp-table th.bp-col-st{ width:96px; }
+  #breakPlannerTab .bp-table th.bp-col-time{ width:190px; }
+  #breakPlannerTab .bp-table th.bp-col-actions{ width:48px; }
+  #breakPlannerTab .bp-group-card td{ padding:12px 12px; }
+  #breakPlannerTab .bp-time-pair{
+    background:transparent; border:none; border-radius:0; padding:0;
+  }
+  #breakPlannerTab .bp-time-range{ display:none; }
+  #breakPlannerTab .bp-time-block{
+    display:flex; flex-direction:row; flex-wrap:nowrap; gap:6px; align-items:center;
+  }
+  #breakPlannerTab .bp-time-block input[type=time]{
+    width:auto; min-width:7.4em; flex:1; font-size:12px; padding:6px 7px; min-height:32px;
+    background:#fff;
+  }
+  #breakPlannerTab .bp-time-cell-lbl{ display:none; }
+  #breakPlannerTab .bp-people{ gap:6px; }
+}
+@media (min-width:1440px){
+  #breakPlannerTab .bp-shell{ grid-template-columns:minmax(260px,300px) minmax(0,1fr); }
 }
 #tabTracker *, #tabTracker *::before, #tabTracker *::after, #tabPacker *, #tabPacker *::before, #tabPacker *::after{box-sizing:border-box;margin:0;padding:0}
 :root{
