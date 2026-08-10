@@ -7011,8 +7011,6 @@ var floorPackerCount  = null; // packers placed on the Floor Plan for the active
 var floorShiftKeyUsed = null; // shift key ('morning'|'afternoon') floorPackerCount reflects
 var floorPackerLoadAttempted = false; // true once loadBreakPlannerData() has completed at least once — lets the UI tell "still loading" apart from "failed to load"
 var prevFloorPackerCount = null; // last seen station packer count — used to detect leavers / adds mid-shift
-var remainingAnchor = null; // { atMin, boxesLeft, oldStaff, newStaff } when headcount changes mid-shift
-var lockedPastPlan = null; // past half-hour rows frozen at the last headcount change
 
 function hasSyncLayer() { return typeof window !== 'undefined' && !!window.SharedSync; }
 
