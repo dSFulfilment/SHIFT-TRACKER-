@@ -2895,17 +2895,20 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     flashStatus((was ? was+' finished · ' : '')+'Started '+nowCode+' on '+(card.label||'SKU plate')+' — set the next SKU when ready');
     return true;
   }
-  function clearSkuFromOtherPlates(skuRosterId, exceptId){
+  // Where else this SKU already sits (SKUs may be at multiple locations; people may not).
+  function otherSkuPlacementLabels(skuRosterId, exceptId){
+    var labels = [];
     cards.forEach(function(c){
       if(c.type!=='floorslot' || c.slotKind!=='sku' || c.id===exceptId) return;
       normalizeSkuSlotFields(c);
-      var changed = false;
-      if(c.rosterId===skuRosterId){ c.rosterId = null; changed = true; }
-      if(c.nextSkuId===skuRosterId){ c.nextSkuId = null; changed = true; }
-      if(changed) updateFloorSlotVisual(c);
+      var plate = c.label || c.key || 'SKU plate';
+      if(c.rosterId===skuRosterId) labels.push(plate+' now');
+      if(c.nextSkuId===skuRosterId) labels.push(plate+' next');
     });
+    return labels;
   }
   // SKU plates: first drop = current, second drop = planned next (shown under current).
+  // Same SKU may stay on other plates — only people are limited to one location.
   // forceSlot: 'now' | 'next' | null (auto).
   function assignToFloorSlot(slotId, rosterId, kind, forceSlot){
     var card = cards.find(function(c){ return c.id===slotId; });
@@ -2920,7 +2923,6 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         if(!card.rosterId || card.rosterId === rosterId) slot = 'now';
         else slot = 'next';
       }
-      clearSkuFromOtherPlates(rosterId, card.id);
       if(slot === 'now'){
         if(card.rosterId === rosterId){
           flashStatus(sku.code+' is already current on '+(card.label||'SKU plate'));
@@ -2933,8 +2935,10 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         updateCounts();
         renderRoster();
         saveDebounced();
+        var alsoNow = otherSkuPlacementLabels(rosterId, card.id);
         flashStatus(sku.code+' → '+(card.label||'SKU plate')+' (current)'
-          +(card.nextSkuId ? ' · next '+skuRosterCode(card.nextSkuId) : ''));
+          +(card.nextSkuId ? ' · next '+skuRosterCode(card.nextSkuId) : '')
+          +(alsoNow.length ? ' · also on '+alsoNow.join(', ') : ''));
         return true;
       }
       if(card.rosterId === rosterId){
@@ -2951,8 +2955,10 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
       updateCounts();
       renderRoster();
       saveDebounced();
+      var alsoNext = otherSkuPlacementLabels(rosterId, card.id);
       flashStatus(sku.code+' → '+(card.label||'SKU plate')+' (planned next)'
-        +(card.rosterId ? ' · current '+skuRosterCode(card.rosterId) : ''));
+        +(card.rosterId ? ' · current '+skuRosterCode(card.rosterId) : '')
+        +(alsoNext.length ? ' · also on '+alsoNext.join(', ') : ''));
       return true;
     }
     var entry = staffRoster.find(function(p){ return p.id===rosterId; });
@@ -3049,28 +3055,35 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     var mid = slotCard.y + h * 0.55;
     return canvasY >= mid ? 'next' : 'now';
   }
-  // Safety net for duplicate station assignments that can arrive from an imported
-  // backup file or a multi-tab sync race, even though normal in-app assignment
-  // already blocks creating a duplicate. Surfaces a persistent, named warning
-  // rather than leaving the shift leader to notice two stations claiming one packer.
-  function findDuplicateStationAssignments(){
+  // People may only sit on one plate (station / runner / box maker). SKUs may be
+  // on many plates. This safety net catches duplicates from imports or sync races.
+  function findDuplicatePersonAssignments(){
     var byRoster = {};
     cards.forEach(function(c){
-      if(c.type==='station' && c.rosterId) (byRoster[c.rosterId] = byRoster[c.rosterId] || []).push(c);
+      if(!c.rosterId) return;
+      if(c.type==='station' || (c.type==='floorslot' && c.slotKind!=='sku')){
+        (byRoster[c.rosterId] = byRoster[c.rosterId] || []).push(c);
+      }
     });
     var dups = [];
     Object.keys(byRoster).forEach(function(rid){ if(byRoster[rid].length>1) dups.push(byRoster[rid]); });
     return dups;
   }
+  function personPlacementLabel(c){
+    if(c.type==='station') return 'Station '+(c.letter||'?');
+    if(c.slotKind==='runner') return c.label || 'Runner';
+    if(c.slotKind==='boxmaker') return c.label || 'Box maker';
+    return c.label || c.key || 'plate';
+  }
   function checkStationDuplicates(){
-    var dups = findDuplicateStationAssignments();
+    var dups = findDuplicatePersonAssignments();
     if(!dups.length) return;
     var parts = dups.map(function(group){
       var name = stationDisplayName(group[0].rosterId);
-      var letters = group.map(function(c){ return c.letter||'?'; }).join(' and ');
-      return name+' is on stations '+letters;
+      var places = group.map(personPlacementLabel).join(' and ');
+      return name+' is on '+places;
     });
-    flashStatusPersistent('Duplicate station assignment: '+parts.join('; ')+'. Clear one of each so counts stay accurate.');
+    flashStatusPersistent('Someone is on more than one plate: '+parts.join('; ')+'. Only SKUs can be at multiple locations — clear the extras.');
   }
   function hexToRgba(hex, alpha){
     var h = (hex||'').replace('#','');
@@ -3817,8 +3830,10 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         }
         skus.forEach(function(s){
           var isActive = focusSlot === 'next' ? s.id===card.nextSkuId : s.id===card.rosterId;
+          var also = otherSkuPlacementLabels(s.id, id);
           addBtn(
-            '<span class="role-dot" style="background:var(--sku)"></span>'+s.code,
+            '<span class="role-dot" style="background:var(--sku)"></span>'+s.code
+              +(also.length ? ' <span style="opacity:.65;font-weight:600">(also '+also.join(', ')+')</span>' : ''),
             '',
             function(){ assignToFloorSlot(id, s.id, 'sku', focusSlot); },
             isActive
@@ -3828,8 +3843,10 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           if(focusSlot === 'now'){
             addSection('Or set planned next');
             skuRoster.slice().sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); }).forEach(function(s){
+              var alsoN = otherSkuPlacementLabels(s.id, id);
               addBtn(
-                '<span class="role-dot" style="background:#86efac"></span>'+s.code+' → next',
+                '<span class="role-dot" style="background:#86efac"></span>'+s.code+' → next'
+                  +(alsoN.length ? ' <span style="opacity:.65;font-weight:600">(also '+alsoN.join(', ')+')</span>' : ''),
                 '',
                 function(){ assignToFloorSlot(id, s.id, 'sku', 'next'); },
                 s.id===card.nextSkuId
@@ -3838,8 +3855,10 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           } else {
             addSection('Or set current');
             skuRoster.slice().sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); }).forEach(function(s){
+              var alsoC = otherSkuPlacementLabels(s.id, id);
               addBtn(
-                '<span class="role-dot" style="background:var(--sku)"></span>'+s.code+' → now',
+                '<span class="role-dot" style="background:var(--sku)"></span>'+s.code+' → now'
+                  +(alsoC.length ? ' <span style="opacity:.65;font-weight:600">(also '+alsoC.join(', ')+')</span>' : ''),
                 '',
                 function(){ assignToFloorSlot(id, s.id, 'sku', 'now'); },
                 s.id===card.rosterId

@@ -63,6 +63,16 @@ check(html.indexOf("data-tab=\"settings\"") !== -1, 'Settings tab button');
 check(html.indexOf('function showTab') !== -1, 'showTab switcher exists');
 check(html.indexOf("__floorAttGlance") !== -1, 'Attendance glance refresh hook');
 
+console.log('\nOps smoke — only SKUs at multiple locations');
+check(html.indexOf('clearSkuFromOtherPlates') === -1,
+  'SKU assign no longer clears other plates');
+check(html.indexOf('function otherSkuPlacementLabels') !== -1,
+  'SKU multi-location helper exists');
+check(html.indexOf('function findDuplicatePersonAssignments') !== -1,
+  'Person duplicate check covers stations + role plates');
+check(html.indexOf('Only SKUs can be at multiple locations') !== -1,
+  'Duplicate-person warning states SKU exception');
+
 console.log('\nOps smoke — Tracker remaining-time on Floor headcount change');
 check(html.indexOf('window.__shiftTrackerRefresh = loadBreakPlannerData') !== -1,
   'Tracker refresh hook is assigned');
