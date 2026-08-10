@@ -1957,7 +1957,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
       <div class="st-setup">
         <div class="st-field"><label>Start</label><input type="time" id="shiftStart" value="14:00" oninput="onInput(); loadBreakPlannerData();"></div>
         <div class="st-field"><label>End</label><input type="time" id="shiftEnd" value="22:00" oninput="onInput()"></div>
-        <div class="st-field"><label>Packers</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="From packers on Floor Plan stations"></div>
+        <div class="st-field"><label>Packers</label><input type="number" id="staff" value="" min="0" readonly tabindex="-1" aria-readonly="true" title="Live count of packers on Floor stations — updates remaining finish when people leave"></div>
         <div class="st-field"><label>Box / person / hr</label><input type="number" id="bpph" value="15" min="0.5" step="0.5" oninput="onInput()"></div>
         <div class="st-field st-field-wide"><label>Starting boxes left</label><input type="number" id="startBoxes" placeholder="e.g. 2400" min="0" oninput="onInput()"></div>
         <div class="st-rate">
@@ -3038,6 +3038,9 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     syncBreakPlannerPackersFromFloor({ delay: 0 });
     removePersonFromBreakPlanner(currentShift, clearedId);
     flashStatus('Cleared '+clearedName+' from Station '+(card.letter||'?')+' · removed from Breaks.');
+    if (typeof window.__shiftTrackerRefresh === 'function') {
+      try { window.__shiftTrackerRefresh(); } catch (e) {}
+    }
   }
   function skuSlotFromPoint(slotCard, canvasY){
     if(!slotCard) return 'now';
@@ -5626,10 +5629,33 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         return latest;
       }, 0);
     }
+    if (typeof window.__shiftTrackerRefresh === 'function') {
+      try { window.__shiftTrackerRefresh(); } catch (e) {}
+    }
     return { cleared:true, count:count };
   }
+  // Live station-plate packer count for the shift currently on the Floor canvas.
+  // Tracker prefers this over storage so clearing a plate / left-early updates
+  // remaining finish immediately (before saveDebounced lands).
+  function countLiveStationPackers(){
+    var roleById = {};
+    (staffRoster || []).forEach(function(p){ if (p && p.id) roleById[p.id] = p.role || 'unassigned'; });
+    var rosterIds = {};
+    (staffRoster || []).forEach(function(p){ if (p && p.id) rosterIds[p.id] = true; });
+    var seen = {};
+    (cards || []).forEach(function(c){
+      if (!c || c.type !== 'station' || !c.rosterId) return;
+      if (!rosterIds[c.rosterId]) return;
+      var role = roleById[c.rosterId];
+      if (role === 'runner' || role === 'boxmaker') return;
+      seen[c.rosterId] = true;
+    });
+    return Object.keys(seen).length;
+  }
   window.__floorPlanner = {
-    removePersonFromFloor: removePersonFromFloor
+    removePersonFromFloor: removePersonFromFloor,
+    countPackers: countLiveStationPackers,
+    getCurrentShift: function(){ return currentShift; }
   };
 
   async function loadState(){
@@ -6774,6 +6800,9 @@ var breakPlannerData  = null; // { groups, shiftKey } or null if no break data f
 var floorPackerCount  = null; // packers placed on the Floor Plan for the active shift; null = unknown (not loaded yet, or read error)
 var floorShiftKeyUsed = null; // shift key ('morning'|'afternoon') floorPackerCount reflects
 var floorPackerLoadAttempted = false; // true once loadBreakPlannerData() has completed at least once — lets the UI tell "still loading" apart from "failed to load"
+var prevFloorPackerCount = null; // last seen station packer count — used to detect leavers / adds mid-shift
+var remainingAnchor = null; // { atMin, boxesLeft, oldStaff, newStaff } when headcount changes mid-shift
+var lockedPastPlan = null; // past half-hour rows frozen at the last headcount change
 
 function hasSyncLayer() { return typeof window !== 'undefined' && !!window.SharedSync; }
 
@@ -6840,7 +6869,24 @@ async function loadBreakPlannerData() {
       breakPlannerData = sd ? { groups: sd.groups || [], shiftKey: key } : null;
     }
 
-    floorPackerCount  = plannerReadError ? null : countFloorPackers(plannerRaw, key);
+    var counted = plannerReadError ? null : countFloorPackers(plannerRaw, key);
+    // Same-tab Floor clears update live cards before storage — prefer live count
+    // when the Floor canvas is on the same shift Tracker is reading.
+    if (
+      counted != null &&
+      window.__floorPlanner &&
+      typeof window.__floorPlanner.countPackers === 'function'
+    ) {
+      try {
+        var liveKey = typeof window.__floorPlanner.getCurrentShift === 'function'
+          ? window.__floorPlanner.getCurrentShift()
+          : null;
+        if (!liveKey || liveKey === key) {
+          counted = window.__floorPlanner.countPackers();
+        }
+      } catch (liveErr) { /* keep storage count */ }
+    }
+    floorPackerCount  = counted;
     floorShiftKeyUsed = key;
   } catch (e) {
     console.error('loadBreakPlannerData failed', e);
@@ -6851,6 +6897,8 @@ async function loadBreakPlannerData() {
   updateBreakStatusLine(breakReadError);
   onInput();
 }
+
+window.__shiftTrackerRefresh = loadBreakPlannerData;
 
 function updateBreakStatusLine(hadReadError) {
   var el = document.getElementById('breakStatusLine');
@@ -6906,16 +6954,109 @@ function readCfg() {
   return { sm: sm, em: em, staff: st, bpph: bp, pr: pr, sb: sb };
 }
 
+function resetProgressMemory() {
+  remainingAnchor = null;
+  lockedPastPlan = null;
+}
+
+// Boxes still to pack at clock time nmf, from a plan built under a prior rate.
+function boxesLeftFromPlanAt(plan, cfg, nmf) {
+  if (!cfg) return 0;
+  if (!plan || !plan.length) return cfg.sb;
+  if (nmf <= cfg.sm) return cfg.sb;
+  for (var i = 0; i < plan.length; i++) {
+    var row = plan[i];
+    var start = i === 0 ? cfg.sm : plan[i - 1].to;
+    if (nmf <= row.to) {
+      var span = row.to - start;
+      var frac = span > 0 ? (nmf - start) / span : 1;
+      if (frac < 0) frac = 0;
+      if (frac > 1) frac = 1;
+      var cumBefore = i === 0 ? 0 : plan[i - 1].cum;
+      return Math.max(0, cfg.sb - (cumBefore + row.done * frac));
+    }
+  }
+  return Math.max(0, plan[plan.length - 1].pLeft);
+}
+
+// When Floor headcount changes (leaver / someone added), freeze progress so far
+// and re-plan the remaining shift at the new packer rate.
+function captureHeadcountChange(cfg, plan, oldStaff, newStaff) {
+  if (!cfg || !plan || oldStaff == null || newStaff == null || oldStaff === newStaff) return;
+  var nmf = nowMinF();
+  var li = latestIdx(plan);
+  var boxesLeft = li >= 0 ? plan[li].actual : boxesLeftFromPlanAt(plan, cfg, nmf);
+  remainingAnchor = {
+    atMin: nmf,
+    boxesLeft: boxesLeft,
+    oldStaff: oldStaff,
+    newStaff: newStaff
+  };
+  lockedPastPlan = [];
+  plan.forEach(function(row) {
+    if (row.to <= nmf) {
+      lockedPastPlan.push({
+        i: row.i, from: row.from, to: row.to, eff: row.eff,
+        done: row.done, cum: row.cum, pLeft: row.pLeft
+      });
+    }
+  });
+  var dir = newStaff < oldStaff ? 'down' : 'up';
+  toast(
+    'Packers ' + dir + ' to ' + newStaff +
+    ' — remaining finish reworked from now (' +
+    Math.round(boxesLeft).toLocaleString() + ' boxes left)'
+  );
+}
+
+function estimateBoxesLeft(cfg, plan) {
+  if (!cfg) return 0;
+  var li = plan ? latestIdx(plan) : -1;
+  if (li >= 0) return plan[li].actual;
+  var nmf = nowMinF();
+  if (remainingAnchor) {
+    var from = remainingAnchor.atMin;
+    var to = nmf;
+    if (to <= from) return remainingAnchor.boxesLeft;
+    var eff = effectiveMins(from, to, cfg);
+    if (eff <= 0) eff = Math.max(0, to - from);
+    var packed = cfg.pr * (eff / 60);
+    return Math.max(0, remainingAnchor.boxesLeft - packed);
+  }
+  return boxesLeftFromPlanAt(plan, cfg, nmf);
+}
+
 // ── BUILD PLAN ───────────────────────────────────────────────────────────────
 function buildPlan(cfg) {
+  var nmf = nowMinF();
   var plan = [], cum = 0, cur = cfg.sm, i = 0;
+  var lockMap = {};
+  if (lockedPastPlan && lockedPastPlan.length) {
+    lockedPastPlan.forEach(function(s) { lockMap[s.i] = s; });
+  }
+  var resumed = false;
   while (cur < cfg.em) {
-    var end  = Math.min(cur + 30, cfg.em);
-    var eff  = effectiveMins(cur, end, cfg);
-    var done = cfg.pr * (eff / 60);
-    cum += done;
+    var end = Math.min(cur + 30, cfg.em);
     var act = (actuals[i] != null && !isNaN(actuals[i])) ? actuals[i] : null;
-    plan.push({ i:i, from:end, to:end, eff:eff, done:done, cum:cum, pLeft:Math.max(cfg.sb-cum,0), actual:act });
+    var locked = lockMap[i];
+    var eff, done, pLeft;
+    // Keep pre-change past rows so earlier plan numbers don't rewrite when someone leaves
+    if (locked && end <= nmf + 0.001) {
+      eff = locked.eff;
+      done = locked.done;
+      cum = locked.cum;
+      pLeft = locked.pLeft;
+    } else {
+      eff = effectiveMins(cur, end, cfg);
+      if (remainingAnchor && !resumed) {
+        cum = Math.max(0, cfg.sb - remainingAnchor.boxesLeft);
+        resumed = true;
+      }
+      done = cfg.pr * (eff / 60);
+      cum += done;
+      pLeft = Math.max(cfg.sb - cum, 0);
+    }
+    plan.push({ i:i, from:end, to:end, eff:eff, done:done, cum:cum, pLeft:pLeft, actual:act });
     cur = end; i++;
   }
   return plan;
@@ -6947,9 +7088,26 @@ function onInput() {
   } else if (bp <= 0) {
     descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' on station plates \u2014 enter Boxes/Person/hr above.';
   } else {
-    descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' on plates \u00D7 ' + bp + ' boxes/hr = ' + pr.toFixed(0) + ' boxes/hr';
+    var liveNote = remainingAnchor
+      ? ' \u00B7 live from Floor (was ' + remainingAnchor.oldStaff + ')'
+      : ' \u00B7 live from Floor';
+    descEl.textContent = st + ' packer' + (st === 1 ? '' : 's') + ' on plates \u00D7 ' + bp + ' boxes/hr = ' + pr.toFixed(0) + ' boxes/hr' + liveNote;
   }
   document.getElementById('kcRate').textContent = pr > 0 ? pr.toFixed(0) : '\u2014';
+
+  // Floor headcount changed (left early / cleared from station / someone added).
+  // Run before readCfg so dropping to 0 packers still anchors boxes left for when
+  // people return — and so remaining finish memory isn't lost on an empty floor.
+  if (
+    prevFloorPackerCount != null &&
+    floorPackerCount != null &&
+    prevFloorPackerCount !== floorPackerCount &&
+    lastCfg && lastPlan &&
+    nowMinF() > lastCfg.sm
+  ) {
+    captureHeadcountChange(lastCfg, lastPlan, prevFloorPackerCount, floorPackerCount);
+  }
+  prevFloorPackerCount = floorPackerCount;
 
   var cfg = readCfg();
   if (!cfg) {
@@ -6963,6 +7121,11 @@ function onInput() {
     document.getElementById('planBody').innerHTML = '<tr><td colspan="8" class="empty-td">' + reason + '</td></tr>';
     lastCfg = null; lastPlan = null;
     return;
+  }
+
+  // Shift window / starting boxes changed → drop frozen mid-shift progress
+  if (lastCfg && (lastCfg.sm !== cfg.sm || lastCfg.em !== cfg.em || lastCfg.sb !== cfg.sb)) {
+    resetProgressMemory();
   }
 
   // Trim actuals to correct slot count
@@ -6995,9 +7158,10 @@ function liveTick() {
     updateTarget();
     updateRowClasses(lastPlan);
   }
-  // Refresh break data from the Breaks tab every ~20s so packer/role changes made there show up here
+  // Refresh Floor packer count + breaks often so leavers update remaining finish quickly
   liveTick._breakTick = (liveTick._breakTick || 0) + 1;
-  if (liveTick._breakTick % 20 === 0) loadBreakPlannerData();
+  var trackerOpen = document.documentElement.getAttribute('data-active-tab') === 'tracker';
+  if (liveTick._breakTick % (trackerOpen ? 3 : 20) === 0) loadBreakPlannerData();
 }
 
 // ── UPDATE ALL ───────────────────────────────────────────────────────────────
@@ -7014,15 +7178,16 @@ function updateFinish(plan, cfg) {
   var li  = latestIdx(plan);
   var nmf = nowMinF();
 
-  // Planned finish = boxes left / planned rate, from NOW
-  var pFin, pSub;
-  if (li >= 0) {
-    var bl  = plan[li].actual;
-    var hr  = cfg.pr > 0 ? bl / cfg.pr : 0;
-    pFin = nmf + hr * 60;
-    pSub = bl.toLocaleString() + ' left \u00F7 ' + cfg.pr.toFixed(0) + '/hr = ' + hrsLabel(hr) + ' from now';
-  } else {
-    var hn  = cfg.pr > 0 ? cfg.sb / cfg.pr : 0;
+  // Planned finish = boxes still left ÷ current Floor rate, always from NOW
+  // (so taking people off stations / left-early immediately pushes remaining time)
+  var boxesLeft = estimateBoxesLeft(cfg, plan);
+  var hr = cfg.pr > 0 ? boxesLeft / cfg.pr : 0;
+  var pFin = nmf + hr * 60;
+  var pSub = Math.round(boxesLeft).toLocaleString() + ' left \u00F7 ' + cfg.pr.toFixed(0) + '/hr = ' +
+    hrsLabel(hr) + ' from now' +
+    (remainingAnchor ? ' \u00B7 after headcount change' : '');
+  if (nmf < cfg.sm) {
+    var hn = cfg.pr > 0 ? cfg.sb / cfg.pr : 0;
     pFin = cfg.sm + hn * 60;
     pSub = cfg.sb.toLocaleString() + ' boxes \u00F7 ' + cfg.pr.toFixed(0) + '/hr = ' + hrsLabel(hn) + ' from shift start';
   }
@@ -7285,6 +7450,7 @@ function resetClearActualsBtn() {
 }
 function clearActuals() {
   actuals = [];
+  resetProgressMemory();
   onInput();
   toast('Actuals cleared');
 }
@@ -7341,6 +7507,7 @@ function loadExample() {
   document.getElementById('bpph').value = EXAMPLE_SHIFT.bpph;
   document.getElementById('startBoxes').value = EXAMPLE_SHIFT.startBoxes;
   actuals = [];
+  resetProgressMemory();
   onInput();
   loadBreakPlannerData(); // repopulates "Packers on Shift" from the Floor Plan
   toast('Example loaded');
@@ -7545,9 +7712,13 @@ function updateTarget() {
   var nmf  = nowMinF();
   var pFin, aFin = null;
 
+  var blNow = estimateBoxesLeft(cfg, plan);
+  pFin = nmf + (cfg.pr > 0 ? blNow / cfg.pr * 60 : 0);
+  if (nmf < cfg.sm) {
+    pFin = cfg.sm + (cfg.pr > 0 ? cfg.sb / cfg.pr * 60 : 0);
+  }
   if (li >= 0) {
     var bl = plan[li].actual;
-    pFin   = nmf + (cfg.pr > 0 ? bl / cfg.pr * 60 : 0);
     var chk = plan[li].to;
     var elh = (chk - cfg.sm) / 60;
     var pk  = cfg.sb - bl;
@@ -7555,8 +7726,6 @@ function updateTarget() {
       var ar = pk / elh;
       aFin   = nmf + (bl / ar) * 60;
     }
-  } else {
-    pFin = cfg.sm + (cfg.pr > 0 ? cfg.sb / cfg.pr * 60 : 0);
   }
 
   function renderLine(label, finMin, color, icon) {
