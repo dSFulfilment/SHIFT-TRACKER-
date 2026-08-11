@@ -239,6 +239,58 @@ console.log('\nOverall status uses blended avg BPH (not worst SKU)');
   assertClose(p.boxesPerHour, 55 / 2.5, 'overall BPH = total boxes ÷ packing hours');
 })();
 
+console.log('\nBreak-aware BPH (Intra − tea/meal)');
+(function () {
+  var breakContext = {
+    idToName: { p1: 'Jane Doe' },
+    groups: [{
+      label: 'G1',
+      teaStart: '10:00', teaEnd: '10:15',
+      mealStart: '12:00', mealEnd: '12:30',
+      packer: ['p1'], runner: [], boxmaker: []
+    }]
+  };
+  var lookup = PA.buildBreakLookup(breakContext);
+  assert(PA.breakMinutesForWorker(lookup, 'jane doe') === 45, 'tea+meal = 45 minutes');
+  assert(PA.breakOverlapInHour(lookup, 10, 'jane doe') === 15, '10am hour overlaps tea 15m');
+  assert(PA.breakOverlapInHour(lookup, 12, 'jane doe') === 30, '12pm hour overlaps meal 30m');
+  assert(PA.breakOverlapInHour(lookup, 11, 'jane doe') === 0, '11am has no break');
+
+  // Intra hours 9,10,11,12,13 = 5h; packingHours 4.5; breaks 45m
+  var records = [
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 100, packingHours: 4.5, hour: 9 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: null, hour: 10 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: null, hour: 11 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: null, hour: 12 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: null, hour: 13 }
+  ];
+  // Only first row has packingHours — people aggregate needs packing hours rows.
+  // Add packing on one row totaling 4.5h across SKU; Intra from hour keys.
+  var people = PA.aggregatePeopleRows([
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 100, packingHours: 4.5, hour: 9 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: 0.01, hour: 10 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: 0.01, hour: 11 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: 0.01, hour: 12 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', sku: '500', boxes: 0, packingHours: 0.01, hour: 13 }
+  ], breakContext);
+  assert(people.length === 1, 'one person with breaks');
+  var jane = people[0];
+  assert(jane.intraHours === 5, 'five Intra hour keys');
+  assert(jane.breakMinutes === 45, 'break minutes attached');
+  assert(jane.breaksApplied === true, 'breaks applied when Intra present');
+  assertClose(jane.productiveHours, 5 - 0.75, 'productive = Intra − 45m');
+  assertClose(jane.boxesPerHour, 100 / (5 - 0.75), 'BPH uses productive hours');
+
+  var hourly = PA.aggregateHourlyWorkers([
+    { workerKey: 'jane doe', workerName: 'Jane Doe', boxes: 20, hour: 10 },
+    { workerKey: 'jane doe', workerName: 'Jane Doe', boxes: 22, hour: 11 }
+  ], breakContext);
+  assert(hourly.workers.length === 1, 'hourly worker row');
+  assert(hourly.workers[0].hours[10].breakMins === 15, '10am cell has break mins');
+  assertClose(hourly.workers[0].hours[10].boxesPerHour, 20 / (1 - 0.25), 'hour BPH = boxes ÷ (1h − break)');
+  assert(hourly.workers[0].hours[11].breakMins === 0, '11am cell no break');
+})();
+
 console.log('\n────────────────────────────────');
 console.log('Passed: ' + passed + '  Failed: ' + failed);
 process.exit(failed ? 1 : 0);

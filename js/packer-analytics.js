@@ -266,6 +266,140 @@
   function boxesPerHour(boxes, hours) {
     return safeDivide(boxes, hours);
   }
+
+  function timeToMinutes(hhmm) {
+    if (hhmm == null || hhmm === '') return null;
+    var p = String(hhmm).split(':');
+    var h = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  }
+
+  function overlapMinutes(a0, a1, b0, b1) {
+    var s = Math.max(a0, b0);
+    var e = Math.min(a1, b1);
+    return e > s ? e - s : 0;
+  }
+
+  function normalizeBreakNameKey(n) {
+    return String(n || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+  }
+
+  function mergeRangeTotalMins(ranges) {
+    if (!ranges || !ranges.length) return 0;
+    var sorted = ranges
+      .map(function (r) {
+        return { start: r.start, end: r.end };
+      })
+      .filter(function (r) {
+        return r.start != null && r.end != null && r.end > r.start;
+      })
+      .sort(function (a, b) {
+        return a.start - b.start;
+      });
+    if (!sorted.length) return 0;
+    var total = 0;
+    var curS = sorted[0].start;
+    var curE = sorted[0].end;
+    for (var i = 1; i < sorted.length; i++) {
+      if (sorted[i].start <= curE) {
+        curE = Math.max(curE, sorted[i].end);
+      } else {
+        total += curE - curS;
+        curS = sorted[i].start;
+        curE = sorted[i].end;
+      }
+    }
+    total += curE - curS;
+    return total;
+  }
+
+  /**
+   * Map packer workerKey → break ranges from Breaks groups + Floor roster ids.
+   * breakContext: { groups, idToName }
+   */
+  function buildBreakLookup(breakContext) {
+    var byKey = {};
+    if (!breakContext || !breakContext.groups) return byKey;
+    var idToName = breakContext.idToName || {};
+    breakContext.groups.forEach(function (g) {
+      if (!g) return;
+      var ranges = [];
+      var teaS = timeToMinutes(g.teaStart);
+      var teaE = timeToMinutes(g.teaEnd);
+      if (teaS != null && teaE != null && teaE > teaS) {
+        ranges.push({ start: teaS, end: teaE, kind: 'tea' });
+      }
+      var mealS = timeToMinutes(g.mealStart);
+      var mealE = timeToMinutes(g.mealEnd);
+      if (mealS != null && mealE != null && mealE > mealS) {
+        ranges.push({ start: mealS, end: mealE, kind: 'meal' });
+      }
+      if (!ranges.length) return;
+      ['packer', 'runner', 'boxmaker'].forEach(function (role) {
+        (g[role] || []).forEach(function (id) {
+          var name = idToName[id] || '';
+          var key = normalizeBreakNameKey(name);
+          if (!key) return;
+          if (!byKey[key]) {
+            byKey[key] = {
+              workerKey: key,
+              workerName: name,
+              ranges: [],
+              totalMins: 0,
+              groupLabel: g.label || ''
+            };
+          }
+          ranges.forEach(function (r) {
+            byKey[key].ranges.push({
+              start: r.start,
+              end: r.end,
+              kind: r.kind,
+              groupLabel: g.label || ''
+            });
+          });
+        });
+      });
+    });
+    Object.keys(byKey).forEach(function (k) {
+      byKey[k].totalMins = mergeRangeTotalMins(byKey[k].ranges);
+    });
+    return byKey;
+  }
+
+  function breakEntryForWorker(lookup, workerKey, workerName) {
+    if (!lookup) return null;
+    var k = workerKey || normalizeBreakNameKey(workerName);
+    return lookup[k] || null;
+  }
+
+  function breakMinutesForWorker(lookup, workerKey, workerName) {
+    var e = breakEntryForWorker(lookup, workerKey, workerName);
+    return e ? e.totalMins : 0;
+  }
+
+  function breakOverlapInHour(lookup, hour, workerKey, workerName) {
+    var e = breakEntryForWorker(lookup, workerKey, workerName);
+    if (!e || hour == null || !isFinite(hour)) return 0;
+    var h0 = Number(hour) * 60;
+    var h1 = h0 + 60;
+    var total = 0;
+    e.ranges.forEach(function (r) {
+      total += overlapMinutes(h0, h1, r.start, r.end);
+    });
+    return total;
+  }
+
+  /** Productive hours after subtracting scheduled breaks (floor minutes). */
+  function productiveHoursFrom(rawHours, breakMins) {
+    if (rawHours == null || !(rawHours > 0)) return null;
+    var br = Math.max(0, (breakMins || 0) / 60);
+    return Math.max(rawHours - br, 0.1);
+  }
   function itemsPerHour(items, hours) {
     return safeDivide(items, hours);
   }
@@ -415,8 +549,11 @@
    * Per SKU: boxes vs need (target BPH × hours on that SKU) — chips keep per-SKU detail.
    * Person Status / hitTarget use average BPH vs hours-weighted blended SKU targets.
    * Hours = packing time on that SKU; person shiftHours prefer Intra Hour count.
+   * Optional breakContext ({ groups, idToName }): when Intra hours exist, BPH / targets
+   * use productive hours = Intra − scheduled tea/meal for that person/day.
    */
-  function aggregatePeopleRows(records) {
+  function aggregatePeopleRows(records, breakContext) {
+    var breakLookup = breakContext ? buildBreakLookup(breakContext) : null;
     var by = {};
     (records || []).forEach(function (r) {
       if (!r.workerKey) return;
@@ -449,18 +586,29 @@
         if (!(g.packingHours > 0) && !Object.keys(g.skus).length) return null;
         var packingHours = g.packingHours > 0 ? g.packingHours : null;
         var intraHours = Object.keys(g.hourKeys).length;
-        var shiftHours = intraHours > 0 ? intraHours : packingHours;
-        var overallBph = boxesPerHour(g.boxes, packingHours);
+        var breakMins = breakMinutesForWorker(breakLookup, g.workerKey, g.workerName);
+        // Intra = time on floor; subtract scheduled breaks for true packing rate.
+        // CSV packingHours alone is left alone (often already productive time).
+        var rateBase = null;
+        var breaksApplied = false;
+        if (intraHours > 0) {
+          rateBase = breakMins > 0 ? productiveHoursFrom(intraHours, breakMins) : intraHours;
+          breaksApplied = breakMins > 0;
+        } else {
+          rateBase = packingHours;
+        }
+        var shiftHours = rateBase != null ? rateBase : packingHours;
+        var overallBph = boxesPerHour(g.boxes, rateBase != null ? rateBase : packingHours);
         var skuRows = Object.keys(g.skus)
           .filter(function (s) { return s; })
           .sort(function (a, b) { return Number(a) - Number(b); })
           .map(function (s) {
             var sg = g.skus[s];
             var skuHours = sg.packingHours > 0 ? sg.packingHours : null;
-            // If Intra Hour shift length exists, share it across SKUs by packing-time weight
+            // Share productive Intra (break-adjusted) across SKUs by packing-time weight
             var hoursForTarget = skuHours;
-            if (intraHours > 0 && packingHours > 0 && skuHours != null) {
-              hoursForTarget = intraHours * (skuHours / packingHours);
+            if (rateBase != null && packingHours > 0 && skuHours != null && intraHours > 0) {
+              hoursForTarget = rateBase * (skuHours / packingHours);
             }
             var bph = boxesPerHour(sg.boxes, hoursForTarget);
             var t = SKU_TARGETS[s] || null;
@@ -499,6 +647,9 @@
           packingHours: packingHours,
           shiftHours: shiftHours,
           intraHours: intraHours,
+          breakMinutes: breakMins,
+          productiveHours: rateBase,
+          breaksApplied: breaksApplied,
           boxesPerHour: overallBph,
           blendedTarget: overallStatus.target,
           blendedStrike: overallStatus.strike,
@@ -1089,14 +1240,26 @@
       });
   }
 
-  function aggregateByHour(records) {
+  function aggregateByHour(records, breakContext) {
+    var breakLookup = breakContext ? buildBreakLookup(breakContext) : null;
     var by = {};
     (records || []).forEach(function (r) {
       if (r.hour == null) return;
-      if (!by[r.hour]) by[r.hour] = { hour: r.hour, boxes: 0, items: 0, packingHours: 0 };
+      if (!by[r.hour]) {
+        by[r.hour] = {
+          hour: r.hour,
+          boxes: 0,
+          items: 0,
+          packingHours: 0,
+          breakMinutes: 0,
+          workersOnBreak: 0,
+          workerKeys: {}
+        };
+      }
       by[r.hour].boxes += r.boxes || 0;
       by[r.hour].items += r.items || 0;
       if (r.packingHours != null) by[r.hour].packingHours += r.packingHours;
+      if (r.workerKey) by[r.hour].workerKeys[r.workerKey] = r.workerName || r.workerKey;
     });
     return Object.keys(by)
       .map(Number)
@@ -1105,9 +1268,76 @@
       })
       .map(function (h) {
         var g = by[h];
-        g.boxesPerHour = boxesPerHour(g.boxes, g.packingHours > 0 ? g.packingHours : null);
+        var breakMins = 0;
+        var onBreak = 0;
+        Object.keys(g.workerKeys).forEach(function (wk) {
+          var ov = breakOverlapInHour(breakLookup, h, wk, g.workerKeys[wk]);
+          if (ov > 0) {
+            breakMins += ov;
+            onBreak++;
+          }
+        });
+        g.breakMinutes = breakMins;
+        g.workersOnBreak = onBreak;
+        var workerCount = Object.keys(g.workerKeys).length;
+        // Team productive person-hours in this slot (1h each minus break overlap)
+        var productivePersonHours =
+          workerCount > 0 ? Math.max(workerCount - breakMins / 60, workerCount * 0.1) : null;
+        g.productivePersonHours = productivePersonHours;
+        g.boxesPerHour = boxesPerHour(
+          g.boxes,
+          g.packingHours > 0 ? g.packingHours : productivePersonHours
+        );
+        delete g.workerKeys;
         return g;
       });
+  }
+
+  /**
+   * Per-worker hourly boxes with break overlap for the Hours table.
+   * Returns { hourKeys, workers: [{ workerKey, workerName, total, hours: { [h]: { boxes, breakMins, productiveHours, boxesPerHour } } }] }
+   */
+  function aggregateHourlyWorkers(records, breakContext) {
+    var breakLookup = breakContext ? buildBreakLookup(breakContext) : null;
+    var hourSet = {};
+    var map = {};
+    (records || []).forEach(function (r) {
+      if (r.hour == null || !r.workerKey) return;
+      hourSet[r.hour] = true;
+      if (!map[r.workerKey]) {
+        map[r.workerKey] = { workerKey: r.workerKey, workerName: r.workerName, hours: {}, total: 0 };
+      }
+      var cell = map[r.workerKey].hours[r.hour];
+      if (!cell) {
+        cell = { boxes: 0, breakMins: 0, productiveHours: null, boxesPerHour: null };
+        map[r.workerKey].hours[r.hour] = cell;
+      }
+      cell.boxes += r.boxes || 0;
+      map[r.workerKey].total += r.boxes || 0;
+    });
+    Object.keys(map).forEach(function (wk) {
+      var w = map[wk];
+      Object.keys(w.hours).forEach(function (hStr) {
+        var h = Number(hStr);
+        var cell = w.hours[h];
+        cell.breakMins = breakOverlapInHour(breakLookup, h, w.workerKey, w.workerName);
+        cell.productiveHours = productiveHoursFrom(1, cell.breakMins);
+        cell.boxesPerHour = boxesPerHour(cell.boxes, cell.productiveHours);
+      });
+    });
+    var hourKeys = Object.keys(hourSet)
+      .map(Number)
+      .sort(function (a, b) {
+        return a - b;
+      });
+    var workers = Object.keys(map)
+      .map(function (wk) {
+        return map[wk];
+      })
+      .sort(function (a, b) {
+        return b.total - a.total;
+      });
+    return { hourKeys: hourKeys, workers: workers };
   }
 
   function aggregateByDimension(records, keyFn, labelFn) {
@@ -1476,6 +1706,12 @@
     normalizeSku: normalizeSku,
     safeDivide: safeDivide,
     boxesPerHour: boxesPerHour,
+    timeToMinutes: timeToMinutes,
+    overlapMinutes: overlapMinutes,
+    buildBreakLookup: buildBreakLookup,
+    breakMinutesForWorker: breakMinutesForWorker,
+    breakOverlapInHour: breakOverlapInHour,
+    productiveHoursFrom: productiveHoursFrom,
     itemsPerHour: itemsPerHour,
     pouchesPerHour: pouchesPerHour,
     secondsPerBox: secondsPerBox,
@@ -1497,6 +1733,7 @@
     aggregateKpis: aggregateKpis,
     aggregateWorkers: aggregateWorkers,
     aggregateByHour: aggregateByHour,
+    aggregateHourlyWorkers: aggregateHourlyWorkers,
     aggregateStations: aggregateStations,
     aggregateSkus: aggregateSkus,
     aggregateShifts: aggregateShifts,

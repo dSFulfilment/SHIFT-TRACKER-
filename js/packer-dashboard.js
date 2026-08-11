@@ -49,7 +49,8 @@
     loading: false,
     error: null,
     view: 'people', // people | hours
-    pendingImport: null // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
+    pendingImport: null, // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
+    _applyingOpsDay: false
   };
 
   /** Map CSV shiftKey → calendar morning|afternoon. Intra hour has no shift — use hour (≥14 = Afternoon). */
@@ -152,6 +153,48 @@
     x.setDate(x.getDate() + n);
     return x;
   }
+  function parseYmd(s) {
+    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    var p = s.split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  function buildBreakContext() {
+    if (!window.__breakPlanner || typeof window.__breakPlanner.getGroupsFor !== 'function') return null;
+    var dateKey = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    var groups = window.__breakPlanner.getGroupsFor(dateKey, sk);
+    if (!groups || !groups.length) return null;
+    var idToName = typeof window.__breakPlanner.getRosterMap === 'function'
+      ? (window.__breakPlanner.getRosterMap(sk) || {})
+      : {};
+    return { groups: groups, idToName: idToName };
+  }
+  function publishOpsDay() {
+    if (!window.__opsDayLink || state._applyingOpsDay) return;
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    var dk = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    window.__opsDayLink.set(dk, sk, ymd(state.weekStart));
+  }
+  function applyOpsDay(detail) {
+    if (!detail || !detail.dateKey) return false;
+    var d = parseYmd(detail.dateKey);
+    if (!d) return false;
+    state._applyingOpsDay = true;
+    try {
+      state.weekStart = startOfWeek(d);
+      state.activeWeekKey = ymd(state.weekStart);
+      state.dayIdx = Math.min(4, Math.max(0, (d.getDay() + 6) % 7));
+      if (detail.shift === 'morning' || detail.shift === 'afternoon') {
+        state.rosterShift = detail.shift;
+      }
+      state.showLegacy = false;
+      state.page = 1;
+    } finally {
+      state._applyingOpsDay = false;
+    }
+    return true;
+  }
   function weekLabel(ws) {
     var we = addDays(ws, 4);
     var opts = { month: 'short', day: 'numeric' };
@@ -227,7 +270,7 @@
 
   /** People rows after SKU/search filters, then optional Status chip. */
   function peopleRowsFiltered() {
-    var rows = PA.aggregatePeopleRows(filtered());
+    var rows = PA.aggregatePeopleRows(filtered(), buildBreakContext());
     if (state.view !== 'hours' && state.filters.status) {
       rows = rows.filter(function (r) {
         return r.strikeStatus && r.strikeStatus.key === state.filters.status;
@@ -549,15 +592,15 @@
   function exportCurrentShiftPackers() {
     var dateKey = activeDateKey();
     var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
-    var rows = PA.aggregatePeopleRows(currentRecords());
+    var rows = PA.aggregatePeopleRows(currentRecords(), buildBreakContext());
     if (!rows.length) {
       toast('No packers for ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(sk), 'err');
       return false;
     }
-    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Status'];
+    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Break mins', 'Status'];
     var body = rows.map(function (r) {
       var skus = (r.skus || []).map(function (s) { return s.sku; }).filter(Boolean).join(', ');
-      var hrs = r.intraHours > 0 ? r.shiftHours : r.packingHours;
+      var hrs = r.productiveHours != null ? r.productiveHours : (r.intraHours > 0 ? r.shiftHours : r.packingHours);
       return [
         PA.formatDateAU(dateKey),
         shiftLabel(sk),
@@ -566,6 +609,7 @@
         r.boxes,
         hrs != null ? Number(hrs).toFixed(2) : '',
         r.boxesPerHour != null ? Number(r.boxesPerHour).toFixed(1) : '',
+        r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
         r.strikeStatus ? r.strikeStatus.label : ''
       ];
     });
@@ -650,6 +694,7 @@
             state.dayIdx = idx;
             state.showLegacy = false;
             state.page = 1;
+            publishOpsDay();
             renderAll();
           };
         })(i));
@@ -694,14 +739,18 @@
       else counts.none++;
     });
     var totalBoxes = rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0);
-    var totalPackHrs = rows.reduce(function (n, r) { return n + (r.packingHours || 0); }, 0);
+    var totalPackHrs = rows.reduce(function (n, r) {
+      var h = r.productiveHours != null ? r.productiveHours : r.packingHours;
+      return n + (h || 0);
+    }, 0);
     var avgBph = totalPackHrs > 0 ? totalBoxes / totalPackHrs : null;
+    var anyBreaks = rows.some(function (r) { return r.breaksApplied; });
     var hourRows = filtered().filter(function (r) { return r.hour != null; });
     var hourSet = {};
     hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
     var stats = [
-      { cls: 'rate', num: PA.formatRate(avgBph), lbl: 'Avg BPH' },
-      { cls: 'hours', num: PA.formatHours(totalPackHrs), lbl: 'Pack hrs' },
+      { cls: 'rate', num: PA.formatRate(avgBph), lbl: anyBreaks ? 'Avg BPH (−breaks)' : 'Avg BPH' },
+      { cls: 'hours', num: PA.formatHours(totalPackHrs), lbl: anyBreaks ? 'Prod. hrs' : 'Pack hrs' },
       { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
@@ -730,10 +779,6 @@
     renderTable();
   }
 
-  function renderCharts() {
-    if (els.charts) els.charts.innerHTML = '';
-  }
-
   function skuListHtml(skus) {
     if (!skus || !skus.length) return '<span class="pk-muted">-</span>';
     return skus.map(function (s) {
@@ -743,9 +788,10 @@
   }
 
   function renderPeopleTable() {
+    var breakCtx = buildBreakContext();
     var rows = peopleRowsFiltered();
     if (!rows.length) {
-      var anyPeople = PA.aggregatePeopleRows(filtered()).length > 0;
+      var anyPeople = PA.aggregatePeopleRows(filtered(), breakCtx).length > 0;
       els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">' +
         (anyPeople
           ? 'No people match the current SKU / status filter.'
@@ -755,9 +801,12 @@
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
-      var hrsLbl = r.intraHours > 0
-        ? PA.formatHours(r.shiftHours)
-        : PA.formatHours(r.packingHours);
+      var hrsLbl = r.productiveHours != null
+        ? PA.formatHours(r.productiveHours)
+        : (r.intraHours > 0 ? PA.formatHours(r.shiftHours) : PA.formatHours(r.packingHours));
+      if (r.breaksApplied && r.breakMinutes > 0) {
+        hrsLbl += ' (−' + Math.round(r.breakMinutes) + 'm)';
+      }
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
@@ -770,10 +819,13 @@
     var filterBits = [];
     if (state.filters.sku) filterBits.push('SKU ' + state.filters.sku);
     if (state.filters.status) filterBits.push(state.filters.status === 'on' ? 'Hit' : (state.filters.status === 'below' ? 'Below' : 'Strike'));
+    var breakBit = rows.some(function (r) { return r.breaksApplied; })
+      ? ' · BPH uses Intra − breaks'
+      : (breakCtx ? ' · breaks linked (no Intra yet)' : '');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
       '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-      ' · status = avg BPH' +
+      ' · status = avg BPH' + breakBit +
       (filterBits.length ? ' · ' + escapeHtml(filterBits.join(' · ')) : '') +
       '</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
@@ -800,29 +852,34 @@
       els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No Intra Hour rows for this day/shift. Upload Intra Hour Floor Performance CSV(s).</div></section>';
       return;
     }
-    var byHour = PA.aggregateByHour(hourRecs);
-    var hourKeys = byHour.map(function (h) { return h.hour; });
-    var head = hourKeys.map(function (h) { return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + '</th>'; }).join('');
-    var map = {};
-    hourRecs.forEach(function (r) {
-      if (r.hour == null || !r.workerKey) return;
-      if (!map[r.workerKey]) map[r.workerKey] = { name: r.workerName, hours: {}, total: 0 };
-      map[r.workerKey].hours[r.hour] = (map[r.workerKey].hours[r.hour] || 0) + (r.boxes || 0);
-      map[r.workerKey].total += r.boxes || 0;
-    });
-    var names = Object.keys(map).sort(function (a, b) { return map[b].total - map[a].total; });
-    var body = names.map(function (wk) {
-      var w = map[wk];
+    var breakCtx = buildBreakContext();
+    var byHour = PA.aggregateByHour(hourRecs, breakCtx);
+    var hw = PA.aggregateHourlyWorkers(hourRecs, breakCtx);
+    var hourKeys = hw.hourKeys;
+    var head = hourKeys.map(function (h) {
+      var meta = byHour.filter(function (x) { return x.hour === h; })[0];
+      var br = meta && meta.breakMinutes > 0 ? '<div style="font-size:9px;font-weight:600;color:#8E8E93">' + Math.round(meta.breakMinutes) + 'm brk</div>' : '';
+      return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + br + '</th>';
+    }).join('');
+    var body = hw.workers.map(function (w) {
       var cells = hourKeys.map(function (h) {
-        var v = w.hours[h];
-        return '<td class="r mn">' + (v != null ? v : '—') + '</td>';
+        var cell = w.hours[h];
+        if (!cell) return '<td class="r mn">—</td>';
+        var title = cell.breakMins > 0
+          ? (cell.boxes + ' boxes · ' + Math.round(cell.breakMins) + 'm break · BPH ' + PA.formatRate(cell.boxesPerHour))
+          : (cell.boxes + ' boxes');
+        var mark = cell.breakMins > 0 ? ' style="background:#FFF8E8" title="' + escapeHtml(title) + '"' : ' title="' + escapeHtml(title) + '"';
+        return '<td class="r mn"' + mark + '>' + cell.boxes + '</td>';
       }).join('');
-      return '<tr><td class="bold">' + escapeHtml(w.name) + '</td>' + cells +
+      return '<tr><td class="bold">' + escapeHtml(w.workerName) + '</td>' + cells +
         '<td class="r mn bold">' + w.total + '</td></tr>';
     }).join('');
+    var breakNote = breakCtx
+      ? ' · yellow = break overlap that hour · BPH = boxes ÷ (1h − break)'
+      : '';
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Hours</h2>' +
-      '<div class="pk-table-meta">' + names.length + ' workers · ' + hourKeys.length + ' hour(s)</div></div>' +
+      '<div class="pk-table-meta">' + hw.workers.length + ' workers · ' + hourKeys.length + ' hour(s)' + breakNote + '</div></div>' +
       chartCard('Boxes by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
       '<div class="pk-tw" style="margin-top:8px"><table><thead><tr><th>Worker</th>' + head +
       '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
@@ -869,29 +926,6 @@
   function detailMetric(label, value) {
     return '<div class="pk-detail-metric"><div class="pk-kpi-l">' + escapeHtml(label) +
       '</div><div class="pk-kpi-v" style="font-size:1.15rem">' + escapeHtml(value) + '</div></div>';
-  }
-
-  function renderQuality() {
-    if (!els.quality) return;
-    var files = currentFiles();
-    var q = PA.summarizeQuality(currentRecords(), currentQuality());
-    if (!currentRecords().length && !files.length) { els.quality.innerHTML = ''; return; }
-    var items = [
-      ['Valid rows', q.validRows], ['Invalid rows', q.invalidRows],
-      ['Missing worker names', q.missingWorkerNames], ['Missing dates', q.missingDates],
-      ['Missing packing time', q.missingPackingTime], ['Duplicate rows skipped', q.duplicateRows],
-      ['Unknown shifts', q.unknownShifts], ['Failed calculated fields', q.failedCalculations],
-      ['Files (raw kept)', files.length]
-    ];
-    els.quality.innerHTML = '<section class="pk-quality"><h2 class="pk-section-title">Data quality</h2>' +
-      '<div class="pk-quality-grid">' + items.map(function (it) {
-        return '<div class="pk-quality-item"><div class="pk-kpi-v" style="font-size:1.1rem">' +
-          escapeHtml(PA.formatNumber(it[1])) + '</div><div class="pk-kpi-l">' + escapeHtml(it[0]) + '</div></div>';
-      }).join('') + '</div><div class="pk-file-list">' + files.map(function (f) {
-        return '<div class="pk-file-chip" title="Raw CSV preserved">' + escapeHtml(f.name) +
-          ' · ' + (f.rowCount != null ? f.rowCount + ' rows · ' : '') +
-          escapeHtml(new Date(f.uploadedAt).toLocaleString('en-AU')) + '</div>';
-      }).join('') + '</div></section>';
   }
 
   function renderPreview() {
@@ -1049,15 +1083,14 @@
 
   function renderAll() {
     ensureCurrentWeekFresh();
+    publishOpsDay();
     renderChrome();
     renderStatus();
     renderFilters();
     renderChipBar();
     renderKpis();
-    renderCharts();
     renderTable();
     renderDetail();
-    renderQuality();
     renderPreview();
     applyView();
     updateHeader();
@@ -1125,6 +1158,9 @@
     state.weekStart = startOfWeek(new Date());
     state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
     state.activeWeekKey = ymd(state.weekStart);
+    if (window.__opsDayLink) {
+      try { applyOpsDay(window.__opsDayLink.get()); } catch (eOps) {}
+    }
     renderStatus();
     try {
       var r = await window.storage.get(STORAGE_KEY, false);
@@ -1277,6 +1313,7 @@
       state.rosterShift = btn.getAttribute('data-shift');
       state.showLegacy = false;
       state.page = 1;
+      publishOpsDay();
       renderAll();
     });
   }
@@ -1285,6 +1322,7 @@
       state.weekStart = addDays(state.weekStart, -7);
       state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
+      publishOpsDay();
       renderAll();
     });
   }
@@ -1293,6 +1331,7 @@
       state.weekStart = addDays(state.weekStart, 7);
       state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
+      publishOpsDay();
       renderAll();
     });
   }
@@ -1302,9 +1341,19 @@
       state.activeWeekKey = ymd(state.weekStart);
       state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
       state.showLegacy = false;
+      publishOpsDay();
       renderAll();
     });
   }
+  window.addEventListener('ops-day-changed', function (ev) {
+    if (state._applyingOpsDay) return;
+    var detail = ev && ev.detail;
+    if (!detail || !detail.dateKey) return;
+    var cur = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    if (detail.dateKey === cur && detail.shift === sk) return;
+    if (applyOpsDay(detail)) renderAll();
+  });
   if (els.weekLabel) {
     els.weekLabel.addEventListener('click', function () {
       if (els.jumpToday) els.jumpToday.click();
@@ -1317,8 +1366,6 @@
       renderChipBar();
       renderKpis();
       renderTable();
-      renderCharts();
-      renderQuality();
     });
   }
   if (els.chipBar) {
