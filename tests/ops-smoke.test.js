@@ -97,14 +97,11 @@ check(html.indexOf("'Pack hrs'") !== -1, 'KPI strip shows packing hours');
 check(html.indexOf("data-filter=\"") !== -1 && html.indexOf("chipBtn('sku'") !== -1 && html.indexOf("chipBtn('status'") !== -1,
   'SKU and status filter chips are wired');
 
-console.log('\nOps smoke — day-linked breaks + break-aware BPH');
+console.log('\nOps smoke — day-linked breaks (BPH ignores breaks)');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
 check(html.indexOf('id="bpDays"') !== -1 && html.indexOf('function renderDayChrome') !== -1, 'Breaks day chips exist');
-check(html.indexOf('byDate') !== -1 && html.indexOf('getGroupsFor') !== -1, 'Breaks exposes day-keyed groups');
-check(html.indexOf('function buildBreakLookup') !== -1 && html.indexOf('function aggregateHourlyWorkers') !== -1,
-  'Break-aware analytics helpers exist');
-check(html.indexOf('BPH uses Intra − breaks') !== -1 || html.indexOf('Intra − breaks') !== -1,
-  'People table mentions break-adjusted BPH');
+check(html.indexOf('getGroupsFor') !== -1, 'Breaks exposes day-keyed groups');
+check(html.indexOf('function buildBreakLookup') === -1, 'Packer BPH does not use break lookup');
 
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');
