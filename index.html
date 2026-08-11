@@ -800,6 +800,26 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   color:#6E6E73; cursor:pointer; font-family:inherit;
 }
 #breakPlannerTab .bp-shift-btn.active{ background:#1C2430; color:#fff; }
+#breakPlannerTab .bp-weekrow{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:0 0 6px;
+}
+#breakPlannerTab .bp-week-label{
+  border:0; background:transparent; font-size:12px; font-weight:800; color:#1D1D1F; cursor:pointer; padding:4px 2px; font-family:inherit; text-align:left;
+}
+#breakPlannerTab .bp-week-label span{ display:block; font-size:10px; font-weight:600; color:#8E8E93; }
+#breakPlannerTab .bp-days{
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; margin-bottom:6px;
+}
+#breakPlannerTab .bp-day{
+  border:1px solid #D8DCE3; border-radius:8px; background:#fff; padding:3px 2px 4px; cursor:pointer; text-align:center; font-family:inherit;
+}
+#breakPlannerTab .bp-day .d{ display:block; font-size:9px; font-weight:700; color:#8E8E93; }
+#breakPlannerTab .bp-day .n{ display:block; font-size:13px; font-weight:800; line-height:1.05; }
+#breakPlannerTab .bp-day.active{ background:#1C2430; color:#fff; border-color:#1C2430; }
+#breakPlannerTab .bp-day.active .d{ color:rgba(255,255,255,.65); }
+#breakPlannerTab .bp-day.today:not(.active){ border-color:#2554C7; box-shadow:inset 0 0 0 1px #2554C7; }
+#breakPlannerTab .bp-day.has-custom .n::after{ content:'·'; margin-left:2px; color:#2554C7; }
+#breakPlannerTab .bp-day.active.has-custom .n::after{ color:rgba(255,255,255,.75); }
 #breakPlannerTab .bp-summary{
   display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:1; min-width:0;
 }
@@ -1302,6 +1322,20 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .pk-views{display:inline-flex;border:1px solid #D8DCE3;border-radius:8px;overflow:hidden;background:#fff;margin-left:auto}
 #tabPacker .pk-views button{border:0;background:#fff;padding:5px 9px;font:inherit;font-size:10px;font-weight:800;color:#6E6E73;cursor:pointer}
 #tabPacker .pk-views button.active{background:#1C2430;color:#fff}
+#tabPacker .pk-chipbar{display:flex;flex-direction:column;gap:5px;padding:0 0 2px;margin-top:6px}
+#tabPacker .pk-chipbar[hidden]{display:none !important}
+#tabPacker .pk-chip-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
+#tabPacker .pk-chip-lbl{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#8E8E93;margin-right:2px;flex:0 0 auto}
+#tabPacker .pk-chip{
+  border:1px solid #D8DCE3;background:#fff;color:#3A3A3C;border-radius:999px;
+  padding:3px 9px;font:inherit;font-size:10px;font-weight:800;cursor:pointer;line-height:1.2;
+}
+#tabPacker .pk-chip:hover{background:#F5F6FA}
+#tabPacker .pk-chip.active{background:#1C2430;border-color:#1C2430;color:#fff}
+#tabPacker .pk-chip.on.active{background:#1A6B30;border-color:#1A6B30}
+#tabPacker .pk-chip.below.active{background:#A05D00;border-color:#A05D00}
+#tabPacker .pk-chip.strike.active{background:#B8251C;border-color:#B8251C}
+#tabPacker .pk-chip .pk-chip-meta{font-weight:700;opacity:.75;margin-left:4px;font-variant-numeric:tabular-nums}
 #tabPacker .pk-sku-cell{line-height:1.55;max-width:280px}
 #tabPacker .pk-sku-hit{display:inline-block;margin:1px 4px 1px 0;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:800;border:1px solid #D8DCE3;background:#F0F2F5;color:#3A3A3C;white-space:nowrap}
 #tabPacker .pk-sku-hit.on{background:#E5F5EA;color:#1A6B30;border-color:#A8D5B5}
@@ -1560,6 +1594,13 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <button class="bp-btn" id="bpPrintBtn" title="Print breaks handoff">Print</button>
         </div>
       </div>
+      <div class="bp-weekrow">
+        <button type="button" class="bp-btn" id="bpWeekPrev" title="Previous week">‹</button>
+        <button type="button" class="bp-week-label" id="bpWeekLabel" title="Jump to this week">Week</button>
+        <button type="button" class="bp-btn" id="bpWeekNext" title="Next week">›</button>
+        <button type="button" class="bp-btn" id="bpWeekToday">Today</button>
+      </div>
+      <div class="bp-days" id="bpDays"></div>
     </div>
     <div class="bp-pool is-empty" id="bpPool" hidden aria-hidden="true">
       <div class="bp-pool-list" id="bpRosterSections"></div>
@@ -2063,6 +2104,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <button type="button" data-view="hours">Hours</button>
         </div>
       </div>
+      <div class="pk-chipbar" id="pkChipBar" hidden aria-label="Packer section filters"></div>
     </div>
     <div class="pk-body" id="pkPanels">
       <div id="pkPreview" hidden></div>
@@ -5805,15 +5847,97 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 })();
 </script>
 <script>
+/** Shared Mon–Fri date + Day/Afternoon selection across Breaks, Packer, and Roster. */
+window.__opsDayLink = (function () {
+  var KEY = 'opsSharedDay';
+  function ymdLocal(d) {
+    var x = d instanceof Date ? d : new Date(d);
+    var y = x.getFullYear();
+    var m = String(x.getMonth() + 1).padStart(2, '0');
+    var day = String(x.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+  function startOfWeekLocal(d) {
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var day = (x.getDay() + 6) % 7;
+    x.setDate(x.getDate() - day);
+    return x;
+  }
+  function read() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.dateKey) return null;
+      o.shift = o.shift === 'afternoon' ? 'afternoon' : 'morning';
+      return o;
+    } catch (e) {
+      return null;
+    }
+  }
+  function write(dateKey, shift, weekStart) {
+    var payload = {
+      dateKey: dateKey,
+      shift: shift === 'afternoon' ? 'afternoon' : 'morning',
+      weekStart: weekStart || null,
+      updatedAt: Date.now()
+    };
+    try {
+      localStorage.setItem(KEY, JSON.stringify(payload));
+    } catch (e) {}
+    try {
+      window.dispatchEvent(new CustomEvent('ops-day-changed', { detail: payload }));
+    } catch (e2) {}
+    return payload;
+  }
+  function ensureDefault() {
+    var cur = read();
+    if (cur) return cur;
+    var now = new Date();
+    var ws = startOfWeekLocal(now);
+    var idx = Math.min(4, Math.max(0, (now.getDay() + 6) % 7));
+    var d = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + idx);
+    return write(ymdLocal(d), 'morning', ymdLocal(ws));
+  }
+  return {
+    KEY: KEY,
+    get: function () {
+      return read() || ensureDefault();
+    },
+    set: function (dateKey, shift, weekStart, opts) {
+      opts = opts || {};
+      var nextShift = shift === 'afternoon' ? 'afternoon' : 'morning';
+      var cur = read();
+      if (
+        cur &&
+        cur.dateKey === dateKey &&
+        cur.shift === nextShift &&
+        (!weekStart || cur.weekStart === weekStart)
+      ) {
+        return cur;
+      }
+      return write(dateKey, nextShift, weekStart || (cur && cur.weekStart) || null);
+    },
+    ymd: ymdLocal,
+    startOfWeek: startOfWeekLocal
+  };
+})();
+</script>
+<script>
 (function(){
 var STORAGE_KEY = 'breakPlanner';
 var PLANNER_KEY = 'planner';
 var ROLE_LABELS = {packer:'Packer', runner:'Runner', boxmaker:'Box Maker', unassigned:'No role yet'};
 var ROLE_KEYS = ['packer','runner','boxmaker'];
+var BP_DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-var bpData = null;        // { morning: {groups:[...]}, afternoon: {...} } -- roster + role live on Floor Planner's shared data
+var bpData = null;        // { morning, afternoon, byDate[YYYY-MM-DD][shift] } — roster lives on Floor Planner
 var plannerCache = null;  // last-read Floor Planner 'planner' blob (read-through cache, always refreshed before a write)
 var currentShift = 'morning';
+var bpWeekStart = null;   // Monday Date of visible week
+var bpDayIdx = 0;         // 0–4 Mon–Fri
+var bpDateKey = null;     // YYYY-MM-DD for active break day
+var bpApplyingOpsDay = false;
 
 var rosterSectionsEl = document.getElementById('bpRosterSections');
 var groupsEl = document.getElementById('bpGroups');
@@ -5834,11 +5958,106 @@ var freeNextBtn = document.getElementById('bpFreeNext');
 var freeOpenBtn = document.getElementById('bpFreeOpen');
 var sheetEl = document.getElementById('bpAssignSheet');
 var sheetScrimEl = document.getElementById('bpSheetScrim');
+var bpDaysEl = document.getElementById('bpDays');
+var bpWeekLabelEl = document.getElementById('bpWeekLabel');
+var bpWeekPrevBtn = document.getElementById('bpWeekPrev');
+var bpWeekNextBtn = document.getElementById('bpWeekNext');
+var bpWeekTodayBtn = document.getElementById('bpWeekToday');
 var pendingAssign = null; // { id, role, name } when tapping from Still free / Tap to add
 var freeNavIndex = 0; // index into freePeopleForShift() for ‹ › arrows
 
 // ── UTIL ─────────────────────────────────────────────────────────────
 function uid(){ return 'bp' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function bpYmd(d){
+  var x = d instanceof Date ? d : new Date(d);
+  return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0');
+}
+function bpStartOfWeek(d){
+  var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  return x;
+}
+function bpAddDays(d, n){
+  var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function bpParseYmd(s){
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  var p = s.split('-');
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+}
+function bpWeekLabelText(ws){
+  var end = bpAddDays(ws, 4);
+  var opts = { day:'numeric', month:'short' };
+  return ws.toLocaleDateString('en-AU', opts) + ' – ' + end.toLocaleDateString('en-AU', opts);
+}
+function cloneGroups(groups){
+  return (groups || []).map(function(g){
+    return {
+      id: g.id || uid(),
+      label: g.label || '',
+      stations: g.stations === undefined ? '' : g.stations,
+      teaStart: g.teaStart || '', teaEnd: g.teaEnd || '',
+      mealStart: g.mealStart || '', mealEnd: g.mealEnd || '',
+      sourceNote: g.sourceNote || '',
+      packer: (g.packer || []).slice(),
+      runner: (g.runner || []).slice(),
+      boxmaker: (g.boxmaker || []).slice()
+    };
+  });
+}
+function ensureTemplateShift(shift){
+  if (!bpData) bpData = {};
+  if (!bpData[shift]) bpData[shift] = { groups: seedGroups() };
+  var sd = bpData[shift];
+  if (!sd.groups || !sd.groups.length) sd.groups = seedGroups();
+  sd.groups.forEach(function(g){
+    ROLE_KEYS.forEach(function(rk){ if (!g[rk]) g[rk] = []; });
+    if (g.stations === undefined) g.stations = '';
+    if (g.sourceNote === undefined) g.sourceNote = '';
+  });
+  return sd;
+}
+function syncBpDateFromIdx(){
+  if (!bpWeekStart) bpWeekStart = bpStartOfWeek(new Date());
+  bpDateKey = bpYmd(bpAddDays(bpWeekStart, bpDayIdx));
+}
+function publishOpsDay(){
+  if (bpApplyingOpsDay || !window.__opsDayLink) return;
+  syncBpDateFromIdx();
+  window.__opsDayLink.set(bpDateKey, currentShift, bpYmd(bpWeekStart));
+}
+function applyOpsDay(detail){
+  if (!detail || !detail.dateKey) return;
+  bpApplyingOpsDay = true;
+  try{
+    var d = bpParseYmd(detail.dateKey);
+    if (d){
+      bpWeekStart = bpStartOfWeek(d);
+      bpDayIdx = Math.min(4, Math.max(0, (d.getDay() + 6) % 7));
+      bpDateKey = detail.dateKey;
+    }
+    if (detail.shift === 'morning' || detail.shift === 'afternoon') currentShift = detail.shift;
+  } finally {
+    bpApplyingOpsDay = false;
+  }
+}
+function initBpDayState(){
+  var linked = window.__opsDayLink ? window.__opsDayLink.get() : null;
+  if (linked && linked.dateKey){
+    applyOpsDay(linked);
+  } else {
+    bpWeekStart = bpStartOfWeek(new Date());
+    bpDayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
+    syncBpDateFromIdx();
+  }
+}
+function dayHasCustomBreaks(dateKey, shift){
+  var bucket = bpData && bpData.byDate && bpData.byDate[dateKey] && bpData.byDate[dateKey][shift];
+  return !!(bucket && bucket.groups && bucket.groups.length);
+}
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
@@ -6067,10 +6286,8 @@ function seedGroups(){
   }
   return out;
 }
-function ensureShiftData(shift){
-  if (!bpData) bpData = {};
-  if (!bpData[shift]) bpData[shift] = { groups: seedGroups() };
-  var sd = bpData[shift];
+var bpWorking = null; // ephemeral day edit buffer until first save
+function normalizeGroupShape(sd){
   if (!sd.groups || !sd.groups.length) sd.groups = seedGroups();
   sd.groups.forEach(function(g){
     ROLE_KEYS.forEach(function(rk){ if (!g[rk]) g[rk] = []; });
@@ -6078,6 +6295,44 @@ function ensureShiftData(shift){
     if (g.sourceNote === undefined) g.sourceNote = '';
   });
   return sd;
+}
+function ensureShiftData(shift){
+  if (!bpData) bpData = {};
+  if (!bpData.byDate) bpData.byDate = {};
+  ensureTemplateShift(shift);
+  if (!bpDateKey) syncBpDateFromIdx();
+  var saved = bpData.byDate[bpDateKey] && bpData.byDate[bpDateKey][shift];
+  if (saved) {
+    bpWorking = null;
+    return normalizeGroupShape(saved);
+  }
+  // Copy-on-write buffer from template — only lands in byDate on save
+  if (!bpWorking || bpWorking.dateKey !== bpDateKey || bpWorking.shift !== shift) {
+    bpWorking = {
+      dateKey: bpDateKey,
+      shift: shift,
+      groups: cloneGroups(ensureTemplateShift(shift).groups)
+    };
+  }
+  return normalizeGroupShape(bpWorking);
+}
+function commitWorkingToByDate(){
+  if (!bpWorking || !bpWorking.dateKey) return;
+  if (!bpData.byDate) bpData.byDate = {};
+  if (!bpData.byDate[bpWorking.dateKey]) bpData.byDate[bpWorking.dateKey] = {};
+  bpData.byDate[bpWorking.dateKey][bpWorking.shift] = { groups: bpWorking.groups };
+}
+function groupsForDateShift(dateKey, shift){
+  if (!bpData) return [];
+  var day = bpData.byDate && bpData.byDate[dateKey] && bpData.byDate[dateKey][shift];
+  if (day && day.groups && day.groups.length) return day.groups;
+  var tmpl = bpData[shift];
+  return (tmpl && tmpl.groups) ? tmpl.groups : [];
+}
+function rosterMapForShift(shift){
+  var map = {};
+  personsForShift(shift).forEach(function(p){ if (p && p.id) map[p.id] = p.name; });
+  return map;
 }
 
 // One-time migration: older saves kept a private `roster` array, or (a later version)
@@ -6134,25 +6389,27 @@ function migrateShiftIfNeeded(shift, latestPlanner){
 }
 
 async function loadAll(){
-  bpData = { morning: null, afternoon: null };
+  bpData = { morning: null, afternoon: null, byDate: {} };
   if (hasSync()){
     try{
       var raw = await window.SharedSync.readSharedState(STORAGE_KEY);
       if (raw) bpData = raw;
     }catch(e){
       bpToast('Could not load your break groups (' + (e && e.message ? e.message : 'unknown error') + ') — showing a blank board so nothing gets overwritten.');
-      bpData = { morning: null, afternoon: null };
+      bpData = { morning: null, afternoon: null, byDate: {} };
     }
   }
-  if ((!bpData || (!bpData.morning && !bpData.afternoon)) && hasLocalStore()){
+  if ((!bpData || (!bpData.morning && !bpData.afternoon && !(bpData.byDate && Object.keys(bpData.byDate).length))) && hasLocalStore()){
     var local = await readLocalJson(STORAGE_KEY);
-    if (local && (local.morning || local.afternoon)) bpData = local;
+    if (local && (local.morning || local.afternoon || local.byDate)) bpData = local;
   }
-  if (!bpData) bpData = { morning: null, afternoon: null };
+  if (!bpData) bpData = { morning: null, afternoon: null, byDate: {} };
+  if (!bpData.byDate) bpData.byDate = {};
 
   await loadPlannerCache();
+  initBpDayState();
 
-  if (plannerCache && (plannerCache.currentShift === 'morning' || plannerCache.currentShift === 'afternoon')){
+  if (plannerCache && (plannerCache.currentShift === 'morning' || plannerCache.currentShift === 'afternoon') && !(window.__opsDayLink && window.__opsDayLink.get())){
     currentShift = plannerCache.currentShift;
   }
 
@@ -6171,42 +6428,57 @@ async function loadAll(){
         return any ? latest : false;
       });
       if (res && res.data) plannerCache = res.data;
-      ensureShiftData('morning');
-      ensureShiftData('afternoon');
+      ensureTemplateShift('morning');
+      ensureTemplateShift('afternoon');
+      ensureShiftData(currentShift);
       scheduleOwnSave(0);
       bpToast('Synced your roster with the Floor Planner');
     }catch(e){
       bpToast('Could not finish syncing your roster with the Floor Planner (' + (e && e.message ? e.message : 'unknown error') + '). Your break groups are safe; try again shortly.');
-      ensureShiftData('morning');
-      ensureShiftData('afternoon');
+      ensureTemplateShift('morning');
+      ensureTemplateShift('afternoon');
+      ensureShiftData(currentShift);
     }
   } else {
-    ensureShiftData('morning');
-    ensureShiftData('afternoon');
+    ensureTemplateShift('morning');
+    ensureTemplateShift('afternoon');
+    ensureShiftData(currentShift);
   }
+  publishOpsDay();
 }
 
 // ── Break Planner's own save (groups/lanes/times only) ───────────────
 var ownSaveTimer = null;
 function scheduleOwnSave(delay){
   var shift = currentShift;
-  var groupsSnap = bpData && bpData[shift] ? bpData[shift].groups : null;
+  if (!bpDateKey) syncBpDateFromIdx();
+  var dateKey = bpDateKey;
+  commitWorkingToByDate();
+  var sd = bpData && bpData.byDate && bpData.byDate[dateKey] && bpData.byDate[dateKey][shift];
+  var groupsSnap = sd ? sd.groups : null;
   if (!groupsSnap) return;
+  ensureTemplateShift(shift);
   if (hasSync()){
     window.SharedSync.scheduleSharedSave(STORAGE_KEY, function(latest){
-      if (!latest[shift]) latest[shift] = {};
-      latest[shift].groups = groupsSnap;
+      if (!latest.byDate) latest.byDate = {};
+      if (!latest.byDate[dateKey]) latest.byDate[dateKey] = {};
+      if (!latest.byDate[dateKey][shift]) latest.byDate[dateKey][shift] = {};
+      latest.byDate[dateKey][shift].groups = groupsSnap;
+      if (!latest[shift]) latest[shift] = { groups: cloneGroups(groupsSnap) };
+      else if (!latest[shift].groups || !latest[shift].groups.length) {
+        latest[shift].groups = cloneGroups(groupsSnap);
+      }
       return latest;
     }, delay == null ? 400 : delay);
     return;
   }
-  // Offline / no SharedSync — persist break groups via window.storage
   clearTimeout(ownSaveTimer);
   ownSaveTimer = setTimeout(function(){
     if (!bpData) return;
     var payload = {
       morning: bpData.morning || { groups: [] },
-      afternoon: bpData.afternoon || { groups: [] }
+      afternoon: bpData.afternoon || { groups: [] },
+      byDate: bpData.byDate || {}
     };
     writeLocalJson(STORAGE_KEY, payload).catch(function(err){
       console.error('breakPlanner local save failed', err);
@@ -6477,7 +6749,42 @@ function renderGroups(){
     '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
+function renderDayChrome(){
+  if (!bpWeekStart) bpWeekStart = bpStartOfWeek(new Date());
+  syncBpDateFromIdx();
+  if (bpWeekLabelEl){
+    var shiftName = currentShift === 'afternoon' ? 'Afternoon' : 'Day';
+    bpWeekLabelEl.innerHTML = bpWeekLabelText(bpWeekStart) + '<span>' + shiftName + ' · linked with Packer & Roster</span>';
+  }
+  if (!bpDaysEl) return;
+  var today = bpYmd(new Date());
+  bpDaysEl.innerHTML = '';
+  for (var i = 0; i < 5; i++){
+    var d = bpAddDays(bpWeekStart, i);
+    var key = bpYmd(d);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    var hasCustom = dayHasCustomBreaks(key, currentShift);
+    btn.className = 'bp-day' + (i === bpDayIdx ? ' active' : '') + (key === today ? ' today' : '') + (hasCustom ? ' has-custom' : '');
+    btn.innerHTML = '<span class="d">' + BP_DAY_NAMES[i] + '</span><span class="n">' + d.getDate() + '</span>';
+    btn.title = hasCustom ? (BP_DAY_NAMES[i] + ' has its own break times') : (BP_DAY_NAMES[i] + ' (from Day/Afternoon template until edited)');
+    btn.addEventListener('click', (function(idx){
+      return function(){
+        bpDayIdx = idx;
+        syncBpDateFromIdx();
+        clearPendingAssign();
+        closeAssignSheet();
+        ensureShiftData(currentShift);
+        publishOpsDay();
+        renderAll();
+      };
+    })(i));
+    bpDaysEl.appendChild(btn);
+  }
+}
 function renderAll(){
+  ensureShiftData(currentShift);
+  renderDayChrome();
   renderRosterSections();
   renderGroups();
   renderSummary();
@@ -6510,10 +6817,35 @@ addGroupBtn.addEventListener('click', function(){
 });
 
 shiftMorningBtn.addEventListener('click', async function(){
-  currentShift = 'morning'; clearPendingAssign(); closeAssignSheet(); await loadPlannerCache(); renderAll();
+  currentShift = 'morning'; clearPendingAssign(); closeAssignSheet(); await loadPlannerCache(); publishOpsDay(); renderAll();
 });
 shiftAfternoonBtn.addEventListener('click', async function(){
-  currentShift = 'afternoon'; clearPendingAssign(); closeAssignSheet(); await loadPlannerCache(); renderAll();
+  currentShift = 'afternoon'; clearPendingAssign(); closeAssignSheet(); await loadPlannerCache(); publishOpsDay(); renderAll();
+});
+if (bpWeekPrevBtn) bpWeekPrevBtn.addEventListener('click', function(){
+  bpWeekStart = bpAddDays(bpWeekStart || bpStartOfWeek(new Date()), -7);
+  syncBpDateFromIdx(); clearPendingAssign(); closeAssignSheet(); publishOpsDay(); renderAll();
+});
+if (bpWeekNextBtn) bpWeekNextBtn.addEventListener('click', function(){
+  bpWeekStart = bpAddDays(bpWeekStart || bpStartOfWeek(new Date()), 7);
+  syncBpDateFromIdx(); clearPendingAssign(); closeAssignSheet(); publishOpsDay(); renderAll();
+});
+function jumpBpToday(){
+  bpWeekStart = bpStartOfWeek(new Date());
+  bpDayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
+  syncBpDateFromIdx(); clearPendingAssign(); closeAssignSheet(); publishOpsDay(); renderAll();
+}
+if (bpWeekTodayBtn) bpWeekTodayBtn.addEventListener('click', jumpBpToday);
+if (bpWeekLabelEl) bpWeekLabelEl.addEventListener('click', jumpBpToday);
+window.addEventListener('ops-day-changed', function(ev){
+  if (bpApplyingOpsDay) return;
+  var detail = ev && ev.detail;
+  if (!detail || !detail.dateKey) return;
+  if (detail.dateKey === bpDateKey && detail.shift === currentShift) return;
+  applyOpsDay(detail);
+  clearPendingAssign();
+  closeAssignSheet();
+  loadPlannerCache().then(function(){ renderAll(); }).catch(function(){ renderAll(); });
 });
 
 function hasAnyAssignments(sd){
@@ -6746,8 +7078,11 @@ async function handleExternalBreakPlannerChange(){
     var res = await window.SharedSync.refreshSharedState(STORAGE_KEY);
     if (res && res.changed && res.data){
       bpData = res.data;
-      ensureShiftData('morning');
-      ensureShiftData('afternoon');
+      if (!bpData.byDate) bpData.byDate = {};
+      bpWorking = null;
+      ensureTemplateShift('morning');
+      ensureTemplateShift('afternoon');
+      ensureShiftData(currentShift);
       renderAll();
       bpToast('Updated from another tab');
     }
@@ -6779,6 +7114,16 @@ window.__breakPlanner = {
   },
   getData: function(){
     return bpData;
+  },
+  getActiveDateKey: function(){ return bpDateKey; },
+  getActiveShift: function(){ return currentShift; },
+  getGroupsFor: function(dateKey, shift){
+    var sk = shift === 'afternoon' ? 'afternoon' : 'morning';
+    return groupsForDateShift(dateKey, sk);
+  },
+  getRosterMap: function(shift){
+    var sk = shift === 'afternoon' ? 'afternoon' : 'morning';
+    return rosterMapForShift(sk);
   }
 };
 init();
@@ -6930,11 +7275,21 @@ async function loadBreakPlannerData() {
     }
 
     var key = inferShiftKey(plannerRaw);
+    var dateKey = null;
+    try {
+      var linked = window.__opsDayLink && window.__opsDayLink.get();
+      if (linked && linked.dateKey) dateKey = linked.dateKey;
+    } catch (eLink) {}
+    if (!dateKey) {
+      var now = new Date();
+      dateKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    }
 
     if (!breakRaw) { breakPlannerData = null; }
     else {
-      var sd = breakRaw[key];
-      breakPlannerData = sd ? { groups: sd.groups || [], shiftKey: key } : null;
+      var daySd = breakRaw.byDate && breakRaw.byDate[dateKey] && breakRaw.byDate[dateKey][key];
+      var sd = daySd || breakRaw[key];
+      breakPlannerData = sd ? { groups: sd.groups || [], shiftKey: key, dateKey: dateKey } : null;
     }
 
     var counted = plannerReadError ? null : countFloorPackers(plannerRaw, key);
@@ -6980,7 +7335,8 @@ function updateBreakStatusLine(hadReadError) {
     return;
   }
   var shiftLabel = breakPlannerData.shiftKey === 'morning' ? 'Day' : 'Afternoon';
-  el.textContent = 'Using breaks from the Breaks tab (' + shiftLabel + ', following the Floor Planner\u2019s active shift).';
+  var dayBit = breakPlannerData.dateKey ? (', ' + breakPlannerData.dateKey) : '';
+  el.textContent = 'Using breaks from the Breaks tab (' + shiftLabel + dayBit + ' \u2014 same day as Packer & Roster).';
 }
 if (hasSyncLayer()) {
   window.SharedSync.onExternalChange('breakPlanner', function(){ loadBreakPlannerData(); });
@@ -8096,6 +8452,140 @@ function toast(msg, err) {
   function boxesPerHour(boxes, hours) {
     return safeDivide(boxes, hours);
   }
+
+  function timeToMinutes(hhmm) {
+    if (hhmm == null || hhmm === '') return null;
+    var p = String(hhmm).split(':');
+    var h = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  }
+
+  function overlapMinutes(a0, a1, b0, b1) {
+    var s = Math.max(a0, b0);
+    var e = Math.min(a1, b1);
+    return e > s ? e - s : 0;
+  }
+
+  function normalizeBreakNameKey(n) {
+    return String(n || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+  }
+
+  function mergeRangeTotalMins(ranges) {
+    if (!ranges || !ranges.length) return 0;
+    var sorted = ranges
+      .map(function (r) {
+        return { start: r.start, end: r.end };
+      })
+      .filter(function (r) {
+        return r.start != null && r.end != null && r.end > r.start;
+      })
+      .sort(function (a, b) {
+        return a.start - b.start;
+      });
+    if (!sorted.length) return 0;
+    var total = 0;
+    var curS = sorted[0].start;
+    var curE = sorted[0].end;
+    for (var i = 1; i < sorted.length; i++) {
+      if (sorted[i].start <= curE) {
+        curE = Math.max(curE, sorted[i].end);
+      } else {
+        total += curE - curS;
+        curS = sorted[i].start;
+        curE = sorted[i].end;
+      }
+    }
+    total += curE - curS;
+    return total;
+  }
+
+  /**
+   * Map packer workerKey → break ranges from Breaks groups + Floor roster ids.
+   * breakContext: { groups, idToName }
+   */
+  function buildBreakLookup(breakContext) {
+    var byKey = {};
+    if (!breakContext || !breakContext.groups) return byKey;
+    var idToName = breakContext.idToName || {};
+    breakContext.groups.forEach(function (g) {
+      if (!g) return;
+      var ranges = [];
+      var teaS = timeToMinutes(g.teaStart);
+      var teaE = timeToMinutes(g.teaEnd);
+      if (teaS != null && teaE != null && teaE > teaS) {
+        ranges.push({ start: teaS, end: teaE, kind: 'tea' });
+      }
+      var mealS = timeToMinutes(g.mealStart);
+      var mealE = timeToMinutes(g.mealEnd);
+      if (mealS != null && mealE != null && mealE > mealS) {
+        ranges.push({ start: mealS, end: mealE, kind: 'meal' });
+      }
+      if (!ranges.length) return;
+      ['packer', 'runner', 'boxmaker'].forEach(function (role) {
+        (g[role] || []).forEach(function (id) {
+          var name = idToName[id] || '';
+          var key = normalizeBreakNameKey(name);
+          if (!key) return;
+          if (!byKey[key]) {
+            byKey[key] = {
+              workerKey: key,
+              workerName: name,
+              ranges: [],
+              totalMins: 0,
+              groupLabel: g.label || ''
+            };
+          }
+          ranges.forEach(function (r) {
+            byKey[key].ranges.push({
+              start: r.start,
+              end: r.end,
+              kind: r.kind,
+              groupLabel: g.label || ''
+            });
+          });
+        });
+      });
+    });
+    Object.keys(byKey).forEach(function (k) {
+      byKey[k].totalMins = mergeRangeTotalMins(byKey[k].ranges);
+    });
+    return byKey;
+  }
+
+  function breakEntryForWorker(lookup, workerKey, workerName) {
+    if (!lookup) return null;
+    var k = workerKey || normalizeBreakNameKey(workerName);
+    return lookup[k] || null;
+  }
+
+  function breakMinutesForWorker(lookup, workerKey, workerName) {
+    var e = breakEntryForWorker(lookup, workerKey, workerName);
+    return e ? e.totalMins : 0;
+  }
+
+  function breakOverlapInHour(lookup, hour, workerKey, workerName) {
+    var e = breakEntryForWorker(lookup, workerKey, workerName);
+    if (!e || hour == null || !isFinite(hour)) return 0;
+    var h0 = Number(hour) * 60;
+    var h1 = h0 + 60;
+    var total = 0;
+    e.ranges.forEach(function (r) {
+      total += overlapMinutes(h0, h1, r.start, r.end);
+    });
+    return total;
+  }
+
+  /** Productive hours after subtracting scheduled breaks (floor minutes). */
+  function productiveHoursFrom(rawHours, breakMins) {
+    if (rawHours == null || !(rawHours > 0)) return null;
+    var br = Math.max(0, (breakMins || 0) / 60);
+    return Math.max(rawHours - br, 0.1);
+  }
   function itemsPerHour(items, hours) {
     return safeDivide(items, hours);
   }
@@ -8134,6 +8624,58 @@ function toast(msg, err) {
     if (bph >= t.target) return { key: 'on', label: 'On target', rank: 0, target: t.target, strike: t.strike };
     if (bph >= t.strike) return { key: 'below', label: 'Below target', rank: 1, target: t.target, strike: t.strike };
     return { key: 'strike', label: 'Below strike line', rank: 2, target: t.target, strike: t.strike };
+  }
+
+  /**
+   * Person-level status from total boxes vs hours-weighted SKU targets.
+   * Avoids judging a packer by their worst SKU when overall average BPH is fine.
+   */
+  function overallStrikeFromBlend(totalBoxes, rankedSkuRows) {
+    var ranked = rankedSkuRows || [];
+    if (!ranked.length) {
+      return {
+        key: 'none', label: 'No target set', rank: 99,
+        target: null, strike: null, needBoxes: null, strikeNeedBoxes: null
+      };
+    }
+    var needTotal = 0;
+    var strikeNeedTotal = 0;
+    var hoursTotal = 0;
+    ranked.forEach(function (s) {
+      if (s.needBoxes != null) needTotal += s.needBoxes;
+      if (s.strike != null && s.hoursForTarget != null) {
+        strikeNeedTotal += s.strike * s.hoursForTarget;
+      }
+      if (s.hoursForTarget != null) hoursTotal += s.hoursForTarget;
+    });
+    var blendedTarget = hoursTotal > 0 ? needTotal / hoursTotal : null;
+    var blendedStrike = hoursTotal > 0 ? strikeNeedTotal / hoursTotal : null;
+    if (!(needTotal > 0)) {
+      return {
+        key: 'none', label: 'No target set', rank: 99,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    if (totalBoxes + 1e-9 >= needTotal) {
+      return {
+        key: 'on', label: 'Hit target', rank: 0,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    if (totalBoxes + 1e-9 >= strikeNeedTotal) {
+      return {
+        key: 'below', label: 'Below target', rank: 1,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    return {
+      key: 'strike', label: 'Below strike line', rank: 2,
+      target: blendedTarget, strike: blendedStrike,
+      needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+    };
   }
 
   /**
@@ -8190,10 +8732,14 @@ function toast(msg, err) {
 
   /**
    * One row per packer (duplicate names merged).
-   * Per SKU: boxes vs need (target BPH × hours on that SKU).
+   * Per SKU: boxes vs need (target BPH × hours on that SKU) — chips keep per-SKU detail.
+   * Person Status / hitTarget use average BPH vs hours-weighted blended SKU targets.
    * Hours = packing time on that SKU; person shiftHours prefer Intra Hour count.
+   * Optional breakContext ({ groups, idToName }): when Intra hours exist, BPH / targets
+   * use productive hours = Intra − scheduled tea/meal for that person/day.
    */
-  function aggregatePeopleRows(records) {
+  function aggregatePeopleRows(records, breakContext) {
+    var breakLookup = breakContext ? buildBreakLookup(breakContext) : null;
     var by = {};
     (records || []).forEach(function (r) {
       if (!r.workerKey) return;
@@ -8226,18 +8772,29 @@ function toast(msg, err) {
         if (!(g.packingHours > 0) && !Object.keys(g.skus).length) return null;
         var packingHours = g.packingHours > 0 ? g.packingHours : null;
         var intraHours = Object.keys(g.hourKeys).length;
-        var shiftHours = intraHours > 0 ? intraHours : packingHours;
-        var overallBph = boxesPerHour(g.boxes, packingHours);
+        var breakMins = breakMinutesForWorker(breakLookup, g.workerKey, g.workerName);
+        // Intra = time on floor; subtract scheduled breaks for true packing rate.
+        // CSV packingHours alone is left alone (often already productive time).
+        var rateBase = null;
+        var breaksApplied = false;
+        if (intraHours > 0) {
+          rateBase = breakMins > 0 ? productiveHoursFrom(intraHours, breakMins) : intraHours;
+          breaksApplied = breakMins > 0;
+        } else {
+          rateBase = packingHours;
+        }
+        var shiftHours = rateBase != null ? rateBase : packingHours;
+        var overallBph = boxesPerHour(g.boxes, rateBase != null ? rateBase : packingHours);
         var skuRows = Object.keys(g.skus)
           .filter(function (s) { return s; })
           .sort(function (a, b) { return Number(a) - Number(b); })
           .map(function (s) {
             var sg = g.skus[s];
             var skuHours = sg.packingHours > 0 ? sg.packingHours : null;
-            // If Intra Hour shift length exists, share it across SKUs by packing-time weight
+            // Share productive Intra (break-adjusted) across SKUs by packing-time weight
             var hoursForTarget = skuHours;
-            if (intraHours > 0 && packingHours > 0 && skuHours != null) {
-              hoursForTarget = intraHours * (skuHours / packingHours);
+            if (rateBase != null && packingHours > 0 && skuHours != null && intraHours > 0) {
+              hoursForTarget = rateBase * (skuHours / packingHours);
             }
             var bph = boxesPerHour(sg.boxes, hoursForTarget);
             var t = SKU_TARGETS[s] || null;
@@ -8267,14 +8824,7 @@ function toast(msg, err) {
           });
         if (!skuRows.length) return null;
         var ranked = skuRows.filter(function (s) { return s.target != null; });
-        var overallStatus;
-        if (!ranked.length) {
-          overallStatus = { key: 'none', label: 'No target set', rank: 99 };
-        } else {
-          overallStatus = ranked.reduce(function (worst, s) {
-            return s.strikeStatus.rank > worst.rank ? s.strikeStatus : worst;
-          }, ranked[0].strikeStatus);
-        }
+        var overallStatus = overallStrikeFromBlend(g.boxes, ranked);
         var hitCount = ranked.filter(function (s) { return s.hitTarget; }).length;
         return {
           workerKey: g.workerKey,
@@ -8283,11 +8833,17 @@ function toast(msg, err) {
           packingHours: packingHours,
           shiftHours: shiftHours,
           intraHours: intraHours,
+          breakMinutes: breakMins,
+          productiveHours: rateBase,
+          breaksApplied: breaksApplied,
           boxesPerHour: overallBph,
+          blendedTarget: overallStatus.target,
+          blendedStrike: overallStatus.strike,
+          needBoxes: overallStatus.needBoxes,
           stations: Object.keys(g.stations).sort(),
           skus: skuRows,
           skuLabels: skuRows.map(function (s) { return s.sku || '—'; }),
-          hitTarget: ranked.length > 0 && hitCount === ranked.length,
+          hitTarget: overallStatus.key === 'on',
           hitCount: hitCount,
           skuCount: ranked.length,
           strikeStatus: overallStatus
@@ -8870,14 +9426,26 @@ function toast(msg, err) {
       });
   }
 
-  function aggregateByHour(records) {
+  function aggregateByHour(records, breakContext) {
+    var breakLookup = breakContext ? buildBreakLookup(breakContext) : null;
     var by = {};
     (records || []).forEach(function (r) {
       if (r.hour == null) return;
-      if (!by[r.hour]) by[r.hour] = { hour: r.hour, boxes: 0, items: 0, packingHours: 0 };
+      if (!by[r.hour]) {
+        by[r.hour] = {
+          hour: r.hour,
+          boxes: 0,
+          items: 0,
+          packingHours: 0,
+          breakMinutes: 0,
+          workersOnBreak: 0,
+          workerKeys: {}
+        };
+      }
       by[r.hour].boxes += r.boxes || 0;
       by[r.hour].items += r.items || 0;
       if (r.packingHours != null) by[r.hour].packingHours += r.packingHours;
+      if (r.workerKey) by[r.hour].workerKeys[r.workerKey] = r.workerName || r.workerKey;
     });
     return Object.keys(by)
       .map(Number)
@@ -8886,9 +9454,76 @@ function toast(msg, err) {
       })
       .map(function (h) {
         var g = by[h];
-        g.boxesPerHour = boxesPerHour(g.boxes, g.packingHours > 0 ? g.packingHours : null);
+        var breakMins = 0;
+        var onBreak = 0;
+        Object.keys(g.workerKeys).forEach(function (wk) {
+          var ov = breakOverlapInHour(breakLookup, h, wk, g.workerKeys[wk]);
+          if (ov > 0) {
+            breakMins += ov;
+            onBreak++;
+          }
+        });
+        g.breakMinutes = breakMins;
+        g.workersOnBreak = onBreak;
+        var workerCount = Object.keys(g.workerKeys).length;
+        // Team productive person-hours in this slot (1h each minus break overlap)
+        var productivePersonHours =
+          workerCount > 0 ? Math.max(workerCount - breakMins / 60, workerCount * 0.1) : null;
+        g.productivePersonHours = productivePersonHours;
+        g.boxesPerHour = boxesPerHour(
+          g.boxes,
+          g.packingHours > 0 ? g.packingHours : productivePersonHours
+        );
+        delete g.workerKeys;
         return g;
       });
+  }
+
+  /**
+   * Per-worker hourly boxes with break overlap for the Hours table.
+   * Returns { hourKeys, workers: [{ workerKey, workerName, total, hours: { [h]: { boxes, breakMins, productiveHours, boxesPerHour } } }] }
+   */
+  function aggregateHourlyWorkers(records, breakContext) {
+    var breakLookup = breakContext ? buildBreakLookup(breakContext) : null;
+    var hourSet = {};
+    var map = {};
+    (records || []).forEach(function (r) {
+      if (r.hour == null || !r.workerKey) return;
+      hourSet[r.hour] = true;
+      if (!map[r.workerKey]) {
+        map[r.workerKey] = { workerKey: r.workerKey, workerName: r.workerName, hours: {}, total: 0 };
+      }
+      var cell = map[r.workerKey].hours[r.hour];
+      if (!cell) {
+        cell = { boxes: 0, breakMins: 0, productiveHours: null, boxesPerHour: null };
+        map[r.workerKey].hours[r.hour] = cell;
+      }
+      cell.boxes += r.boxes || 0;
+      map[r.workerKey].total += r.boxes || 0;
+    });
+    Object.keys(map).forEach(function (wk) {
+      var w = map[wk];
+      Object.keys(w.hours).forEach(function (hStr) {
+        var h = Number(hStr);
+        var cell = w.hours[h];
+        cell.breakMins = breakOverlapInHour(breakLookup, h, w.workerKey, w.workerName);
+        cell.productiveHours = productiveHoursFrom(1, cell.breakMins);
+        cell.boxesPerHour = boxesPerHour(cell.boxes, cell.productiveHours);
+      });
+    });
+    var hourKeys = Object.keys(hourSet)
+      .map(Number)
+      .sort(function (a, b) {
+        return a - b;
+      });
+    var workers = Object.keys(map)
+      .map(function (wk) {
+        return map[wk];
+      })
+      .sort(function (a, b) {
+        return b.total - a.total;
+      });
+    return { hourKeys: hourKeys, workers: workers };
   }
 
   function aggregateByDimension(records, keyFn, labelFn) {
@@ -9257,6 +9892,12 @@ function toast(msg, err) {
     normalizeSku: normalizeSku,
     safeDivide: safeDivide,
     boxesPerHour: boxesPerHour,
+    timeToMinutes: timeToMinutes,
+    overlapMinutes: overlapMinutes,
+    buildBreakLookup: buildBreakLookup,
+    breakMinutesForWorker: breakMinutesForWorker,
+    breakOverlapInHour: breakOverlapInHour,
+    productiveHoursFrom: productiveHoursFrom,
     itemsPerHour: itemsPerHour,
     pouchesPerHour: pouchesPerHour,
     secondsPerBox: secondsPerBox,
@@ -9265,6 +9906,7 @@ function toast(msg, err) {
     idlePercentage: idlePercentage,
     performanceStatus: performanceStatus,
     strikeStatus: strikeStatus,
+    overallStrikeFromBlend: overallStrikeFromBlend,
     aggregateStrikeRows: aggregateStrikeRows,
     aggregatePeopleRows: aggregatePeopleRows,
     processCsvText: processCsvText,
@@ -9277,6 +9919,7 @@ function toast(msg, err) {
     aggregateKpis: aggregateKpis,
     aggregateWorkers: aggregateWorkers,
     aggregateByHour: aggregateByHour,
+    aggregateHourlyWorkers: aggregateHourlyWorkers,
     aggregateStations: aggregateStations,
     aggregateSkus: aggregateSkus,
     aggregateShifts: aggregateShifts,
@@ -9340,6 +9983,7 @@ function toast(msg, err) {
       station: '',
       sku: '',
       hour: '',
+      status: '', // on | below | strike — People view only
       minPerformance: '',
       search: ''
     },
@@ -9350,7 +9994,8 @@ function toast(msg, err) {
     loading: false,
     error: null,
     view: 'people', // people | hours
-    pendingImport: null // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
+    pendingImport: null, // { files: [{name,text,result}], fallbackDate, fallbackShift, mode }
+    _applyingOpsDay: false
   };
 
   /** Map CSV shiftKey → calendar morning|afternoon. Intra hour has no shift — use hour (≥14 = Afternoon). */
@@ -9419,8 +10064,12 @@ function toast(msg, err) {
     jumpToday: document.getElementById('pkJumpToday'),
     searchInput: document.getElementById('pkSearchInput'),
     views: document.getElementById('pkViews'),
+    chipBar: document.getElementById('pkChipBar'),
+    filters: document.getElementById('pkFilters'),
     kpis: document.getElementById('pkKpis'),
+    charts: document.getElementById('pkCharts'),
     tableWrap: document.getElementById('pkTableWrap'),
+    quality: document.getElementById('pkQuality'),
     detail: document.getElementById('pkDetail'),
     status: document.getElementById('pkStatus'),
     toast: document.getElementById('packerToast'),
@@ -9448,6 +10097,48 @@ function toast(msg, err) {
     var x = new Date(d.getTime());
     x.setDate(x.getDate() + n);
     return x;
+  }
+  function parseYmd(s) {
+    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    var p = s.split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  function buildBreakContext() {
+    if (!window.__breakPlanner || typeof window.__breakPlanner.getGroupsFor !== 'function') return null;
+    var dateKey = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    var groups = window.__breakPlanner.getGroupsFor(dateKey, sk);
+    if (!groups || !groups.length) return null;
+    var idToName = typeof window.__breakPlanner.getRosterMap === 'function'
+      ? (window.__breakPlanner.getRosterMap(sk) || {})
+      : {};
+    return { groups: groups, idToName: idToName };
+  }
+  function publishOpsDay() {
+    if (!window.__opsDayLink || state._applyingOpsDay) return;
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    var dk = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    window.__opsDayLink.set(dk, sk, ymd(state.weekStart));
+  }
+  function applyOpsDay(detail) {
+    if (!detail || !detail.dateKey) return false;
+    var d = parseYmd(detail.dateKey);
+    if (!d) return false;
+    state._applyingOpsDay = true;
+    try {
+      state.weekStart = startOfWeek(d);
+      state.activeWeekKey = ymd(state.weekStart);
+      state.dayIdx = Math.min(4, Math.max(0, (d.getDay() + 6) % 7));
+      if (detail.shift === 'morning' || detail.shift === 'afternoon') {
+        state.rosterShift = detail.shift;
+      }
+      state.showLegacy = false;
+      state.page = 1;
+    } finally {
+      state._applyingOpsDay = false;
+    }
+    return true;
   }
   function weekLabel(ws) {
     var we = addDays(ws, 4);
@@ -9507,7 +10198,113 @@ function toast(msg, err) {
     return activeBucket().files || [];
   }
   function filtered() {
-    return PA.filterRecords(currentRecords(), state.filters);
+    // View-specific chips: hour is Hours-only (Boxes Packed rows have no hour),
+    // SKU/status are People-only.
+    var f = {
+      reportDate: state.filters.reportDate,
+      shift: state.filters.shift,
+      worker: state.filters.worker,
+      station: state.filters.station,
+      sku: state.view === 'hours' ? '' : state.filters.sku,
+      hour: state.view === 'hours' ? state.filters.hour : '',
+      minPerformance: state.filters.minPerformance,
+      search: state.filters.search
+    };
+    return PA.filterRecords(currentRecords(), f);
+  }
+
+  /** People rows after SKU/search filters, then optional Status chip. */
+  function peopleRowsFiltered() {
+    var rows = PA.aggregatePeopleRows(filtered(), buildBreakContext());
+    if (state.view !== 'hours' && state.filters.status) {
+      rows = rows.filter(function (r) {
+        return r.strikeStatus && r.strikeStatus.key === state.filters.status;
+      });
+    }
+    return rows;
+  }
+
+  function availableSkus(records) {
+    var set = {};
+    (records || []).forEach(function (r) {
+      if (r.sku && r.packingHours != null && r.packingHours > 0) set[r.sku] = true;
+    });
+    return Object.keys(set).sort(function (a, b) { return Number(a) - Number(b); });
+  }
+
+  function availableHours(records) {
+    var set = {};
+    (records || []).forEach(function (r) {
+      if (r.hour != null && isFinite(r.hour)) set[r.hour] = true;
+    });
+    return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+  }
+
+  function skuSectionStats(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (!r.sku || r.packingHours == null || r.packingHours <= 0) return;
+      if (!by[r.sku]) by[r.sku] = { boxes: 0, hours: 0 };
+      by[r.sku].boxes += r.boxes || 0;
+      by[r.sku].hours += r.packingHours || 0;
+    });
+    return by;
+  }
+
+  function chipBtn(filterKey, value, label, opts) {
+    opts = opts || {};
+    var cur = state.filters[filterKey];
+    if (filterKey === 'hour') cur = cur === '' || cur == null ? '' : String(cur);
+    var active = String(cur == null ? '' : cur) === String(value);
+    var cls = 'pk-chip' + (active ? ' active' : '') + (opts.tone ? ' ' + opts.tone : '');
+    var meta = opts.meta ? '<span class="pk-chip-meta">' + escapeHtml(opts.meta) + '</span>' : '';
+    return '<button type="button" class="' + cls + '" data-filter="' + escapeHtml(filterKey) +
+      '" data-value="' + escapeHtml(String(value)) + '">' + escapeHtml(label) + meta + '</button>';
+  }
+
+  function renderChipBar() {
+    if (!els.chipBar) return;
+    var recs = currentRecords();
+    if (!recs.length) {
+      els.chipBar.hidden = true;
+      els.chipBar.innerHTML = '';
+      return;
+    }
+    var html = '';
+    if (state.view === 'hours') {
+      var hours = availableHours(recs);
+      if (state.filters.hour !== '' && state.filters.hour != null &&
+          hours.indexOf(Number(state.filters.hour)) === -1) {
+        state.filters.hour = '';
+      }
+      html += '<div class="pk-chip-row"><span class="pk-chip-lbl">Hour</span>' +
+        chipBtn('hour', '', 'All');
+      hours.forEach(function (h) {
+        html += chipBtn('hour', String(h), PA.formatHourLabel(h));
+      });
+      html += '</div>';
+    } else {
+      var skus = availableSkus(recs);
+      var skuStats = skuSectionStats(recs);
+      if (state.filters.sku && skus.indexOf(state.filters.sku) === -1) state.filters.sku = '';
+      html += '<div class="pk-chip-row"><span class="pk-chip-lbl">SKU</span>' +
+        chipBtn('sku', '', 'All');
+      skus.forEach(function (sku) {
+        var st = skuStats[sku];
+        var bph = st && st.hours > 0 ? st.boxes / st.hours : null;
+        var meta = bph != null ? PA.formatRate(bph) : '';
+        html += chipBtn('sku', sku, sku, { meta: meta });
+      });
+      html += '</div>';
+      html += '<div class="pk-chip-row"><span class="pk-chip-lbl">Status</span>' +
+        chipBtn('status', '', 'All') +
+        chipBtn('status', 'on', 'Hit', { tone: 'on' }) +
+        chipBtn('status', 'below', 'Below', { tone: 'below' }) +
+        chipBtn('status', 'strike', 'Strike', { tone: 'strike' }) +
+        '</div>';
+    }
+    els.chipBar.innerHTML = html;
+    els.chipBar.hidden = !html;
   }
 
   function strikePill(st) {
@@ -9740,15 +10537,15 @@ function toast(msg, err) {
   function exportCurrentShiftPackers() {
     var dateKey = activeDateKey();
     var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
-    var rows = PA.aggregatePeopleRows(currentRecords());
+    var rows = PA.aggregatePeopleRows(currentRecords(), buildBreakContext());
     if (!rows.length) {
       toast('No packers for ' + DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(sk), 'err');
       return false;
     }
-    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Status'];
+    var hdr = ['Date', 'Shift', 'Worker', 'SKUs', 'Boxes', 'Hours', 'BPH', 'Break mins', 'Status'];
     var body = rows.map(function (r) {
       var skus = (r.skus || []).map(function (s) { return s.sku; }).filter(Boolean).join(', ');
-      var hrs = r.intraHours > 0 ? r.shiftHours : r.packingHours;
+      var hrs = r.productiveHours != null ? r.productiveHours : (r.intraHours > 0 ? r.shiftHours : r.packingHours);
       return [
         PA.formatDateAU(dateKey),
         shiftLabel(sk),
@@ -9757,6 +10554,7 @@ function toast(msg, err) {
         r.boxes,
         hrs != null ? Number(hrs).toFixed(2) : '',
         r.boxesPerHour != null ? Number(r.boxesPerHour).toFixed(1) : '',
+        r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
         r.strikeStatus ? r.strikeStatus.label : ''
       ];
     });
@@ -9841,6 +10639,7 @@ function toast(msg, err) {
             state.dayIdx = idx;
             state.showLegacy = false;
             state.page = 1;
+            publishOpsDay();
             renderAll();
           };
         })(i));
@@ -9863,31 +10662,46 @@ function toast(msg, err) {
       els.status.innerHTML = '<div class="pk-banner">No data for ' +
         escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
         '. End of shift: upload <b>Boxes Packed by Worker</b> and <b>Intra Hour</b> CSVs. ' +
-        'Same names are merged; SKUs and BPH target hit show on People.</div>';
+        'Same names are merged; SKU chips stay per-SKU, Status uses average BPH.</div>';
       return;
     }
     els.status.innerHTML = '';
   }
 
+  function renderFilters() {
+    if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
+      els.searchInput.value = state.filters.search || '';
+    }
+  }
+
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
-    var rows = PA.aggregatePeopleRows(filtered());
+    var rows = peopleRowsFiltered();
     var counts = { on: 0, below: 0, strike: 0, none: 0 };
     rows.forEach(function (r) {
       if (r.strikeStatus && counts[r.strikeStatus.key] != null) counts[r.strikeStatus.key]++;
       else counts.none++;
     });
+    var totalBoxes = rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0);
+    var totalPackHrs = rows.reduce(function (n, r) {
+      var h = r.productiveHours != null ? r.productiveHours : r.packingHours;
+      return n + (h || 0);
+    }, 0);
+    var avgBph = totalPackHrs > 0 ? totalBoxes / totalPackHrs : null;
+    var anyBreaks = rows.some(function (r) { return r.breaksApplied; });
     var hourRows = filtered().filter(function (r) { return r.hour != null; });
     var hourSet = {};
     hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
     var stats = [
+      { cls: 'rate', num: PA.formatRate(avgBph), lbl: anyBreaks ? 'Avg BPH (−breaks)' : 'Avg BPH' },
+      { cls: 'hours', num: PA.formatHours(totalPackHrs), lbl: anyBreaks ? 'Prod. hrs' : 'Pack hrs' },
       { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
-      { cls: 'boxes', num: PA.formatNumber(rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0)), lbl: 'Boxes' },
+      { cls: 'boxes', num: PA.formatNumber(totalBoxes), lbl: 'Boxes' },
       { cls: '', num: String(rows.length), lbl: 'People' },
-      { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Hours' }
+      { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Slots' }
     ];
     els.kpis.innerHTML = stats.map(function (s) {
       return '<div class="pk-stat ' + s.cls + '"><div class="num">' + escapeHtml(s.num) +
@@ -9900,6 +10714,8 @@ function toast(msg, err) {
     if (v !== 'people' && v !== 'hours') v = 'people';
     state.view = v;
     if (els.tableWrap) els.tableWrap.hidden = false;
+    if (els.charts) els.charts.hidden = true;
+    if (els.quality) els.quality.hidden = true;
     if (els.views) {
       Array.prototype.forEach.call(els.views.querySelectorAll('button[data-view]'), function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-view') === v);
@@ -9917,17 +10733,25 @@ function toast(msg, err) {
   }
 
   function renderPeopleTable() {
-    var rows = PA.aggregatePeopleRows(filtered());
+    var breakCtx = buildBreakContext();
+    var rows = peopleRowsFiltered();
     if (!rows.length) {
+      var anyPeople = PA.aggregatePeopleRows(filtered(), breakCtx).length > 0;
       els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">' +
-        'No Boxes Packed by Worker rows for this day/shift. Upload that CSV for SKUs and BPH target.</div></section>';
+        (anyPeople
+          ? 'No people match the current SKU / status filter.'
+          : 'No Boxes Packed by Worker rows for this day/shift. Upload that CSV for SKUs and BPH target.') +
+        '</div></section>';
       return;
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
     var body = page.rows.map(function (r, i) {
-      var hrsLbl = r.intraHours > 0
-        ? PA.formatHours(r.shiftHours)
-        : PA.formatHours(r.packingHours);
+      var hrsLbl = r.productiveHours != null
+        ? PA.formatHours(r.productiveHours)
+        : (r.intraHours > 0 ? PA.formatHours(r.shiftHours) : PA.formatHours(r.packingHours));
+      if (r.breaksApplied && r.breakMinutes > 0) {
+        hrsLbl += ' (−' + Math.round(r.breakMinutes) + 'm)';
+      }
       return '<tr>' +
         '<td class="r mn">' + ((page.page - 1) * page.pageSize + i + 1) + '</td>' +
         '<td class="bold">' + escapeHtml(r.workerName) + '</td>' +
@@ -9937,10 +10761,18 @@ function toast(msg, err) {
         '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
         '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
+    var filterBits = [];
+    if (state.filters.sku) filterBits.push('SKU ' + state.filters.sku);
+    if (state.filters.status) filterBits.push(state.filters.status === 'on' ? 'Hit' : (state.filters.status === 'below' ? 'Below' : 'Strike'));
+    var breakBit = rows.some(function (r) { return r.breaksApplied; })
+      ? ' · BPH uses Intra − breaks'
+      : (breakCtx ? ' · breaks linked (no Intra yet)' : '');
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
       '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-      ' · names merged · SKUs listed</div></div>' +
+      ' · status = avg BPH' + breakBit +
+      (filterBits.length ? ' · ' + escapeHtml(filterBits.join(' · ')) : '') +
+      '</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
       '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
       '<th class="r">BPH</th><th>Status</th>' +
@@ -9965,29 +10797,34 @@ function toast(msg, err) {
       els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">No Intra Hour rows for this day/shift. Upload Intra Hour Floor Performance CSV(s).</div></section>';
       return;
     }
-    var byHour = PA.aggregateByHour(hourRecs);
-    var hourKeys = byHour.map(function (h) { return h.hour; });
-    var head = hourKeys.map(function (h) { return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + '</th>'; }).join('');
-    var map = {};
-    hourRecs.forEach(function (r) {
-      if (r.hour == null || !r.workerKey) return;
-      if (!map[r.workerKey]) map[r.workerKey] = { name: r.workerName, hours: {}, total: 0 };
-      map[r.workerKey].hours[r.hour] = (map[r.workerKey].hours[r.hour] || 0) + (r.boxes || 0);
-      map[r.workerKey].total += r.boxes || 0;
-    });
-    var names = Object.keys(map).sort(function (a, b) { return map[b].total - map[a].total; });
-    var body = names.map(function (wk) {
-      var w = map[wk];
+    var breakCtx = buildBreakContext();
+    var byHour = PA.aggregateByHour(hourRecs, breakCtx);
+    var hw = PA.aggregateHourlyWorkers(hourRecs, breakCtx);
+    var hourKeys = hw.hourKeys;
+    var head = hourKeys.map(function (h) {
+      var meta = byHour.filter(function (x) { return x.hour === h; })[0];
+      var br = meta && meta.breakMinutes > 0 ? '<div style="font-size:9px;font-weight:600;color:#8E8E93">' + Math.round(meta.breakMinutes) + 'm brk</div>' : '';
+      return '<th class="r">' + escapeHtml(PA.formatHourLabel(h)) + br + '</th>';
+    }).join('');
+    var body = hw.workers.map(function (w) {
       var cells = hourKeys.map(function (h) {
-        var v = w.hours[h];
-        return '<td class="r mn">' + (v != null ? v : '—') + '</td>';
+        var cell = w.hours[h];
+        if (!cell) return '<td class="r mn">—</td>';
+        var title = cell.breakMins > 0
+          ? (cell.boxes + ' boxes · ' + Math.round(cell.breakMins) + 'm break · BPH ' + PA.formatRate(cell.boxesPerHour))
+          : (cell.boxes + ' boxes');
+        var mark = cell.breakMins > 0 ? ' style="background:#FFF8E8" title="' + escapeHtml(title) + '"' : ' title="' + escapeHtml(title) + '"';
+        return '<td class="r mn"' + mark + '>' + cell.boxes + '</td>';
       }).join('');
-      return '<tr><td class="bold">' + escapeHtml(w.name) + '</td>' + cells +
+      return '<tr><td class="bold">' + escapeHtml(w.workerName) + '</td>' + cells +
         '<td class="r mn bold">' + w.total + '</td></tr>';
     }).join('');
+    var breakNote = breakCtx
+      ? ' · yellow = break overlap that hour · BPH = boxes ÷ (1h − break)'
+      : '';
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">Hours</h2>' +
-      '<div class="pk-table-meta">' + names.length + ' workers · ' + hourKeys.length + ' hour(s)</div></div>' +
+      '<div class="pk-table-meta">' + hw.workers.length + ' workers · ' + hourKeys.length + ' hour(s)' + breakNote + '</div></div>' +
       chartCard('Boxes by hour', columnChart(byHour, 'boxes', function (it) { return PA.formatHourLabel(it.hour); })) +
       '<div class="pk-tw" style="margin-top:8px"><table><thead><tr><th>Worker</th>' + head +
       '<th class="r">Total</th></tr></thead><tbody>' + body + '</tbody></table></div></section>';
@@ -10191,11 +11028,11 @@ function toast(msg, err) {
 
   function renderAll() {
     ensureCurrentWeekFresh();
+    publishOpsDay();
     renderChrome();
     renderStatus();
-    if (els.searchInput && els.searchInput.value !== (state.filters.search || '')) {
-      els.searchInput.value = state.filters.search || '';
-    }
+    renderFilters();
+    renderChipBar();
     renderKpis();
     renderTable();
     renderDetail();
@@ -10266,6 +11103,9 @@ function toast(msg, err) {
     state.weekStart = startOfWeek(new Date());
     state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
     state.activeWeekKey = ymd(state.weekStart);
+    if (window.__opsDayLink) {
+      try { applyOpsDay(window.__opsDayLink.get()); } catch (eOps) {}
+    }
     renderStatus();
     try {
       var r = await window.storage.get(STORAGE_KEY, false);
@@ -10418,6 +11258,7 @@ function toast(msg, err) {
       state.rosterShift = btn.getAttribute('data-shift');
       state.showLegacy = false;
       state.page = 1;
+      publishOpsDay();
       renderAll();
     });
   }
@@ -10426,6 +11267,7 @@ function toast(msg, err) {
       state.weekStart = addDays(state.weekStart, -7);
       state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
+      publishOpsDay();
       renderAll();
     });
   }
@@ -10434,6 +11276,7 @@ function toast(msg, err) {
       state.weekStart = addDays(state.weekStart, 7);
       state.activeWeekKey = ymd(state.weekStart);
       state.showLegacy = false;
+      publishOpsDay();
       renderAll();
     });
   }
@@ -10443,9 +11286,19 @@ function toast(msg, err) {
       state.activeWeekKey = ymd(state.weekStart);
       state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay() + 6) % 7));
       state.showLegacy = false;
+      publishOpsDay();
       renderAll();
     });
   }
+  window.addEventListener('ops-day-changed', function (ev) {
+    if (state._applyingOpsDay) return;
+    var detail = ev && ev.detail;
+    if (!detail || !detail.dateKey) return;
+    var cur = activeDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    if (detail.dateKey === cur && detail.shift === sk) return;
+    if (applyOpsDay(detail)) renderAll();
+  });
   if (els.weekLabel) {
     els.weekLabel.addEventListener('click', function () {
       if (els.jumpToday) els.jumpToday.click();
@@ -10455,6 +11308,22 @@ function toast(msg, err) {
     els.searchInput.addEventListener('input', function () {
       state.filters.search = els.searchInput.value || '';
       state.page = 1;
+      renderChipBar();
+      renderKpis();
+      renderTable();
+    });
+  }
+  if (els.chipBar) {
+    els.chipBar.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[data-filter]') : null;
+      if (!btn) return;
+      var key = btn.getAttribute('data-filter');
+      var val = btn.getAttribute('data-value');
+      if (!key) return;
+      if (key === 'hour') state.filters.hour = val === '' ? '' : Number(val);
+      else state.filters[key] = val || '';
+      state.page = 1;
+      renderChipBar();
       renderKpis();
       renderTable();
     });
@@ -10465,6 +11334,10 @@ function toast(msg, err) {
       if (!btn) return;
       state.view = btn.getAttribute('data-view') || 'people';
       state.page = 1;
+      if (state.view === 'hours') state.filters.status = '';
+      else state.filters.hour = '';
+      renderChipBar();
+      renderKpis();
       applyView();
     });
   }
@@ -10480,6 +11353,7 @@ function toast(msg, err) {
   };
   loadAll();
 })();
+
 </script>
 
 <script>
@@ -10500,7 +11374,7 @@ function toast(msg, err) {
     {key:'unassigned', label:'No role'}
   ];
   var LEGACY = { in:'here', leave:'holiday', early:'late' };
-  var state = { weekStart: null, dayIdx: 0, byDate: {}, activeWeekKey: '', search: '', rosterShift: 'morning', archives: {}, schemaVersion: 1, revision: 0 };
+  var state = { weekStart: null, dayIdx: 0, byDate: {}, activeWeekKey: '', search: '', rosterShift: 'morning', archives: {}, schemaVersion: 1, revision: 0, _applyingOpsDay: false };
   var saveTimer = null;
 
   function uid(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -10522,6 +11396,39 @@ function toast(msg, err) {
     var x = new Date(d.getTime());
     x.setDate(x.getDate() + n);
     return x;
+  }
+  function parseYmd(s){
+    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    var p = s.split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  function activeRosterDateKey(){
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    return ymd(addDays(state.weekStart, state.dayIdx));
+  }
+  function publishOpsDay(){
+    if (!window.__opsDayLink || state._applyingOpsDay) return;
+    if (!state.weekStart) state.weekStart = startOfWeek(new Date());
+    window.__opsDayLink.set(
+      activeRosterDateKey(),
+      state.rosterShift === 'afternoon' ? 'afternoon' : 'morning',
+      ymd(state.weekStart)
+    );
+  }
+  function applyOpsDay(detail){
+    if (!detail || !detail.dateKey) return false;
+    var d = parseYmd(detail.dateKey);
+    if (!d) return false;
+    state._applyingOpsDay = true;
+    try{
+      state.weekStart = startOfWeek(d);
+      state.activeWeekKey = ymd(state.weekStart);
+      state.dayIdx = Math.min(4, Math.max(0, (d.getDay() + 6) % 7));
+      if (detail.shift === 'morning' || detail.shift === 'afternoon') state.rosterShift = detail.shift;
+    } finally {
+      state._applyingOpsDay = false;
+    }
+    return true;
   }
   function weekLabel(ws){
     var we = addDays(ws, 4);
@@ -10614,6 +11521,9 @@ function toast(msg, err) {
   async function loadState(){
     state.weekStart = startOfWeek(new Date());
     state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay()+6)%7));
+    if (window.__opsDayLink){
+      try { applyOpsDay(window.__opsDayLink.get()); } catch (eOps) {}
+    }
     if (!hasStorage()){ state.activeWeekKey = ymd(state.weekStart); return; }
     try{
       var r = await window.storage.get(KEY, false);
@@ -10801,15 +11711,21 @@ function toast(msg, err) {
           result.count = 1;
         }
         await window.SharedSync.writeSharedState('breakPlanner', function(latest){
-          if (!latest[shift] || !latest[shift].groups) return false;
           var changed = false;
-          latest[shift].groups.forEach(function(g){
-            ['packer','runner','boxmaker'].forEach(function(rk){
-              var before = (g[rk]||[]).length;
-              g[rk] = (g[rk]||[]).filter(function(pid){ return pid !== personId; });
-              if (g[rk].length !== before) changed = true;
+          function stripFromGroups(groups){
+            (groups || []).forEach(function(g){
+              ['packer','runner','boxmaker'].forEach(function(rk){
+                var before = (g[rk]||[]).length;
+                g[rk] = (g[rk]||[]).filter(function(pid){ return pid !== personId; });
+                if (g[rk].length !== before) changed = true;
+              });
             });
-          });
+          }
+          if (latest[shift] && latest[shift].groups) stripFromGroups(latest[shift].groups);
+          var dateKey = activeRosterDateKey();
+          if (latest.byDate && latest.byDate[dateKey] && latest.byDate[dateKey][shift]) {
+            stripFromGroups(latest.byDate[dateKey][shift].groups);
+          }
           return changed ? latest : false;
         });
       }catch(e){}
@@ -10869,6 +11785,7 @@ function toast(msg, err) {
   }
   function render(){
     ensureCurrentWeekFresh();
+    publishOpsDay();
     updateShiftButtons();
     var daysEl = document.getElementById('roDays');
     var dailyEl = document.getElementById('roDailyStats');
@@ -10882,7 +11799,7 @@ function toast(msg, err) {
     var ws = state.weekStart || startOfWeek(new Date());
     var isCurrentWeek = ymd(ws) === ymd(startOfWeek(new Date()));
     var shiftName = shiftLabel(state.rosterShift);
-    labelEl.innerHTML = weekLabel(ws) + '<span>'+shiftName+' · '+(isCurrentWeek ? 'resets Monday' : 'Mon–Fri')+'</span>';
+    labelEl.innerHTML = weekLabel(ws) + '<span>'+shiftName+' · linked with Breaks & Packer</span>';
     daysEl.innerHTML = '';
     for (var i = 0; i < 5; i++){
       var d = addDays(ws, i);
@@ -10891,7 +11808,7 @@ function toast(msg, err) {
       btn.type = 'button';
       btn.className = 'ro-day' + (i === state.dayIdx ? ' active' : '') + (key === today ? ' today' : '');
       btn.innerHTML = '<span class="d">'+DAY_NAMES[i]+'</span><span class="n">'+d.getDate()+'</span>';
-      btn.addEventListener('click', (function(idx){ return function(){ state.dayIdx = idx; render(); }; })(i));
+      btn.addEventListener('click', (function(idx){ return function(){ state.dayIdx = idx; publishOpsDay(); render(); }; })(i));
       daysEl.appendChild(btn);
     }
     var dateKey = ymd(addDays(ws, state.dayIdx));
@@ -10999,16 +11916,26 @@ function toast(msg, err) {
   function jumpToday(){
     state.weekStart = startOfWeek(new Date());
     state.dayIdx = Math.min(4, Math.max(0, (new Date().getDay()+6)%7));
+    publishOpsDay();
     render();
   }
   document.getElementById('roPrev').addEventListener('click', function(){
-    state.weekStart = addDays(state.weekStart, -7); render();
+    state.weekStart = addDays(state.weekStart, -7); publishOpsDay(); render();
   });
   document.getElementById('roNext').addEventListener('click', function(){
-    state.weekStart = addDays(state.weekStart, 7); render();
+    state.weekStart = addDays(state.weekStart, 7); publishOpsDay(); render();
   });
   document.getElementById('roLabel').addEventListener('click', jumpToday);
   document.getElementById('roJumpToday').addEventListener('click', jumpToday);
+  window.addEventListener('ops-day-changed', function(ev){
+    if (state._applyingOpsDay) return;
+    var detail = ev && ev.detail;
+    if (!detail || !detail.dateKey) return;
+    var cur = activeRosterDateKey();
+    var sk = state.rosterShift === 'afternoon' ? 'afternoon' : 'morning';
+    if (detail.dateKey === cur && detail.shift === sk) return;
+    if (applyOpsDay(detail)) refresh();
+  });
   (function bindClearWeek(){
     var btn = document.getElementById('roClearWeek');
     if (!btn) return;
@@ -11051,6 +11978,7 @@ function toast(msg, err) {
       var next = btn.getAttribute('data-shift');
       if (!next || next === state.rosterShift) return;
       state.rosterShift = next;
+      publishOpsDay();
       refresh();
     });
   })();
@@ -11348,7 +12276,7 @@ function toast(msg, err) {
       });
     }
     if (key === 'breakPlanner') {
-      return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] } });
+      return JSON.stringify({ morning: { groups: [] }, afternoon: { groups: [] }, byDate: {} });
     }
     if (key === 'packer-shift-data') {
       return JSON.stringify({
