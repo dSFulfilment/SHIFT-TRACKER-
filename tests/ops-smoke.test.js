@@ -91,6 +91,11 @@ console.log('\nOps smoke — Packer avg BPH status');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Blended overall BPH status helper exists');
 check(html.indexOf("lbl: 'Avg BPH'") !== -1, 'KPI strip shows Avg BPH');
 check(html.indexOf('status = avg BPH') !== -1, 'People table notes status uses avg BPH');
+check(html.indexOf('id="pkChipBar"') !== -1 && html.indexOf('function renderChipBar') !== -1,
+  'Packer section filter chip bar exists');
+check(html.indexOf("lbl: 'Pack hrs'") !== -1, 'KPI strip shows packing hours');
+check(html.indexOf("data-filter=\"") !== -1 && html.indexOf("chipBtn('sku'") !== -1 && html.indexOf("chipBtn('status'") !== -1,
+  'SKU and status filter chips are wired');
 
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');

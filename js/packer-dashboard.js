@@ -38,6 +38,7 @@
       station: '',
       sku: '',
       hour: '',
+      status: '', // on | below | strike — People view only
       minPerformance: '',
       search: ''
     },
@@ -117,6 +118,7 @@
     jumpToday: document.getElementById('pkJumpToday'),
     searchInput: document.getElementById('pkSearchInput'),
     views: document.getElementById('pkViews'),
+    chipBar: document.getElementById('pkChipBar'),
     filters: document.getElementById('pkFilters'),
     kpis: document.getElementById('pkKpis'),
     charts: document.getElementById('pkCharts'),
@@ -208,7 +210,113 @@
     return activeBucket().files || [];
   }
   function filtered() {
-    return PA.filterRecords(currentRecords(), state.filters);
+    // View-specific chips: hour is Hours-only (Boxes Packed rows have no hour),
+    // SKU/status are People-only.
+    var f = {
+      reportDate: state.filters.reportDate,
+      shift: state.filters.shift,
+      worker: state.filters.worker,
+      station: state.filters.station,
+      sku: state.view === 'hours' ? '' : state.filters.sku,
+      hour: state.view === 'hours' ? state.filters.hour : '',
+      minPerformance: state.filters.minPerformance,
+      search: state.filters.search
+    };
+    return PA.filterRecords(currentRecords(), f);
+  }
+
+  /** People rows after SKU/search filters, then optional Status chip. */
+  function peopleRowsFiltered() {
+    var rows = PA.aggregatePeopleRows(filtered());
+    if (state.view !== 'hours' && state.filters.status) {
+      rows = rows.filter(function (r) {
+        return r.strikeStatus && r.strikeStatus.key === state.filters.status;
+      });
+    }
+    return rows;
+  }
+
+  function availableSkus(records) {
+    var set = {};
+    (records || []).forEach(function (r) {
+      if (r.sku && r.packingHours != null && r.packingHours > 0) set[r.sku] = true;
+    });
+    return Object.keys(set).sort(function (a, b) { return Number(a) - Number(b); });
+  }
+
+  function availableHours(records) {
+    var set = {};
+    (records || []).forEach(function (r) {
+      if (r.hour != null && isFinite(r.hour)) set[r.hour] = true;
+    });
+    return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+  }
+
+  function skuSectionStats(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      if (!r.sku || r.packingHours == null || r.packingHours <= 0) return;
+      if (!by[r.sku]) by[r.sku] = { boxes: 0, hours: 0 };
+      by[r.sku].boxes += r.boxes || 0;
+      by[r.sku].hours += r.packingHours || 0;
+    });
+    return by;
+  }
+
+  function chipBtn(filterKey, value, label, opts) {
+    opts = opts || {};
+    var cur = state.filters[filterKey];
+    if (filterKey === 'hour') cur = cur === '' || cur == null ? '' : String(cur);
+    var active = String(cur == null ? '' : cur) === String(value);
+    var cls = 'pk-chip' + (active ? ' active' : '') + (opts.tone ? ' ' + opts.tone : '');
+    var meta = opts.meta ? '<span class="pk-chip-meta">' + escapeHtml(opts.meta) + '</span>' : '';
+    return '<button type="button" class="' + cls + '" data-filter="' + escapeHtml(filterKey) +
+      '" data-value="' + escapeHtml(String(value)) + '">' + escapeHtml(label) + meta + '</button>';
+  }
+
+  function renderChipBar() {
+    if (!els.chipBar) return;
+    var recs = currentRecords();
+    if (!recs.length) {
+      els.chipBar.hidden = true;
+      els.chipBar.innerHTML = '';
+      return;
+    }
+    var html = '';
+    if (state.view === 'hours') {
+      var hours = availableHours(recs);
+      if (state.filters.hour !== '' && state.filters.hour != null &&
+          hours.indexOf(Number(state.filters.hour)) === -1) {
+        state.filters.hour = '';
+      }
+      html += '<div class="pk-chip-row"><span class="pk-chip-lbl">Hour</span>' +
+        chipBtn('hour', '', 'All');
+      hours.forEach(function (h) {
+        html += chipBtn('hour', String(h), PA.formatHourLabel(h));
+      });
+      html += '</div>';
+    } else {
+      var skus = availableSkus(recs);
+      var skuStats = skuSectionStats(recs);
+      if (state.filters.sku && skus.indexOf(state.filters.sku) === -1) state.filters.sku = '';
+      html += '<div class="pk-chip-row"><span class="pk-chip-lbl">SKU</span>' +
+        chipBtn('sku', '', 'All');
+      skus.forEach(function (sku) {
+        var st = skuStats[sku];
+        var bph = st && st.hours > 0 ? st.boxes / st.hours : null;
+        var meta = bph != null ? PA.formatRate(bph) : '';
+        html += chipBtn('sku', sku, sku, { meta: meta });
+      });
+      html += '</div>';
+      html += '<div class="pk-chip-row"><span class="pk-chip-lbl">Status</span>' +
+        chipBtn('status', '', 'All') +
+        chipBtn('status', 'on', 'Hit', { tone: 'on' }) +
+        chipBtn('status', 'below', 'Below', { tone: 'below' }) +
+        chipBtn('status', 'strike', 'Strike', { tone: 'strike' }) +
+        '</div>';
+    }
+    els.chipBar.innerHTML = html;
+    els.chipBar.hidden = !html;
   }
 
   function strikePill(st) {
@@ -579,26 +687,27 @@
   function renderKpis() {
     if (!els.kpis) return;
     if (!currentRecords().length) { els.kpis.innerHTML = ''; return; }
-    var rows = PA.aggregatePeopleRows(filtered());
+    var rows = peopleRowsFiltered();
     var counts = { on: 0, below: 0, strike: 0, none: 0 };
     rows.forEach(function (r) {
       if (r.strikeStatus && counts[r.strikeStatus.key] != null) counts[r.strikeStatus.key]++;
       else counts.none++;
     });
-    var hourRows = filtered().filter(function (r) { return r.hour != null; });
-    var hourSet = {};
-    hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
     var totalBoxes = rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0);
     var totalPackHrs = rows.reduce(function (n, r) { return n + (r.packingHours || 0); }, 0);
     var avgBph = totalPackHrs > 0 ? totalBoxes / totalPackHrs : null;
+    var hourRows = filtered().filter(function (r) { return r.hour != null; });
+    var hourSet = {};
+    hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
     var stats = [
       { cls: 'rate', num: PA.formatRate(avgBph), lbl: 'Avg BPH' },
+      { cls: 'hours', num: PA.formatHours(totalPackHrs), lbl: 'Pack hrs' },
       { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
       { cls: 'boxes', num: PA.formatNumber(totalBoxes), lbl: 'Boxes' },
       { cls: '', num: String(rows.length), lbl: 'People' },
-      { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Hours' }
+      { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Slots' }
     ];
     els.kpis.innerHTML = stats.map(function (s) {
       return '<div class="pk-stat ' + s.cls + '"><div class="num">' + escapeHtml(s.num) +
@@ -634,10 +743,14 @@
   }
 
   function renderPeopleTable() {
-    var rows = PA.aggregatePeopleRows(filtered());
+    var rows = peopleRowsFiltered();
     if (!rows.length) {
+      var anyPeople = PA.aggregatePeopleRows(filtered()).length > 0;
       els.tableWrap.innerHTML = '<section class="pk-table-card"><div class="pk-banner">' +
-        'No Boxes Packed by Worker rows for this day/shift. Upload that CSV for SKUs and BPH target.</div></section>';
+        (anyPeople
+          ? 'No people match the current SKU / status filter.'
+          : 'No Boxes Packed by Worker rows for this day/shift. Upload that CSV for SKUs and BPH target.') +
+        '</div></section>';
       return;
     }
     var page = PA.paginate(rows, state.page, PAGE_SIZE);
@@ -654,10 +767,15 @@
         '<td class="r mn">' + escapeHtml(PA.formatRate(r.boxesPerHour)) + '</td>' +
         '<td>' + strikePill(r.strikeStatus) + '</td></tr>';
     }).join('');
+    var filterBits = [];
+    if (state.filters.sku) filterBits.push('SKU ' + state.filters.sku);
+    if (state.filters.status) filterBits.push(state.filters.status === 'on' ? 'Hit' : (state.filters.status === 'below' ? 'Below' : 'Strike'));
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
       '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-      ' · names merged · status = avg BPH</div></div>' +
+      ' · status = avg BPH' +
+      (filterBits.length ? ' · ' + escapeHtml(filterBits.join(' · ')) : '') +
+      '</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
       '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
       '<th class="r">BPH</th><th>Status</th>' +
@@ -934,6 +1052,7 @@
     renderChrome();
     renderStatus();
     renderFilters();
+    renderChipBar();
     renderKpis();
     renderCharts();
     renderTable();
@@ -1195,10 +1314,26 @@
     els.searchInput.addEventListener('input', function () {
       state.filters.search = els.searchInput.value || '';
       state.page = 1;
+      renderChipBar();
       renderKpis();
       renderTable();
       renderCharts();
       renderQuality();
+    });
+  }
+  if (els.chipBar) {
+    els.chipBar.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[data-filter]') : null;
+      if (!btn) return;
+      var key = btn.getAttribute('data-filter');
+      var val = btn.getAttribute('data-value');
+      if (!key) return;
+      if (key === 'hour') state.filters.hour = val === '' ? '' : Number(val);
+      else state.filters[key] = val || '';
+      state.page = 1;
+      renderChipBar();
+      renderKpis();
+      renderTable();
     });
   }
   if (els.views) {
@@ -1207,6 +1342,10 @@
       if (!btn) return;
       state.view = btn.getAttribute('data-view') || 'people';
       state.page = 1;
+      if (state.view === 'hours') state.filters.status = '';
+      else state.filters.hour = '';
+      renderChipBar();
+      renderKpis();
       applyView();
     });
   }
