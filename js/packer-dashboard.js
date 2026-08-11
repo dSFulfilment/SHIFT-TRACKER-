@@ -564,7 +564,7 @@
       els.status.innerHTML = '<div class="pk-banner">No data for ' +
         escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
         '. End of shift: upload <b>Boxes Packed by Worker</b> and <b>Intra Hour</b> CSVs. ' +
-        'Same names are merged; SKUs and BPH target hit show on People.</div>';
+        'Same names are merged; SKU chips stay per-SKU, Status uses average BPH.</div>';
       return;
     }
     els.status.innerHTML = '';
@@ -588,11 +588,15 @@
     var hourRows = filtered().filter(function (r) { return r.hour != null; });
     var hourSet = {};
     hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
+    var totalBoxes = rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0);
+    var totalPackHrs = rows.reduce(function (n, r) { return n + (r.packingHours || 0); }, 0);
+    var avgBph = totalPackHrs > 0 ? totalBoxes / totalPackHrs : null;
     var stats = [
+      { cls: 'rate', num: PA.formatRate(avgBph), lbl: 'Avg BPH' },
       { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
-      { cls: 'boxes', num: PA.formatNumber(rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0)), lbl: 'Boxes' },
+      { cls: 'boxes', num: PA.formatNumber(totalBoxes), lbl: 'Boxes' },
       { cls: '', num: String(rows.length), lbl: 'People' },
       { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Hours' }
     ];
@@ -653,7 +657,7 @@
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
       '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-      ' · names merged · SKUs listed</div></div>' +
+      ' · names merged · status = avg BPH</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
       '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
       '<th class="r">BPH</th><th>Status</th>' +

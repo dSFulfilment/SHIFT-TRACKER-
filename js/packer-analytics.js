@@ -307,6 +307,58 @@
   }
 
   /**
+   * Person-level status from total boxes vs hours-weighted SKU targets.
+   * Avoids judging a packer by their worst SKU when overall average BPH is fine.
+   */
+  function overallStrikeFromBlend(totalBoxes, rankedSkuRows) {
+    var ranked = rankedSkuRows || [];
+    if (!ranked.length) {
+      return {
+        key: 'none', label: 'No target set', rank: 99,
+        target: null, strike: null, needBoxes: null, strikeNeedBoxes: null
+      };
+    }
+    var needTotal = 0;
+    var strikeNeedTotal = 0;
+    var hoursTotal = 0;
+    ranked.forEach(function (s) {
+      if (s.needBoxes != null) needTotal += s.needBoxes;
+      if (s.strike != null && s.hoursForTarget != null) {
+        strikeNeedTotal += s.strike * s.hoursForTarget;
+      }
+      if (s.hoursForTarget != null) hoursTotal += s.hoursForTarget;
+    });
+    var blendedTarget = hoursTotal > 0 ? needTotal / hoursTotal : null;
+    var blendedStrike = hoursTotal > 0 ? strikeNeedTotal / hoursTotal : null;
+    if (!(needTotal > 0)) {
+      return {
+        key: 'none', label: 'No target set', rank: 99,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    if (totalBoxes + 1e-9 >= needTotal) {
+      return {
+        key: 'on', label: 'Hit target', rank: 0,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    if (totalBoxes + 1e-9 >= strikeNeedTotal) {
+      return {
+        key: 'below', label: 'Below target', rank: 1,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    return {
+      key: 'strike', label: 'Below strike line', rank: 2,
+      target: blendedTarget, strike: blendedStrike,
+      needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+    };
+  }
+
+  /**
    * One row per worker+SKU for strike-line checking.
    * Uses packing hours when present (raw/EOS); skips mixed/blank SKUs for status.
    */
@@ -360,7 +412,8 @@
 
   /**
    * One row per packer (duplicate names merged).
-   * Per SKU: boxes vs need (target BPH × hours on that SKU).
+   * Per SKU: boxes vs need (target BPH × hours on that SKU) — chips keep per-SKU detail.
+   * Person Status / hitTarget use average BPH vs hours-weighted blended SKU targets.
    * Hours = packing time on that SKU; person shiftHours prefer Intra Hour count.
    */
   function aggregatePeopleRows(records) {
@@ -437,14 +490,7 @@
           });
         if (!skuRows.length) return null;
         var ranked = skuRows.filter(function (s) { return s.target != null; });
-        var overallStatus;
-        if (!ranked.length) {
-          overallStatus = { key: 'none', label: 'No target set', rank: 99 };
-        } else {
-          overallStatus = ranked.reduce(function (worst, s) {
-            return s.strikeStatus.rank > worst.rank ? s.strikeStatus : worst;
-          }, ranked[0].strikeStatus);
-        }
+        var overallStatus = overallStrikeFromBlend(g.boxes, ranked);
         var hitCount = ranked.filter(function (s) { return s.hitTarget; }).length;
         return {
           workerKey: g.workerKey,
@@ -454,10 +500,13 @@
           shiftHours: shiftHours,
           intraHours: intraHours,
           boxesPerHour: overallBph,
+          blendedTarget: overallStatus.target,
+          blendedStrike: overallStatus.strike,
+          needBoxes: overallStatus.needBoxes,
           stations: Object.keys(g.stations).sort(),
           skus: skuRows,
           skuLabels: skuRows.map(function (s) { return s.sku || '—'; }),
-          hitTarget: ranked.length > 0 && hitCount === ranked.length,
+          hitTarget: overallStatus.key === 'on',
           hitCount: hitCount,
           skuCount: ranked.length,
           strikeStatus: overallStatus
@@ -1435,6 +1484,7 @@
     idlePercentage: idlePercentage,
     performanceStatus: performanceStatus,
     strikeStatus: strikeStatus,
+    overallStrikeFromBlend: overallStrikeFromBlend,
     aggregateStrikeRows: aggregateStrikeRows,
     aggregatePeopleRows: aggregatePeopleRows,
     processCsvText: processCsvText,

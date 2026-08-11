@@ -8137,6 +8137,58 @@ function toast(msg, err) {
   }
 
   /**
+   * Person-level status from total boxes vs hours-weighted SKU targets.
+   * Avoids judging a packer by their worst SKU when overall average BPH is fine.
+   */
+  function overallStrikeFromBlend(totalBoxes, rankedSkuRows) {
+    var ranked = rankedSkuRows || [];
+    if (!ranked.length) {
+      return {
+        key: 'none', label: 'No target set', rank: 99,
+        target: null, strike: null, needBoxes: null, strikeNeedBoxes: null
+      };
+    }
+    var needTotal = 0;
+    var strikeNeedTotal = 0;
+    var hoursTotal = 0;
+    ranked.forEach(function (s) {
+      if (s.needBoxes != null) needTotal += s.needBoxes;
+      if (s.strike != null && s.hoursForTarget != null) {
+        strikeNeedTotal += s.strike * s.hoursForTarget;
+      }
+      if (s.hoursForTarget != null) hoursTotal += s.hoursForTarget;
+    });
+    var blendedTarget = hoursTotal > 0 ? needTotal / hoursTotal : null;
+    var blendedStrike = hoursTotal > 0 ? strikeNeedTotal / hoursTotal : null;
+    if (!(needTotal > 0)) {
+      return {
+        key: 'none', label: 'No target set', rank: 99,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    if (totalBoxes + 1e-9 >= needTotal) {
+      return {
+        key: 'on', label: 'Hit target', rank: 0,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    if (totalBoxes + 1e-9 >= strikeNeedTotal) {
+      return {
+        key: 'below', label: 'Below target', rank: 1,
+        target: blendedTarget, strike: blendedStrike,
+        needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+      };
+    }
+    return {
+      key: 'strike', label: 'Below strike line', rank: 2,
+      target: blendedTarget, strike: blendedStrike,
+      needBoxes: needTotal, strikeNeedBoxes: strikeNeedTotal
+    };
+  }
+
+  /**
    * One row per worker+SKU for strike-line checking.
    * Uses packing hours when present (raw/EOS); skips mixed/blank SKUs for status.
    */
@@ -8190,7 +8242,8 @@ function toast(msg, err) {
 
   /**
    * One row per packer (duplicate names merged).
-   * Per SKU: boxes vs need (target BPH × hours on that SKU).
+   * Per SKU: boxes vs need (target BPH × hours on that SKU) — chips keep per-SKU detail.
+   * Person Status / hitTarget use average BPH vs hours-weighted blended SKU targets.
    * Hours = packing time on that SKU; person shiftHours prefer Intra Hour count.
    */
   function aggregatePeopleRows(records) {
@@ -8267,14 +8320,7 @@ function toast(msg, err) {
           });
         if (!skuRows.length) return null;
         var ranked = skuRows.filter(function (s) { return s.target != null; });
-        var overallStatus;
-        if (!ranked.length) {
-          overallStatus = { key: 'none', label: 'No target set', rank: 99 };
-        } else {
-          overallStatus = ranked.reduce(function (worst, s) {
-            return s.strikeStatus.rank > worst.rank ? s.strikeStatus : worst;
-          }, ranked[0].strikeStatus);
-        }
+        var overallStatus = overallStrikeFromBlend(g.boxes, ranked);
         var hitCount = ranked.filter(function (s) { return s.hitTarget; }).length;
         return {
           workerKey: g.workerKey,
@@ -8284,10 +8330,13 @@ function toast(msg, err) {
           shiftHours: shiftHours,
           intraHours: intraHours,
           boxesPerHour: overallBph,
+          blendedTarget: overallStatus.target,
+          blendedStrike: overallStatus.strike,
+          needBoxes: overallStatus.needBoxes,
           stations: Object.keys(g.stations).sort(),
           skus: skuRows,
           skuLabels: skuRows.map(function (s) { return s.sku || '—'; }),
-          hitTarget: ranked.length > 0 && hitCount === ranked.length,
+          hitTarget: overallStatus.key === 'on',
           hitCount: hitCount,
           skuCount: ranked.length,
           strikeStatus: overallStatus
@@ -9265,6 +9314,7 @@ function toast(msg, err) {
     idlePercentage: idlePercentage,
     performanceStatus: performanceStatus,
     strikeStatus: strikeStatus,
+    overallStrikeFromBlend: overallStrikeFromBlend,
     aggregateStrikeRows: aggregateStrikeRows,
     aggregatePeopleRows: aggregatePeopleRows,
     processCsvText: processCsvText,
@@ -9863,7 +9913,7 @@ function toast(msg, err) {
       els.status.innerHTML = '<div class="pk-banner">No data for ' +
         escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
         '. End of shift: upload <b>Boxes Packed by Worker</b> and <b>Intra Hour</b> CSVs. ' +
-        'Same names are merged; SKUs and BPH target hit show on People.</div>';
+        'Same names are merged; SKU chips stay per-SKU, Status uses average BPH.</div>';
       return;
     }
     els.status.innerHTML = '';
@@ -9881,11 +9931,15 @@ function toast(msg, err) {
     var hourRows = filtered().filter(function (r) { return r.hour != null; });
     var hourSet = {};
     hourRows.forEach(function (r) { if (r.hour != null) hourSet[r.hour] = true; });
+    var totalBoxes = rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0);
+    var totalPackHrs = rows.reduce(function (n, r) { return n + (r.packingHours || 0); }, 0);
+    var avgBph = totalPackHrs > 0 ? totalBoxes / totalPackHrs : null;
     var stats = [
+      { cls: 'rate', num: PA.formatRate(avgBph), lbl: 'Avg BPH' },
       { cls: 'on', num: String(counts.on), lbl: 'Hit target' },
       { cls: 'below', num: String(counts.below), lbl: 'Below tgt' },
       { cls: 'strike', num: String(counts.strike), lbl: 'Below strike' },
-      { cls: 'boxes', num: PA.formatNumber(rows.reduce(function (n, r) { return n + (r.boxes || 0); }, 0)), lbl: 'Boxes' },
+      { cls: 'boxes', num: PA.formatNumber(totalBoxes), lbl: 'Boxes' },
       { cls: '', num: String(rows.length), lbl: 'People' },
       { cls: '', num: String(Object.keys(hourSet).length), lbl: 'Hours' }
     ];
@@ -9940,7 +9994,7 @@ function toast(msg, err) {
     els.tableWrap.innerHTML =
       '<section class="pk-table-card"><div class="pk-table-hdr"><h2 class="pk-section-title">People</h2>' +
       '<div class="pk-table-meta">' + escapeHtml(DAY_NAMES[state.dayIdx] + ' · ' + shiftLabel(state.rosterShift)) +
-      ' · names merged · SKUs listed</div></div>' +
+      ' · names merged · status = avg BPH</div></div>' +
       '<div class="pk-tw"><table><thead><tr>' +
       '<th class="r">#</th><th>Worker</th><th>SKUs</th><th class="r">Boxes</th><th class="r">Hours</th>' +
       '<th class="r">BPH</th><th>Status</th>' +

@@ -87,6 +87,11 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
+console.log('\nOps smoke — Packer avg BPH status');
+check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Blended overall BPH status helper exists');
+check(html.indexOf("lbl: 'Avg BPH'") !== -1, 'KPI strip shows Avg BPH');
+check(html.indexOf('status = avg BPH') !== -1, 'People table notes status uses avg BPH');
+
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');
 check(html.indexOf('id="bpFreePrev"') !== -1 && html.indexOf('id="bpFreeNext"') !== -1, 'Free-person arrow buttons exist');

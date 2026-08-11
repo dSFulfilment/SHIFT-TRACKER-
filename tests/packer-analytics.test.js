@@ -193,6 +193,7 @@ console.log('\nPeople merge + BPH target (Boxes Packed by Worker)');
   assert(avalon.skus.every(function (s) { return s.strikeStatus && s.strikeStatus.key; }), 'each SKU has target status');
   assert(avalon.skus.every(function (s) { return s.needBoxes != null && s.needBoxes > 0; }), 'each SKU has need boxes (target × hours)');
   assert(typeof avalon.hitTarget === 'boolean', 'hitTarget flag present');
+  assert(avalon.blendedTarget != null && avalon.blendedTarget > 0, 'person has blended BPH target');
   // With Intra Hour hours, need uses shift-hour share
   var merged = PA.mergeRecords(res.records.filter(function (r) { return r.shiftKey === 'afternoon_shift'; }),
     PA.processCsvText(readFixture('intra-hour-3pm.csv')).records.concat(
@@ -208,6 +209,34 @@ console.log('\nPeople merge + BPH target (Boxes Packed by Worker)');
   assert(PA.aggregatePeopleRows(hour.records).length === 0, 'hourly-only does not invent BPH people rows');
   assert(PA.parseHourFromKey('2026-08-07 15:00:00.000') === 15, 'ISO hour key parses');
   assert(PA.parseReportDateFromHourKey('2026-08-07 15:00:00.000') === '2026-08-07', 'ISO hour date parses');
+})();
+
+console.log('\nOverall status uses blended avg BPH (not worst SKU)');
+(function () {
+  // 250 @ 0.5h with 5 boxes → strike on that SKU (need 8)
+  // 500 @ 2h with 50 boxes → hit on that SKU (need 46)
+  // Worst SKU = strike, but total 55 vs need 54 → overall hit
+  var records = [
+    {
+      workerKey: 'test packer', workerName: 'Test Packer', sku: '250',
+      boxes: 5, packingHours: 0.5, station: 'A', hour: null
+    },
+    {
+      workerKey: 'test packer', workerName: 'Test Packer', sku: '500',
+      boxes: 50, packingHours: 2, station: 'A', hour: null
+    }
+  ];
+  var rows = PA.aggregatePeopleRows(records);
+  assert(rows.length === 1, 'one merged person');
+  var p = rows[0];
+  var sku250 = p.skus.filter(function (s) { return s.sku === '250'; })[0];
+  var sku500 = p.skus.filter(function (s) { return s.sku === '500'; })[0];
+  assert(!!sku250 && sku250.strikeStatus.key === 'strike', '250 SKU chip stays strike');
+  assert(!!sku500 && sku500.strikeStatus.key === 'on', '500 SKU chip stays hit');
+  assert(p.strikeStatus.key === 'on', 'person status is hit from blended avg (not worst SKU)');
+  assert(p.hitTarget === true, 'hitTarget follows blended overall');
+  assertClose(p.needBoxes, 8 + 46, 'blended need boxes = sum of SKU needs');
+  assertClose(p.boxesPerHour, 55 / 2.5, 'overall BPH = total boxes ÷ packing hours');
 })();
 
 console.log('\n────────────────────────────────');
