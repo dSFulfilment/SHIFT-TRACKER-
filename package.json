@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Warehouse shift floor planner with packer CSV analytics",
   "scripts": {
-    "test": "node tests/packer-analytics.test.js && node tests/ops-smoke.test.js",
+    "test": "node tests/packer-analytics.test.js && node tests/ops-smoke.test.js && node tests/tracker-math.test.js",
     "start": "python3 -m http.server 8080",
     "verify:csv": "node tests/verify-fixtures.js"
   }

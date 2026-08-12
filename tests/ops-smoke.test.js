@@ -97,6 +97,18 @@ check(html.indexOf("'Pack hrs'") !== -1, 'KPI strip shows packing hours');
 check(html.indexOf("data-filter=\"") !== -1 && html.indexOf("chipBtn('sku'") !== -1 && html.indexOf("chipBtn('status'") !== -1,
   'SKU and status filter chips are wired');
 
+console.log('\nOps smoke — Tracker accuracy (break-adjusted finish)');
+check(html.indexOf('js/tracker-math.js') !== -1, 'Tracker math script is loaded');
+check(html.indexOf('function wallMinsToPack') !== -1, 'wallMinsToPack wrapper exists');
+check(html.indexOf('function actualPackRate') !== -1, 'actualPackRate wrapper exists');
+check(html.indexOf("from:cur, to:end") !== -1 || /plan\.push\(\{[^}]*from:\s*cur[^}]*to:\s*end/.test(html),
+  'Plan rows store half-hour from/to for Now highlight');
+check(html.indexOf('calendar today') !== -1 || html.indexOf('Tracker always uses calendar today') !== -1,
+  'Tracker break day uses calendar today');
+check(html.indexOf('boxes packed / productive hr') !== -1, 'KPI labels productive hours');
+check(html.indexOf('same day as Packer & Roster') === -1,
+  'Tracker no longer ties break day to Packer browse day');
+
 console.log('\nOps smoke — day-linked breaks (BPH ignores breaks)');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
 check(html.indexOf('id="bpDays"') !== -1 && html.indexOf('function renderDayChrome') !== -1, 'Breaks day chips exist');
