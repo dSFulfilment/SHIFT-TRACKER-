@@ -7130,6 +7130,7 @@ init();
 })();
 
 </script>
+<script src="js/tracker-math.js"></script>
 <script>
 var actuals  = [];
 var darkMode = false;
@@ -7275,15 +7276,10 @@ async function loadBreakPlannerData() {
     }
 
     var key = inferShiftKey(plannerRaw);
-    var dateKey = null;
-    try {
-      var linked = window.__opsDayLink && window.__opsDayLink.get();
-      if (linked && linked.dateKey) dateKey = linked.dateKey;
-    } catch (eLink) {}
-    if (!dateKey) {
-      var now = new Date();
-      dateKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    }
+    // Tracker always uses calendar today for breaks — not the Packer/Roster
+    // browsing day (__opsDayLink), so finish/rate stay tied to the live shift.
+    var now = new Date();
+    var dateKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
 
     if (!breakRaw) { breakPlannerData = null; }
     else {
@@ -7336,34 +7332,48 @@ function updateBreakStatusLine(hadReadError) {
   }
   var shiftLabel = breakPlannerData.shiftKey === 'morning' ? 'Day' : 'Afternoon';
   var dayBit = breakPlannerData.dateKey ? (', ' + breakPlannerData.dateKey) : '';
-  el.textContent = 'Using breaks from the Breaks tab (' + shiftLabel + dayBit + ' \u2014 same day as Packer & Roster).';
+  el.textContent = 'Using today\u2019s breaks from the Breaks tab (' + shiftLabel + dayBit + ' \u2014 Floor shift). Tea/meal cut productive mins in the plan and finish times.';
 }
 if (hasSyncLayer()) {
   window.SharedSync.onExternalChange('breakPlanner', function(){ loadBreakPlannerData(); });
   window.SharedSync.onExternalChange('planner', function(){ loadBreakPlannerData(); });
 }
 
+function breakGroups() {
+  return (breakPlannerData && breakPlannerData.groups) || [];
+}
+
 function effectiveMins(slotStart, slotEnd, cfg) {
-  var full = slotEnd - slotStart;
-  if (!cfg.staff || cfg.staff <= 0 || !breakPlannerData) return full;
-  var groups = breakPlannerData.groups || [];
-  var lostPackerMinutes = 0;
-  groups.forEach(function(g) {
-    var count = (g.packer || []).length;
-    if (!count) return;
-    var teaS = toMin(g.teaStart), teaE = toMin(g.teaEnd);
-    if (teaS != null && teaE != null) {
-      var tos = Math.max(slotStart, teaS), toe = Math.min(slotEnd, teaE);
-      if (toe > tos) lostPackerMinutes += (toe - tos) * count;
-    }
-    var mealS = toMin(g.mealStart), mealE = toMin(g.mealEnd);
-    if (mealS != null && mealE != null) {
-      var mos = Math.max(slotStart, mealS), moe = Math.min(slotEnd, mealE);
-      if (moe > mos) lostPackerMinutes += (moe - mos) * count;
-    }
-  });
-  var lostSlotMinutes = lostPackerMinutes / cfg.staff;
-  return Math.max(full - lostSlotMinutes, 0);
+  if (!cfg) return Math.max(0, slotEnd - slotStart);
+  if (!window.TrackerMath) {
+    var full = slotEnd - slotStart;
+    return full > 0 ? full : 0;
+  }
+  return window.TrackerMath.effectiveMins(slotStart, slotEnd, cfg.staff, breakGroups());
+}
+
+// Wall-clock minutes needed to pack `boxes` at `ratePerHour`, walking forward
+// from `fromMin` with the same break-adjusted capacity as the plan table.
+function wallMinsToPack(boxes, ratePerHour, fromMin, cfg) {
+  if (!cfg || !window.TrackerMath) {
+    if (!(boxes > 0)) return 0;
+    if (!(ratePerHour > 0)) return Infinity;
+    return (boxes / ratePerHour) * 60;
+  }
+  return window.TrackerMath.wallMinsToPack(boxes, ratePerHour, fromMin, cfg.em, cfg.staff, breakGroups());
+}
+
+function productiveHoursBetween(fromMin, toMin, cfg) {
+  if (!cfg || !window.TrackerMath) return Math.max(0, (toMin - fromMin) / 60);
+  return window.TrackerMath.productiveHoursBetween(fromMin, toMin, cfg.staff, breakGroups());
+}
+
+// Actual boxes/hr on productive time only (tea/meal out) — comparable to cfg.pr.
+function actualPackRate(cfg, plan, li) {
+  if (!cfg || !plan || li == null || li < 0 || !window.TrackerMath) return 0;
+  var la = plan[li].actual;
+  if (la == null || isNaN(la)) return 0;
+  return window.TrackerMath.actualPackRate(cfg.sb, la, cfg.sm, plan[li].to, cfg.staff, breakGroups());
 }
 
 // ── READ INPUTS ──────────────────────────────────────────────────────────────
@@ -7408,8 +7418,8 @@ function boxesLeftFromPlanAt(plan, cfg, nmf) {
 function captureHeadcountChange(cfg, plan, oldStaff, newStaff) {
   if (!cfg || !plan || oldStaff == null || newStaff == null || oldStaff === newStaff) return;
   var nmf = nowMinF();
-  var li = latestIdx(plan);
-  var boxesLeft = li >= 0 ? plan[li].actual : boxesLeftFromPlanAt(plan, cfg, nmf);
+  // Prefer interpolated boxes-at-now (from last actual or plan), not a stale checkpoint alone
+  var boxesLeft = estimateBoxesLeft(cfg, plan);
   remainingAnchor = {
     atMin: nmf,
     boxesLeft: boxesLeft,
@@ -7433,20 +7443,34 @@ function captureHeadcountChange(cfg, plan, oldStaff, newStaff) {
   );
 }
 
-function estimateBoxesLeft(cfg, plan) {
+// Boxes still to pack right now. Projects past the latest actual with the given
+// rate (defaults to planned cfg.pr) using break-adjusted productive time.
+function estimateBoxesLeft(cfg, plan, ratePerHour) {
   if (!cfg) return 0;
-  var li = plan ? latestIdx(plan) : -1;
-  if (li >= 0) return plan[li].actual;
   var nmf = nowMinF();
+  var rate = ratePerHour != null && ratePerHour > 0 ? ratePerHour : cfg.pr;
+  if (nmf <= cfg.sm) return cfg.sb;
+  var TM = window.TrackerMath;
+  var li = plan ? latestIdx(plan) : -1;
+
+  // A checkpoint actual at/after the headcount anchor overrides the freeze.
+  if (li >= 0) {
+    var la = plan[li].actual;
+    var chk = plan[li].to;
+    if (!remainingAnchor || chk + 0.001 >= remainingAnchor.atMin) {
+      if (nmf <= chk) return la;
+      if (TM) return TM.projectBoxesLeft(la, chk, nmf, rate, cfg.staff, breakGroups());
+      return Math.max(0, la - rate * ((nmf - chk) / 60));
+    }
+  }
+
   if (remainingAnchor) {
     var from = remainingAnchor.atMin;
-    var to = nmf;
-    if (to <= from) return remainingAnchor.boxesLeft;
-    var eff = effectiveMins(from, to, cfg);
-    if (eff <= 0) eff = Math.max(0, to - from);
-    var packed = cfg.pr * (eff / 60);
-    return Math.max(0, remainingAnchor.boxesLeft - packed);
+    if (nmf <= from) return remainingAnchor.boxesLeft;
+    if (TM) return TM.projectBoxesLeft(remainingAnchor.boxesLeft, from, nmf, rate, cfg.staff, breakGroups());
+    return Math.max(0, remainingAnchor.boxesLeft - rate * ((nmf - from) / 60));
   }
+
   return boxesLeftFromPlanAt(plan, cfg, nmf);
 }
 
@@ -7480,7 +7504,7 @@ function buildPlan(cfg) {
       cum += done;
       pLeft = Math.max(cfg.sb - cum, 0);
     }
-    plan.push({ i:i, from:end, to:end, eff:eff, done:done, cum:cum, pLeft:pLeft, actual:act });
+    plan.push({ i:i, from:cur, to:end, eff:eff, done:done, cum:cum, pLeft:pLeft, actual:act });
     cur = end; i++;
   }
   return plan;
@@ -7602,39 +7626,49 @@ function updateFinish(plan, cfg) {
   var li  = latestIdx(plan);
   var nmf = nowMinF();
 
-  // Planned finish = boxes still left ÷ current Floor rate, always from NOW
-  // (so taking people off stations / left-early immediately pushes remaining time)
+  // Planned finish = remaining boxes through future slots at cfg.pr, with the
+  // same break-adjusted productive mins as the half-hour plan table.
   var boxesLeft = estimateBoxesLeft(cfg, plan);
-  var hr = cfg.pr > 0 ? boxesLeft / cfg.pr : 0;
-  var pFin = nmf + hr * 60;
-  var pSub = Math.round(boxesLeft).toLocaleString() + ' left \u00F7 ' + cfg.pr.toFixed(0) + '/hr = ' +
-    hrsLabel(hr) + ' from now' +
-    (remainingAnchor ? ' \u00B7 after headcount change' : '');
+  var fromMin = nmf < cfg.sm ? cfg.sm : nmf;
+  var wall = wallMinsToPack(boxesLeft, cfg.pr, fromMin, cfg);
+  var pFin = isFinite(wall) ? fromMin + wall : fromMin;
+  var pSub;
   if (nmf < cfg.sm) {
-    var hn = cfg.pr > 0 ? cfg.sb / cfg.pr : 0;
-    pFin = cfg.sm + hn * 60;
-    pSub = cfg.sb.toLocaleString() + ' boxes \u00F7 ' + cfg.pr.toFixed(0) + '/hr = ' + hrsLabel(hn) + ' from shift start';
+    pSub = cfg.sb.toLocaleString() + ' boxes at ' + cfg.pr.toFixed(0) + '/hr (breaks out) = ' +
+      (isFinite(wall) ? hrsLabel(wall / 60) : '\u2014') + ' from shift start';
+  } else {
+    pSub = Math.round(boxesLeft).toLocaleString() + ' left at ' + cfg.pr.toFixed(0) + '/hr (breaks out) = ' +
+      (isFinite(wall) ? hrsLabel(wall / 60) : '\u2014') + ' from now' +
+      (remainingAnchor ? ' \u00B7 after headcount change' : '');
   }
-  document.getElementById('fhPlanVal').textContent = fmt(pFin);
+  document.getElementById('fhPlanVal').textContent = isFinite(wall) ? fmt(pFin) : '\u2014';
   document.getElementById('fhPlanSub').textContent = pSub;
 
-  // Actual finish = remaining boxes / actual rate, from NOW
+  // Actual finish = remaining at productive actual rate, same break walk-forward
   if (li >= 0) {
-    var la  = plan[li].actual;
-    var chk = plan[li].to;
-    var elh = (chk - cfg.sm) / 60;
-    var pk  = cfg.sb - la;
-    if (elh > 0 && pk > 0) {
-      var ar  = pk / elh;
-      var aFin = nmf + (la / ar) * 60;
-      var dif  = Math.round(aFin - pFin);
-      document.getElementById('fhActVal').textContent = fmt(aFin);
-      document.getElementById('fhActSub').textContent = dif === 0 ? 'same as planned \u2713'
-        : Math.abs(dif) + ' min ' + (dif < 0 ? 'early \u2191' : 'late \u2193');
-      var col = dif <= 0 ? 'cg' : dif <= 20 ? 'ca' : 'cr';
-      var vcl = dif <= 0 ? 'vg' : dif <= 20 ? 'va' : 'vr';
-      document.getElementById('fhActCard').className = 'fhc ' + col;
-      document.getElementById('fhActVal').className  = 'fh-val ' + vcl;
+    var ar = actualPackRate(cfg, plan, li);
+    var la = plan[li].actual;
+    var pk = cfg.sb - la;
+    if (ar > 0 && pk > 0) {
+      var aLeft = estimateBoxesLeft(cfg, plan, ar);
+      var aFrom = nmf < cfg.sm ? cfg.sm : nmf;
+      var aWall = wallMinsToPack(aLeft, ar, aFrom, cfg);
+      if (isFinite(aWall)) {
+        var aFin = aFrom + aWall;
+        var dif  = Math.round(aFin - pFin);
+        document.getElementById('fhActVal').textContent = fmt(aFin);
+        document.getElementById('fhActSub').textContent = dif === 0 ? 'same as planned \u2713'
+          : Math.abs(dif) + ' min ' + (dif < 0 ? 'early \u2191' : 'late \u2193');
+        var col = dif <= 0 ? 'cg' : dif <= 20 ? 'ca' : 'cr';
+        var vcl = dif <= 0 ? 'vg' : dif <= 20 ? 'va' : 'vr';
+        document.getElementById('fhActCard').className = 'fhc ' + col;
+        document.getElementById('fhActVal').className  = 'fh-val ' + vcl;
+      } else {
+        document.getElementById('fhActVal').textContent = '\u2014';
+        document.getElementById('fhActSub').textContent = 'not enough capacity in range';
+        document.getElementById('fhActCard').className  = 'fhc cb';
+        document.getElementById('fhActVal').className   = 'fh-val vb';
+      }
     } else {
       document.getElementById('fhActVal').textContent = '\u2014';
       document.getElementById('fhActSub').textContent = pk <= 0 ? 'no boxes packed yet' : 'not enough data yet';
@@ -7656,7 +7690,7 @@ function updateKPIs(plan, cfg) {
     document.getElementById('kcAct').textContent   = '\u2014';
     document.getElementById('kcActSub').textContent = 'no actuals yet';
     document.getElementById('kcAR').textContent    = '\u2014';
-    document.getElementById('kcARSub').textContent  = 'boxes packed / hr';
+    document.getElementById('kcARSub').textContent  = 'boxes packed / productive hr';
     document.getElementById('kcAR').style.color     = '';
     document.getElementById('kcVar').textContent   = '\u2014';
     document.getElementById('kcVarSub').textContent = 'actual vs plan';
@@ -7667,9 +7701,7 @@ function updateKPIs(plan, cfg) {
   }
   var la  = plan[li].actual;
   var chk = plan[li].to;
-  var elh = (chk - cfg.sm) / 60;
-  var pk  = cfg.sb - la;
-  var ar  = (elh > 0 && pk > 0) ? pk / elh : 0;
+  var ar  = actualPackRate(cfg, plan, li);
 
   document.getElementById('kcAct').textContent    = la.toLocaleString();
   document.getElementById('kcActSub').textContent = 'at ' + fmt(chk);
@@ -7683,7 +7715,7 @@ function updateKPIs(plan, cfg) {
     document.getElementById('kcARCard').className   = 'kc ' + (ab ? 'cg' : 'cr');
   } else {
     document.getElementById('kcAR').textContent    = '\u2014';
-    document.getElementById('kcARSub').textContent  = 'boxes packed / hr';
+    document.getElementById('kcARSub').textContent  = 'boxes packed / productive hr';
     document.getElementById('kcAR').style.color     = '';
     document.getElementById('kcARCard').className   = 'kc';
   }
@@ -7768,7 +7800,7 @@ function renderTable(plan, cfg) {
     }
 
     html += '<tr class="' + rCls + '" data-idx="' + k + '">'
-      + '<td class="bold mn">' + fmt(row.from) + '</td>'
+      + '<td class="bold mn">' + fmt(row.to) + '</td>'
       + '<td class="r mn">' + Math.round(row.eff) + '</td>'
       + '<td class="r mn">' + Math.round(row.done).toLocaleString() + '</td>'
       + '<td class="r mn">' + Math.round(row.pLeft).toLocaleString() + '</td>'
@@ -8132,45 +8164,43 @@ function updateTarget() {
   var plan = lastPlan;
   var li   = plan ? latestIdx(plan) : -1;
 
-  // Work out estimated finish times
   var nmf  = nowMinF();
-  var pFin, aFin = null;
-
+  var fromMin = nmf < cfg.sm ? cfg.sm : nmf;
   var blNow = estimateBoxesLeft(cfg, plan);
-  pFin = nmf + (cfg.pr > 0 ? blNow / cfg.pr * 60 : 0);
-  if (nmf < cfg.sm) {
-    pFin = cfg.sm + (cfg.pr > 0 ? cfg.sb / cfg.pr * 60 : 0);
-  }
+  var pWall = wallMinsToPack(blNow, cfg.pr, fromMin, cfg);
+  var pFin = isFinite(pWall) ? fromMin + pWall : fromMin;
+
+  var aFin = null;
   if (li >= 0) {
-    var bl = plan[li].actual;
-    var chk = plan[li].to;
-    var elh = (chk - cfg.sm) / 60;
-    var pk  = cfg.sb - bl;
-    if (elh > 0 && pk > 0) {
-      var ar = pk / elh;
-      aFin   = nmf + (bl / ar) * 60;
+    var ar = actualPackRate(cfg, plan, li);
+    if (ar > 0) {
+      var aLeft = estimateBoxesLeft(cfg, plan, ar);
+      var aWall = wallMinsToPack(aLeft, ar, fromMin, cfg);
+      if (isFinite(aWall)) aFin = fromMin + aWall;
     }
   }
 
-  function renderLine(label, finMin, color, icon) {
+  function renderLine(label, finMin, rateForExtra) {
     var diff = Math.round(tRaw - finMin);
     var html = '<div style="margin-bottom:.3rem">';
     html += '<span style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--fnt);margin-right:.4rem">' + label + '</span>';
     if (diff >= 0) {
-      // Finishing before target — can add boxes
-      var extra = Math.round(cfg.pr * (diff / 60));
-      html += '<span style="font-size:.85rem;font-weight:700;color:var(--grn)">' + icon + ' ' + diff + ' min spare &rarr; can pack ~' + extra.toLocaleString() + ' more boxes</span>';
+      // Spare window uses productive mins (breaks out), same as the plan
+      var spareFrom = Math.min(finMin, tRaw);
+      var spareTo = Math.max(finMin, tRaw);
+      var prodHrs = productiveHoursBetween(spareFrom, spareTo, cfg);
+      var extra = Math.round((rateForExtra || cfg.pr) * prodHrs);
+      html += '<span style="font-size:.85rem;font-weight:700;color:var(--grn)">' + diff + ' min spare &rarr; can pack ~' + extra.toLocaleString() + ' more boxes</span>';
     } else {
-      // Going to miss target — need to push back
-      html += '<span style="font-size:.85rem;font-weight:700;color:var(--red)">' + icon + ' Push back ' + Math.abs(diff) + ' min &rarr; finish ~' + fmt(finMin) + '</span>';
+      html += '<span style="font-size:.85rem;font-weight:700;color:var(--red)">Push back ' + Math.abs(diff) + ' min &rarr; finish ~' + fmt(finMin) + '</span>';
     }
     html += '</div>';
     return html;
   }
 
-  var html = renderLine('Planned rate', pFin, 'grn', '&#128203;');
+  var html = renderLine('Planned rate', pFin, cfg.pr);
   if (aFin !== null) {
-    html += renderLine('Actual rate', aFin, 'grn', '&#9201;');
+    html += renderLine('Actual rate', aFin, actualPackRate(cfg, plan, li));
   }
   el.innerHTML = html;
 }
