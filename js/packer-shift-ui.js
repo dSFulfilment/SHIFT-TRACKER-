@@ -148,18 +148,12 @@
 
     var html = '<h3 class="psr-detail-h">By SKU</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
-    html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU.</p>';
+    html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU. '
+      + 'Total / avg matches the packer flag (Shift h when Intra is used).</p>';
 
     if (!skuLines.length) {
       html += '<p class="psr-prose">No Boxes SKU lines for this packer/shift.</p>';
     } else {
-      var totHours = 0;
-      var totBoxes = 0;
-      var knownHours = 0;
-      var knownTargetBoxes = 0;
-      var knownStrikeHours = 0;
-      var knownStrikeWeight = 0;
-
       html += '<table class="psr-table"><thead><tr>' +
         '<th>SKU</th><th>Station</th><th>Hours</th><th>Boxes</th><th>BPH</th>' +
         '<th>Target</th><th>Strike</th><th>%</th><th>Verdict</th>' +
@@ -167,17 +161,6 @@
         '</tr></thead><tbody>';
 
       skuLines.forEach(function (L) {
-        totHours += L.hours || 0;
-        totBoxes += L.boxes || 0;
-        if (L.targetBph != null && L.hours != null) {
-          knownHours += L.hours;
-          knownTargetBoxes += L.hours * L.targetBph;
-        }
-        if (L.strikeBph != null && L.hours != null) {
-          knownStrikeHours += L.hours;
-          knownStrikeWeight += L.hours * L.strikeBph;
-        }
-
         var stMap = stationsBySku[L.sku] || {};
         var stations = Object.keys(stMap).sort().join(', ') || '—';
 
@@ -216,25 +199,31 @@
           '</tr>';
       });
 
-      var avgBph = totHours > 0 ? totBoxes / totHours : null;
-      var avgTarget = knownHours > 0 ? knownTargetBoxes / knownHours : null;
-      var avgStrike = knownStrikeHours > 0 ? knownStrikeWeight / knownStrikeHours : null;
-      var overallPct = r.pctOfTarget != null
-        ? r.pctOfTarget
-        : (knownTargetBoxes > 0 ? (totBoxes / knownTargetBoxes * 100) : null);
+      var sum = PSR.summarizePackerTotalAvg(r);
+      var hoursCell = sum.useShiftHours
+        ? (sum.packHours.toFixed(2) + ' pack · ' + sum.shiftHours.toFixed(2) + ' shift')
+        : sum.packHours.toFixed(2);
+      var breakNote = (sum.useShiftHours && sum.breakMinutes > 0)
+        ? (' (−' + Math.round(sum.breakMinutes) + 'm breaks)')
+        : '';
 
       html += '<tr class="psr-total-row">' +
         '<td colspan="2"><b>Total / avg</b></td>' +
-        '<td><b>' + totHours.toFixed(2) + '</b></td>' +
-        '<td><b>' + Math.round(totBoxes).toLocaleString() + '</b></td>' +
-        '<td><b>' + (avgBph != null ? avgBph.toFixed(1) : '—') + '</b></td>' +
-        '<td><b>' + (avgTarget != null ? avgTarget.toFixed(1) : '—') + '</b></td>' +
-        '<td><b>' + (avgStrike != null ? avgStrike.toFixed(1) : '—') + '</b></td>' +
-        '<td><b>' + (overallPct != null ? overallPct.toFixed(0) + '%' : '—') + '</b></td>' +
-        '<td><b>' + escapeHtml(r.flag || '—') + '</b></td>' +
+        '<td><b>' + escapeHtml(hoursCell + breakNote) + '</b></td>' +
+        '<td><b>' + Math.round(sum.boxes).toLocaleString() + '</b></td>' +
+        '<td><b>' + (sum.avgBph != null ? sum.avgBph.toFixed(1) : '—') + '</b></td>' +
+        '<td><b>' + (sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—') + '</b></td>' +
+        '<td><b>' + (sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—') + '</b></td>' +
+        '<td><b>' + (sum.pctOfTarget != null ? sum.pctOfTarget.toFixed(0) + '%' : '—') + '</b></td>' +
+        '<td><b>' + escapeHtml(sum.flag || '—') + '</b></td>' +
         '<td colspan="2"></td>' +
         '</tr>';
       html += '</tbody></table>';
+      if (sum.useShiftHours) {
+        html += '<p class="psr-prose psr-note">Total BPH / % / flag use <b>Shift h</b> (Intra'
+          + (sum.breakMinutes > 0 ? ' minus tea/meal' : '')
+          + '), not Pack h. SKU rows still show packing time.</p>';
+      }
     }
 
     if (multiSegs.length) {
@@ -259,7 +248,7 @@
     }
     var total = hours.reduce(function (s, h) { return s + h.boxes; }, 0);
     var html = '<h3 class="psr-detail-h">Boxes each hour</h3>' +
-      '<p class="psr-prose">Intra Hour boxes only — target / flags come from Boxes Packed by Worker.</p>' +
+      '<p class="psr-prose">Intra Hour boxes only — packer target / flags use Shift h (Intra − breaks) when Intra is loaded.</p>' +
       '<table class="psr-table"><thead><tr><th>Hour</th><th>Boxes</th></tr></thead><tbody>';
     hours.forEach(function (h) {
       html += '<tr><td>' + escapeHtml(h.hourLabel) + '</td><td>' + Math.round(h.boxes).toLocaleString() + '</td></tr>';

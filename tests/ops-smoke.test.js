@@ -111,6 +111,8 @@ check(html.indexOf('Boxes each hour') !== -1, 'Intra boxes-each-hour detail pres
 check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.indexOf('Sizes (Boxes)') !== -1,
   'Sizes column / detail present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
+check(html.indexOf('summarizePackerTotalAvg') !== -1, 'Total/avg uses shared Shift-h-aware summary');
+check(html.indexOf('Total BPH / % / flag use') !== -1, 'Total/avg explains Shift h vs Pack h');
 check(html.indexOf('id="psrExportBtn"') !== -1, 'Export report button exists');
 check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlined');
 check(html.indexOf('data-psr-view="mixed"') === -1, 'Separate Mixed SKUs Packer tab removed');

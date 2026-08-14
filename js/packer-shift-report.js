@@ -663,6 +663,57 @@
     };
   }
 
+  /**
+   * Total / avg row for By SKU: use same hours basis as packer % / flag
+   * (Intra − breaks when present) so packing BPH does not contradict the flag.
+   */
+  function summarizePackerTotalAvg(packer) {
+    var r = packer || {};
+    var skuLines = (r.skuLines || []).filter(function (L) {
+      return !(L.verdict && String(L.verdict).indexOf('excluded') === 0);
+    });
+    var totHours = 0;
+    var totBoxes = 0;
+    var knownHours = 0;
+    var knownTargetBoxes = 0;
+    var knownStrikeHours = 0;
+    var knownStrikeWeight = 0;
+    skuLines.forEach(function (L) {
+      totHours += L.hours || 0;
+      totBoxes += L.boxes || 0;
+      if (L.targetBph != null && L.hours != null) {
+        knownHours += L.hours;
+        knownTargetBoxes += L.hours * L.targetBph;
+      }
+      if (L.strikeBph != null && L.hours != null) {
+        knownStrikeHours += L.hours;
+        knownStrikeWeight += L.hours * L.strikeBph;
+      }
+    });
+    var useShift = (r.hoursBasis === 'intra' || r.hoursBasis === 'intra_less_breaks')
+      && r.shiftHours != null && r.shiftHours > 0;
+    var hoursForAvg = useShift ? r.shiftHours : totHours;
+    var avgBph = hoursForAvg > 0 ? totBoxes / hoursForAvg : null;
+    var avgTarget = knownHours > 0 ? knownTargetBoxes / knownHours : null;
+    var avgStrike = knownStrikeHours > 0 ? knownStrikeWeight / knownStrikeHours : null;
+    var overallPct = r.pctOfTarget != null
+      ? r.pctOfTarget
+      : (knownTargetBoxes > 0 ? (totBoxes / knownTargetBoxes * 100) : null);
+    return {
+      packHours: totHours,
+      shiftHours: useShift ? r.shiftHours : null,
+      breakMinutes: r.breakMinutes || 0,
+      useShiftHours: useShift,
+      hoursForAvg: hoursForAvg,
+      boxes: totBoxes,
+      avgBph: avgBph,
+      avgTarget: avgTarget,
+      avgStrike: avgStrike,
+      pctOfTarget: overallPct,
+      flag: r.flag || null
+    };
+  }
+
   function buildByHour(hourLines, morning, afternoon) {
     var skuByWorkerShift = {};
     function index(rows) {
@@ -1472,6 +1523,7 @@
     minutesBetweenHm: minutesBetweenHm,
     breakMinutesByWorkerShift: breakMinutesByWorkerShift,
     breakMinutesLookupFromStorage: breakMinutesLookupFromStorage,
+    summarizePackerTotalAvg: summarizePackerTotalAvg,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
     buildExportWorkbook: buildExportWorkbook,
