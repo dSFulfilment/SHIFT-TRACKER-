@@ -17,6 +17,7 @@
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
   var rawIn = document.getElementById('psrRaw');
+  var execIn = document.getElementById('psrExec');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
@@ -50,6 +51,7 @@
     var hasBoxes = !!(boxesIn && boxesIn.files && boxesIn.files[0]);
     var hasIntra = !!(intraIn && intraIn.files && intraIn.files[0]);
     var hasRaw = !!(rawIn && rawIn.files && rawIn.files[0]);
+    var hasExec = !!(execIn && execIn.files && execIn.files[0]);
     var ok = scriptsOk();
 
     runBtn.disabled = !ok;
@@ -67,11 +69,12 @@
       parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
       parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: not selected');
       parts.push(hasRaw ? ('Raw Data: ' + fileLabel(rawIn)) : 'Raw Data: not selected');
+      parts.push(hasExec ? ('Exec Summary: ' + fileLabel(execIn)) : 'Exec Summary: not selected');
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
         (hasBoxes && hasIntra
-          ? ' → click Build report' + (hasRaw ? '' : ' (Raw Data optional — fills Raw idle/BPH by SKU)')
-          : ' → select Boxes + Intra Hour (+ Raw Data optional), then Build report');
+          ? ' → click Build report'
+          : ' → select Boxes + Intra Hour, then Build report');
     }
   }
 
@@ -296,9 +299,11 @@
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer for <b>By SKU</b> (Boxes score + Raw Data context) and boxes each hour.</p>';
+    html += '<p class="psr-prose">Click a packer for <b>By SKU</b> (Boxes score + Raw Data context). '
+      + '<b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Dandenong South shift hours '
+      + '(Raw Data Shift Hours, else Executive Summary).</p>';
     html += '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>Sizes</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Shift h</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
@@ -306,6 +311,7 @@
         '<td><b>' + escapeHtml(r.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
         '<td>' + sizesCell(r) + '</td>' +
         '<td>' + (r.hours != null ? r.hours.toFixed(2) : '—') + '</td>' +
+        '<td>' + (r.shiftHours != null ? r.shiftHours.toFixed(2) : '—') + '</td>' +
         '<td>' + (r.boxes != null ? Math.round(r.boxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
@@ -313,7 +319,7 @@
         '<td>' + escapeHtml(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="8">' + renderPackerDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="9">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
@@ -376,9 +382,11 @@
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes Packed by Worker</b>, <b>Intra Hour</b>, and optionally <b>Raw Data</b>, then <b>Build report</b>.</p>' +
+      '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
+      '<h2>Hours</h2>' +
+      '<p><b>Pack h</b> = Boxes packing time (scoring). <b>Shift h</b> = Raw Data <b>Shift (Hours)</b> for Dandenong South, or Executive Summary packing/direct hours if Raw has no shift length.</p>' +
       '<h2>One packer view</h2>' +
-      '<p>Morning / Afternoon score from Boxes. Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row.</p>' +
+      '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row.</p>' +
       '<h2>Export</h2>' +
       '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour, etc.).</p>' +
       '</div>';
@@ -424,7 +432,8 @@
     runBtn.disabled = true;
     try {
       var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
-      report = await PSR.buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile);
+      var execFile = (execIn && execIn.files && execIn.files[0]) ? execIn.files[0] : null;
+      report = await PSR.buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile, execFile);
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
@@ -494,6 +503,7 @@
     if (boxesIn) boxesIn.value = '';
     if (intraIn) intraIn.value = '';
     if (rawIn) rawIn.value = '';
+    if (execIn) execIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -501,7 +511,7 @@
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, rawIn].forEach(function (inp) {
+  [boxesIn, intraIn, rawIn, execIn].forEach(function (inp) {
     if (!inp) return;
     inp.addEventListener('change', function () {
       report = null;

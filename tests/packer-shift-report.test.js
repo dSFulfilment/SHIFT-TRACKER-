@@ -105,5 +105,78 @@ check(wb2.SheetNames.indexOf('Sizes (Raw Data)') !== -1 || wb2.SheetNames.indexO
   'export with Raw Data has sizes sheet');
 check(wb2.SheetNames.indexOf('Raw Data export') !== -1, 'export with Raw Data has Raw Data export sheet');
 
+console.log('\nPacker shift report JS — Shift hours (Dandenong South)');
+var execCsv = fs.readFileSync(path.join(__dirname, '../fixtures/packer-shift/Executive_Summary.csv'), 'utf8');
+var execSheet = PSR.csvTextToSheetRows(execCsv, 'Executive_Summary.csv', PSR.EXEC_SUMMARY_COLS);
+var execLoaded = PSR.loadExecutiveSummaryRows(execSheet);
+check(execLoaded.rows.length >= 5, 'Executive Summary fixture loads workers');
+check(execLoaded.facilityFiltered === false, 'Exec Summary without Facility Name treated as DS-only');
+var hanaExec = execLoaded.rows.find(function (r) {
+  return String(r.workerDisplay).toLowerCase().indexOf('hana') !== -1;
+});
+check(hanaExec && hanaExec.shiftHours > 0, 'Exec Summary has Packing Time / direct hours');
+
+var dsOnly = PSR.loadExecutiveSummaryRows([
+  { 'Pnp Worker Name': 'Site A', 'Facility Name': 'Other Site', 'Packing Time (Hours)': 9 },
+  { 'Pnp Worker Name': 'Site DS', 'Facility Name': 'Dandenong South', 'Packing Time (Hours)': 7.5 }
+]);
+check(dsOnly.facilityFiltered === true, 'Exec Summary with Facility Name enables filter');
+check(dsOnly.rows.length === 1 && dsOnly.rows[0].workerDisplay === 'Site DS',
+  'Exec Summary keeps Dandenong South only');
+check(dsOnly.droppedFacility === 1, 'Exec Summary drops other facilities');
+
+var aliceBoxes = [
+  {
+    'Report Date': '2026-08-13',
+    Shift: 'morning_shift',
+    'Pnp Worker Name': 'Alice Smith',
+    'Station Name': 'A1',
+    'Primary Sku': 250,
+    'Boxes Packed': 80,
+    'Packing Time Seconds': 14400
+  }
+];
+var rawShift = [{
+  reportDate: '2026-08-13',
+  facilityName: 'Dandenong South',
+  workerDisplay: 'Alice Smith',
+  workerKey: 'Alice Smith',
+  shiftHours: 7.25,
+  hours: 4,
+  boxes: 80,
+  skus: [250],
+  isMixed: false,
+  boxSkuSizes: '250g',
+  idlePct: 0.1,
+  actualBph: 20,
+  shiftKey: 'morning_shift',
+  shiftLabel: 'Morning'
+}];
+var execAlice = [{
+  workerDisplay: 'Alice Smith',
+  workerKey: 'Alice Smith',
+  shiftHours: 6.5,
+  packingHours: 6.5
+}];
+var fromRaw = PSR.buildReport(aliceBoxes, 0, [], rawShift, execAlice);
+check(fromRaw.morning[0].shiftHours === 7.25, 'Shift h prefers Raw Data Shift (Hours)');
+check(fromRaw.morning[0].shiftHoursSource === 'raw_data', 'shiftHoursSource is raw_data');
+check(Math.abs(fromRaw.morning[0].hours - 4) < 0.01, 'Pack h still from Boxes packing time');
+
+var fromExec = PSR.buildReport(aliceBoxes, 0, [], [], execAlice);
+check(fromExec.morning[0].shiftHours === 6.5, 'Shift h falls back to Executive Summary');
+check(fromExec.morning[0].shiftHoursSource === 'executive_summary', 'shiftHoursSource is executive_summary');
+
+var noShift = PSR.buildReport(aliceBoxes, 0, [], [], []);
+check(noShift.morning[0].shiftHours == null, 'Shift h empty without Raw/Exec');
+
+check(loaded.rows.some(function (r) { return r.shiftHours > 0; }),
+  'Raw Data fixture carries Shift (Hours) for DS rows');
+
+var wbShift = PSR.buildExportWorkbook(fromRaw);
+var morningSheet = wbShift.Sheets['Morning shift'];
+var morningText = JSON.stringify(morningSheet);
+check(morningText.indexOf('Shift hours') !== -1, 'Export Morning shift sheet has Shift hours column');
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

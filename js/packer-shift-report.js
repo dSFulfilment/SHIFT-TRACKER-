@@ -36,6 +36,10 @@
     'Packing Time Seconds', 'Total Boxes Packed', 'Packing Time (Hours)',
     'Boxes per Hour', 'Box Sku Sizes'
   ];
+  // Optional on Raw Data — used for shift length when present (Dandenong South only).
+  var RAW_SHIFT_HOURS_COL = 'Shift (Hours)';
+  var EXEC_SUMMARY_COLS = ['Pnp Worker Name', 'Packing Time (Hours)'];
+  var EXEC_SUMMARY_OPTIONAL = ['Facility Name', 'Average Direct Hours Per Day', 'Total Boxes Packed', 'Boxes per Hour'];
 
   function normHeader(h) {
     return String(h == null ? '' : h).trim().replace(/\s+/g, ' ');
@@ -80,6 +84,10 @@
     'sku sizes': 'Box Sku Sizes',
     'facility name': 'Facility Name',
     'facility': 'Facility Name',
+    'average direct hours per day': 'Average Direct Hours Per Day',
+    'days worked': 'Days Worked',
+    'quartile (vs. own facility)': 'Quartile (vs. own facility)',
+    'quartile (vs. company wide)': 'Quartile (vs. company wide)',
     'seconds per box': 'Seconds per Box'
   };
   function canonicalizeHeader(h) {
@@ -331,6 +339,7 @@
       var bph = num(d['Boxes per Hour']);
       if (bph == null && hours && hours > 0 && boxes != null) bph = boxes / hours;
       var idlePct = num(d['Idle Time %'] != null ? d['Idle Time %'] : d['Idle Time']);
+      var shiftHours = num(d['Shift (Hours)'] != null ? d['Shift (Hours)'] : d['Shift Hours']);
       var first = d['First Scan'];
       var shiftGuess = 'unknown_shift';
       var parsedFirst = parseReportDateHour(first);
@@ -344,6 +353,7 @@
         lastScan: d['Last Scan'],
         packingSeconds: seconds,
         hours: hours,
+        shiftHours: shiftHours,
         boxes: boxes,
         actualBph: bph,
         idlePct: idlePct,
@@ -358,6 +368,79 @@
       });
     });
     return { rows: kept, droppedFacility: droppedFacility, droppedBlank: droppedBlank };
+  }
+
+  /**
+   * Executive Summary — one row per worker. Prefer Dandenong South only:
+   * if Facility Name is present, drop other sites; if absent, treat as already DS-only.
+   */
+  function loadExecutiveSummaryRows(rows) {
+    var kept = [];
+    var droppedFacility = 0;
+    var droppedBlank = 0;
+    var hasFacilityCol = false;
+    (rows || []).forEach(function (d) {
+      if (Object.prototype.hasOwnProperty.call(d, 'Facility Name')) hasFacilityCol = true;
+    });
+    (rows || []).forEach(function (d) {
+      var display = String(d['Pnp Worker Name'] == null ? '' : d['Pnp Worker Name']).trim();
+      if (!display) {
+        droppedBlank += 1;
+        return;
+      }
+      if (hasFacilityCol) {
+        var fac = String(d['Facility Name'] == null ? '' : d['Facility Name']).trim().toLowerCase();
+        if (fac && fac !== FACILITY_NAME.toLowerCase()) {
+          droppedFacility += 1;
+          return;
+        }
+        if (!fac) {
+          droppedFacility += 1;
+          return;
+        }
+      }
+      var hours = num(d['Packing Time (Hours)']);
+      if (hours == null) hours = num(d['Average Direct Hours Per Day']);
+      var seconds = num(d['Packing Time (Seconds)'] != null ? d['Packing Time (Seconds)'] : d['Packing Time Seconds']);
+      if (hours == null && seconds != null) hours = seconds / 3600;
+      kept.push({
+        workerDisplay: display,
+        workerKey: workerKey(display),
+        facilityName: hasFacilityCol ? d['Facility Name'] : FACILITY_NAME,
+        packingHours: hours,
+        shiftHours: hours, // Exec Summary packing/direct hours = day hours for this export
+        boxes: num(d['Total Boxes Packed']),
+        actualBph: num(d['Boxes per Hour']),
+        packingSeconds: seconds
+      });
+    });
+    return {
+      rows: kept,
+      droppedFacility: droppedFacility,
+      droppedBlank: droppedBlank,
+      facilityFiltered: hasFacilityCol
+    };
+  }
+
+  /** Max Shift (Hours) per worker from Dandenong South Raw Data rows. */
+  function shiftHoursByWorker(rawDataRows) {
+    var by = {};
+    (rawDataRows || []).forEach(function (r) {
+      if (r.shiftHours == null || !isFinite(r.shiftHours)) return;
+      if (!by[r.workerKey] || r.shiftHours > by[r.workerKey]) {
+        by[r.workerKey] = r.shiftHours;
+      }
+    });
+    return by;
+  }
+
+  function execHoursByWorker(execRows) {
+    var by = {};
+    (execRows || []).forEach(function (r) {
+      if (r.shiftHours == null || !isFinite(r.shiftHours)) return;
+      by[r.workerKey] = r.shiftHours;
+    });
+    return by;
   }
 
   function rawDataMixedSummary(rawDataRows) {
@@ -498,7 +581,7 @@
     });
   }
 
-  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
@@ -514,6 +597,20 @@
       if (!rawDataByWorker[r.workerKey]) rawDataByWorker[r.workerKey] = [];
       rawDataByWorker[r.workerKey].push(r);
     });
+    var execAll = execSummaryRows || [];
+    // Prefer Raw Data Shift (Hours) for Dandenong South; else Executive Summary packing/direct hours.
+    var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
+    var shiftHoursExec = execHoursByWorker(execAll);
+
+    function resolveShiftHours(workerKey) {
+      if (shiftHoursRaw[workerKey] != null) {
+        return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data' };
+      }
+      if (shiftHoursExec[workerKey] != null) {
+        return { shiftHours: shiftHoursExec[workerKey], shiftHoursSource: 'executive_summary' };
+      }
+      return { shiftHours: null, shiftHoursSource: null };
+    }
 
     var raw = [];
     (boxesRows || []).forEach(function (r) {
@@ -723,12 +820,15 @@
           included.forEach(function (L) {
             if (L.unknownSku) skus.push(String(L.sku));
           });
+          var shNone = resolveShiftHours(key);
           results.push({
             shiftKey: shiftKey,
             shiftLabel: included[0].shiftLabel,
             workerDisplay: display,
             workerKey: key,
             hours: hours,
+            shiftHours: shNone.shiftHours,
+            shiftHoursSource: shNone.shiftHoursSource,
             boxes: boxes,
             targetBoxes: 0,
             pctOfTarget: null,
@@ -767,12 +867,15 @@
           included.forEach(function (L) { if (L.unknownSku) u.push(String(L.sku)); });
           notes = 'no target defined for SKU ' + u.join(', ');
         }
+        var shInfo = resolveShiftHours(key);
         results.push({
           shiftKey: shiftKey,
           shiftLabel: included[0].shiftLabel,
           workerDisplay: display,
           workerKey: key,
           hours: hours,
+          shiftHours: shInfo.shiftHours,
+          shiftHoursSource: shInfo.shiftHoursSource,
           boxes: boxes,
           targetBoxes: targetBoxes,
           strikeBoxes: strikeBoxes,
@@ -842,6 +945,7 @@
       byHour: buildByHour(hourLinesAll, morning, afternoon),
       rawDataRows: rawDataAll,
       rawDataMixed: rawDataMixed,
+      execSummaryRows: execAll,
       warnings: warnings,
       skuTargets: SKU_TARGETS,
       facilityName: FACILITY_NAME
@@ -877,7 +981,24 @@
     return loadRawDataRows(sheetRows);
   }
 
-  async function buildReportFromFiles(boxesFile, intraFile, rawFile) {
+  async function loadExecutiveSummaryFile(execFile) {
+    if (!execFile) {
+      return { rows: [], droppedFacility: 0, droppedBlank: 0, facilityFiltered: false };
+    }
+    var name = execFile.name || 'Executive_Summary.csv';
+    var lower = name.toLowerCase();
+    var sheetRows;
+    if (lower.indexOf('.csv') !== -1) {
+      var text = await fileToText(execFile);
+      sheetRows = csvTextToSheetRows(text, name, EXEC_SUMMARY_COLS);
+    } else {
+      var buf = await fileToArrayBuffer(execFile);
+      sheetRows = readWorkbookArrayBuffer(buf, name, EXEC_SUMMARY_COLS);
+    }
+    return loadExecutiveSummaryRows(sheetRows);
+  }
+
+  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
@@ -886,11 +1007,25 @@
       readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
     );
     var rawParsed = await loadRawDataFile(rawFile || null);
-    var report = buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows, rawParsed.rows);
+    var execParsed = await loadExecutiveSummaryFile(execFile || null);
+    var report = buildReport(
+      boxesParsed.rows,
+      boxesParsed.droppedBlank,
+      intraRows,
+      rawParsed.rows,
+      execParsed.rows
+    );
     report.rawDataMeta = {
       droppedFacility: rawParsed.droppedFacility,
       droppedBlank: rawParsed.droppedBlank,
       fileName: rawFile ? (rawFile.name || '') : ''
+    };
+    report.execSummaryMeta = {
+      droppedFacility: execParsed.droppedFacility,
+      droppedBlank: execParsed.droppedBlank,
+      facilityFiltered: execParsed.facilityFiltered,
+      fileName: execFile ? (execFile.name || '') : '',
+      workers: (execParsed.rows || []).length
     };
     return report;
   }
@@ -915,7 +1050,7 @@
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
       aoa.push([
@@ -923,6 +1058,7 @@
         r.skuMix ? r.skuMix.label : '',
         r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
         r.hours != null ? Number(r.hours.toFixed(2)) : '',
+        r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
         r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
@@ -1168,9 +1304,11 @@
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
     RAW_DATA_COLS: RAW_DATA_COLS,
+    EXEC_SUMMARY_COLS: EXEC_SUMMARY_COLS,
     validateHeaders: validateHeaders,
     parseBoxSkuSizes: parseBoxSkuSizes,
     loadRawDataRows: loadRawDataRows,
+    loadExecutiveSummaryRows: loadExecutiveSummaryRows,
     csvTextToSheetRows: csvTextToSheetRows,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
