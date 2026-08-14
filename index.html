@@ -1307,6 +1307,8 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-note{font-size:.72rem;color:#6B7280;margin-top:8px}
 #tabPacker .psr-hour-block{margin:0 0 16px}
 #tabPacker .psr-hour-head{font-size:.8rem;margin:0 0 6px;color:#374151}
+#tabPacker .psr-mixed{display:inline-block;font-size:.65rem;font-weight:800;letter-spacing:.02em;text-transform:uppercase;color:#9A3412;background:#FFEDD5;border:1px solid #FDBA74;border-radius:4px;padding:1px 6px;margin-right:4px;vertical-align:middle}
+#tabPacker .psr-total-row td{border-top:2px solid #D1D5DB;background:#F9FAFB}
 #tabPacker .psr-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #E5E8EF;border-radius:10px;overflow:hidden}
 #tabPacker .psr-table th{text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid #E5E8EF}
 #tabPacker .psr-table td{padding:8px 10px;font-size:.82rem;border-bottom:1px solid #F1F5F9}
@@ -2127,6 +2129,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         <p class="psr-sub">Dandenong South · performance vs SKU target · Morning &amp; Afternoon</p>
         <div class="psr-actions">
           <button type="button" id="psrRunBtn" class="psr-primary">Build report</button>
+          <button type="button" id="psrExportBtn" disabled>Export report</button>
           <button type="button" id="psrClearBtn">Clear</button>
         </div>
       </div>
@@ -12537,7 +12540,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   }
 
   function rootXLSX() {
-    var X = (typeof XLSX !== 'undefined') ? XLSX : (typeof window !== 'undefined' ? window.XLSX : null);
+    var X = (typeof XLSX !== 'undefined') ? XLSX : null;
+    if (!X && typeof window !== 'undefined') X = window.XLSX;
+    if (!X && typeof global !== 'undefined') X = global.XLSX;
+    if (!X && typeof require === 'function') {
+      try { X = require('./xlsx.mini.min.js'); } catch (e1) {
+        try { X = require('../js/xlsx.mini.min.js'); } catch (e2) { X = null; }
+      }
+    }
     if (!X) throw new Error('SheetJS (XLSX) is not loaded');
     return X;
   }
@@ -12629,9 +12639,12 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     var skuByWorkerShift = {};
     function index(rows) {
       (rows || []).forEach(function (r) {
-        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = (r.skuLines || []).map(function (L) {
-          return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
-        });
+        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = {
+          mix: r.skuMix || null,
+          skus: (r.skuLines || []).map(function (L) {
+            return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
+          })
+        };
       });
     }
     index(morning);
@@ -12655,7 +12668,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         workerDisplay: h.workerDisplay,
         workerKey: h.workerKey,
         boxes: h.boxes,
-        skus: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || []
+        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] }
       });
     });
     return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
@@ -12800,6 +12813,46 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       return bits.join(' ');
     }
 
+    function buildSkuMix(includedLines) {
+      var bySku = {};
+      (includedLines || []).forEach(function (L) {
+        var skuKey = String(L.sku);
+        if (!bySku[skuKey]) {
+          bySku[skuKey] = { sku: L.sku, hours: 0, boxes: 0, unknownSku: !!L.unknownSku };
+        }
+        bySku[skuKey].hours += L.hours || 0;
+        bySku[skuKey].boxes += L.boxes || 0;
+        if (L.unknownSku) bySku[skuKey].unknownSku = true;
+      });
+      var totalHours = 0;
+      var totalBoxes = 0;
+      Object.keys(bySku).forEach(function (k) {
+        totalHours += bySku[k].hours;
+        totalBoxes += bySku[k].boxes;
+      });
+      var parts = Object.keys(bySku).map(function (k) { return bySku[k]; });
+      parts.sort(function (a, b) {
+        if (b.hours !== a.hours) return b.hours - a.hours;
+        return String(a.sku).localeCompare(String(b.sku));
+      });
+      parts.forEach(function (p) {
+        p.hoursShare = totalHours > 0 ? p.hours / totalHours * 100 : null;
+        p.boxesShare = totalBoxes > 0 ? p.boxes / totalBoxes * 100 : null;
+      });
+      var labels = parts.map(function (p) { return String(p.sku); });
+      return {
+        count: parts.length,
+        isMixed: parts.length > 1,
+        label: labels.join(' · ') || '—',
+        summary: parts.length > 1
+          ? ('Mixed (' + parts.length + '): ' + labels.join(' · '))
+          : (labels[0] ? ('SKU ' + labels[0]) : '—'),
+        parts: parts,
+        totalHours: totalHours,
+        totalBoxes: totalBoxes
+      };
+    }
+
     function aggregate(shiftKey) {
       var by = {};
       raw.forEach(function (L) {
@@ -12818,6 +12871,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         var hasUnknown = included.some(function (L) { return L.unknownSku; });
         var display = included[0].workerDisplay;
         var skuRows = skuWhyRows(wlines);
+        var skuMix = buildSkuMix(included);
         var shortN = wlines.filter(function (L) { return !L.included; }).length;
         if (!known.length) {
           var skus = [];
@@ -12838,6 +12892,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
             why: explainWhy('No target defined', null, 0, 0, skuRows),
             boxGap: null,
             skuLines: skuRows,
+            skuMix: skuMix,
             hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
             excludedShortLines: shortN
           });
@@ -12874,6 +12929,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows),
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
+          skuMix: skuMix,
           hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
           excludedShortLines: shortN
         });
@@ -12955,6 +13011,179 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows);
   }
 
+  function sheetFromAoA(aoa) {
+    var X = rootXLSX();
+    return X.utils.aoa_to_sheet(aoa);
+  }
+
+  function appendSheet(wb, name, aoa) {
+    var X = rootXLSX();
+    X.utils.book_append_sheet(wb, sheetFromAoA(aoa), name);
+  }
+
+  function shiftSheetAoA(rows, totals) {
+    var aoa = [
+      ['Shift amount', totals ? totals.shiftLabel : ''],
+      ['Packers', totals ? totals.packers : 0],
+      ['Hours all up', totals ? Number(totals.hours.toFixed(2)) : 0],
+      ['Boxes packed', totals ? Math.round(totals.boxes) : 0],
+      ['Target boxes', totals ? Number(totals.targetBoxes.toFixed(1)) : 0],
+      ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
+      ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
+      [],
+      ['Packer', 'SKU mix', 'Mixed?', 'Hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+    ];
+    (rows || []).forEach(function (r) {
+      aoa.push([
+        r.workerDisplay,
+        r.skuMix ? r.skuMix.label : '',
+        r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
+        r.hours != null ? Number(r.hours.toFixed(2)) : '',
+        r.boxes != null ? Math.round(r.boxes) : '',
+        r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
+        r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+        r.boxGap != null ? Math.round(r.boxGap) : '',
+        r.flag || '',
+        r.why || ''
+      ]);
+    });
+    return aoa;
+  }
+
+  function skuDetailAoA(morning, afternoon) {
+    var aoa = [[
+      'Shift', 'Packer', 'SKU', 'Hours', 'Boxes', 'Actual BPH', 'Target BPH', 'Strike BPH',
+      'Line %', 'Verdict', 'SKU mix', 'Mixed?', 'Packer % of target', 'Packer flag'
+    ]];
+    function addShift(rows) {
+      (rows || []).forEach(function (r) {
+        var lines = r.skuLines || [];
+        var totH = 0;
+        var totB = 0;
+        var knownH = 0;
+        var knownTB = 0;
+        var strikeH = 0;
+        var strikeW = 0;
+        lines.forEach(function (L) {
+          if (L.verdict && String(L.verdict).indexOf('excluded') === 0) return;
+          totH += L.hours || 0;
+          totB += L.boxes || 0;
+          if (L.targetBph != null && L.hours != null) {
+            knownH += L.hours;
+            knownTB += L.hours * L.targetBph;
+          }
+          if (L.strikeBph != null && L.hours != null) {
+            strikeH += L.hours;
+            strikeW += L.hours * L.strikeBph;
+          }
+          aoa.push([
+            r.shiftLabel,
+            r.workerDisplay,
+            L.sku,
+            L.hours != null ? Number(L.hours.toFixed(2)) : '',
+            L.boxes != null ? Math.round(L.boxes) : '',
+            L.actualBph != null ? Number(L.actualBph.toFixed(1)) : '',
+            L.targetBph != null ? L.targetBph : '',
+            L.strikeBph != null ? L.strikeBph : '',
+            L.linePct != null ? Number(L.linePct.toFixed(0)) : '',
+            L.verdict || '',
+            r.skuMix ? r.skuMix.label : '',
+            r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
+            r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+            r.flag || ''
+          ]);
+        });
+        aoa.push([
+          r.shiftLabel,
+          r.workerDisplay,
+          'Total / avg',
+          Number(totH.toFixed(2)),
+          Math.round(totB),
+          totH > 0 ? Number((totB / totH).toFixed(1)) : '',
+          knownH > 0 ? Number((knownTB / knownH).toFixed(1)) : '',
+          strikeH > 0 ? Number((strikeW / strikeH).toFixed(1)) : '',
+          r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(0)) : '',
+          r.flag || '',
+          r.skuMix ? r.skuMix.label : '',
+          r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
+          r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+          r.flag || ''
+        ]);
+      });
+    }
+    addShift(morning);
+    addShift(afternoon);
+    return aoa;
+  }
+
+  function byHourAoA(byHour) {
+    var aoa = [['Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU mix (shift)', 'Mixed?']];
+    (byHour || []).forEach(function (H) {
+      (H.packers || []).forEach(function (p) {
+        var mix = p.skuInfo && p.skuInfo.mix;
+        aoa.push([
+          H.hourLabel,
+          H.shiftLabel,
+          p.workerDisplay,
+          Math.round(p.boxes),
+          mix ? mix.label : '',
+          mix && mix.isMixed ? 'Yes' : 'No'
+        ]);
+      });
+    });
+    return aoa;
+  }
+
+  /** Build a downloadable xlsx workbook object from a built report. */
+  function buildExportWorkbook(report) {
+    var X = rootXLSX();
+    if (!X || !X.utils) throw new Error('SheetJS XLSX not available for export');
+    var wb = X.utils.book_new();
+    var mt = report.morningTotals || {};
+    var at = report.afternoonTotals || {};
+    appendSheet(wb, 'Summary', [
+      ['Packer shift report', FACILITY_NAME],
+      ['Generated', new Date().toISOString()],
+      [],
+      ['Morning packers', mt.packers || 0],
+      ['Morning hours all up', mt.hours != null ? Number(mt.hours.toFixed(2)) : 0],
+      ['Morning boxes', mt.boxes != null ? Math.round(mt.boxes) : 0],
+      ['Morning % of target', mt.pctOfTarget != null ? Number(mt.pctOfTarget.toFixed(1)) : ''],
+      [],
+      ['Afternoon packers', at.packers || 0],
+      ['Afternoon hours all up', at.hours != null ? Number(at.hours.toFixed(2)) : 0],
+      ['Afternoon boxes', at.boxes != null ? Math.round(at.boxes) : 0],
+      ['Afternoon % of target', at.pctOfTarget != null ? Number(at.pctOfTarget.toFixed(1)) : ''],
+      [],
+      ['Notes'],
+      ['Scoring from Boxes Packed by Worker. Intra Hour is for hourly boxes only (no SKU).'],
+      ['Every timed Boxes line is scored. Mixed = more than one SKU on the shift.']
+    ]);
+    appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
+    appendSheet(wb, 'Afternoon shift', shiftSheetAoA(report.afternoon, report.afternoonTotals));
+    appendSheet(wb, 'SKU detail', skuDetailAoA(report.morning, report.afternoon));
+    appendSheet(wb, 'By hour', byHourAoA(report.byHour));
+    var ex = report.exclusions || {};
+    appendSheet(wb, 'Exclusions', [
+      ['Reason', 'Count'],
+      ['Blank worker name or Primary Sku', ex.blank_worker_or_sku || 0],
+      ['Missing Boxes Packed', ex.missing_boxes || 0],
+      ['Missing Packing Time Seconds', ex.missing_time || 0],
+      ['Unknown SKU lines (kept & flagged)', ex.unknown_sku_lines || 0]
+    ]);
+    var skuAoa = [['Primary Sku', 'Target BPH', 'Strike line BPH']];
+    Object.keys(SKU_TARGETS).map(Number).sort(function (a, b) { return a - b; }).forEach(function (sku) {
+      skuAoa.push([sku, SKU_TARGETS[sku].target, SKU_TARGETS[sku].strike]);
+    });
+    appendSheet(wb, 'SKU targets', skuAoa);
+    return wb;
+  }
+
+  function workbookToArrayBuffer(wb) {
+    var X = rootXLSX();
+    return X.write(wb, { bookType: 'xlsx', type: 'array' });
+  }
+
   return {
     SKU_TARGETS: SKU_TARGETS,
     FACILITY_NAME: FACILITY_NAME,
@@ -12963,6 +13192,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     validateHeaders: validateHeaders,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
+    buildExportWorkbook: buildExportWorkbook,
+    workbookToArrayBuffer: workbookToArrayBuffer,
     loadBoxesRows: loadBoxesRows,
     readWorkbookArrayBuffer: readWorkbookArrayBuffer
   };
@@ -12984,6 +13215,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   var viewsEl = document.getElementById('psrViews');
   var panelEl = document.getElementById('psrPanel');
   var runBtn = document.getElementById('psrRunBtn');
+  var exportBtn = document.getElementById('psrExportBtn');
   var clearBtn = document.getElementById('psrClearBtn');
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
@@ -13022,6 +13254,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     var ok = scriptsOk();
 
     runBtn.disabled = !ok;
+    if (exportBtn) exportBtn.disabled = !(ok && report);
 
     if (!ok) {
       statusEl.className = 'psr-status err';
@@ -13074,6 +13307,41 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       '</div>';
   }
 
+  function renderSkuMixDetail(r) {
+    var mix = r.skuMix;
+    if (!mix || !mix.parts || !mix.parts.length) {
+      return '<h3 class="psr-detail-h">SKU mix</h3><p class="psr-prose">No SKUs.</p>';
+    }
+    var html = '<h3 class="psr-detail-h">SKU mix</h3>';
+    if (mix.isMixed) {
+      html += '<p class="psr-why"><b>Mixed SKUs</b> — ' + escapeHtml(mix.label) +
+        ' (' + mix.count + ' SKUs this shift).</p>';
+    } else {
+      html += '<p class="psr-why">Single SKU — ' + escapeHtml(mix.label) + '.</p>';
+    }
+    html += '<table class="psr-table"><thead><tr>' +
+      '<th>SKU</th><th>Hours</th><th>% of hours</th><th>Boxes</th><th>% of boxes</th>' +
+      '</tr></thead><tbody>';
+    mix.parts.forEach(function (p) {
+      html += '<tr' + (mix.isMixed ? ' class="psr-mix-row"' : '') + '>' +
+        '<td>' + escapeHtml(p.sku) + (p.unknownSku ? ' <em>(no target)</em>' : '') + '</td>' +
+        '<td>' + p.hours.toFixed(2) + '</td>' +
+        '<td>' + (p.hoursShare != null ? p.hoursShare.toFixed(0) + '%' : '—') + '</td>' +
+        '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
+        '<td>' + (p.boxesShare != null ? p.boxesShare.toFixed(0) + '%' : '—') + '</td>' +
+        '</tr>';
+    });
+    html += '<tr class="psr-total-row">' +
+      '<td><b>Total</b></td>' +
+      '<td><b>' + mix.totalHours.toFixed(2) + '</b></td>' +
+      '<td><b>100%</b></td>' +
+      '<td><b>' + Math.round(mix.totalBoxes).toLocaleString() + '</b></td>' +
+      '<td><b>100%</b></td>' +
+      '</tr>';
+    html += '</tbody></table>';
+    return html;
+  }
+
   function renderHourDetail(r) {
     var hours = r.hourLines || [];
     if (!hours.length) {
@@ -13086,17 +13354,44 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     hours.forEach(function (h) {
       html += '<tr><td>' + escapeHtml(h.hourLabel) + '</td><td>' + Math.round(h.boxes).toLocaleString() + '</td></tr>';
     });
-    html += '<tr><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
+    html += '<tr class="psr-total-row"><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
     html += '</tbody></table>';
     return html;
   }
 
   function renderSkuDetail(r) {
-    var html = '<h3 class="psr-detail-h">SKUs on this shift</h3>';
+    var html = '<h3 class="psr-detail-h">SKU performance</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
     if (!r.skuLines || !r.skuLines.length) {
       return html + '<p class="psr-prose">No SKU lines.</p>';
     }
+
+    var totHours = 0;
+    var totBoxes = 0;
+    var knownHours = 0;
+    var knownTargetBoxes = 0;
+    var knownStrikeHours = 0;
+    var knownStrikeWeight = 0;
+    r.skuLines.forEach(function (L) {
+      if (L.verdict && String(L.verdict).indexOf('excluded') === 0) return;
+      totHours += L.hours || 0;
+      totBoxes += L.boxes || 0;
+      if (L.targetBph != null && L.hours != null) {
+        knownHours += L.hours;
+        knownTargetBoxes += L.hours * L.targetBph;
+      }
+      if (L.strikeBph != null && L.hours != null) {
+        knownStrikeHours += L.hours;
+        knownStrikeWeight += L.hours * L.strikeBph;
+      }
+    });
+    var avgBph = totHours > 0 ? totBoxes / totHours : null;
+    var avgTarget = knownHours > 0 ? knownTargetBoxes / knownHours : null;
+    var avgStrike = knownStrikeHours > 0 ? knownStrikeWeight / knownStrikeHours : null;
+    var overallPct = r.pctOfTarget != null
+      ? r.pctOfTarget
+      : (knownTargetBoxes > 0 ? (totBoxes / knownTargetBoxes * 100) : null);
+
     html += '<table class="psr-table"><thead><tr>' +
       '<th>SKU</th><th>Hours</th><th>Boxes</th><th>Actual BPH</th><th>Target</th><th>Strike</th><th>Line %</th><th>Verdict</th>' +
       '</tr></thead><tbody>';
@@ -13112,28 +13407,54 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         '<td>' + escapeHtml(L.verdict) + '</td>' +
         '</tr>';
     });
+    html += '<tr class="psr-total-row">' +
+      '<td><b>Total / avg</b></td>' +
+      '<td><b>' + totHours.toFixed(2) + '</b></td>' +
+      '<td><b>' + Math.round(totBoxes).toLocaleString() + '</b></td>' +
+      '<td><b>' + (avgBph != null ? avgBph.toFixed(1) : '—') + '</b></td>' +
+      '<td><b>' + (avgTarget != null ? avgTarget.toFixed(1) : '—') + '</b></td>' +
+      '<td><b>' + (avgStrike != null ? avgStrike.toFixed(1) : '—') + '</b></td>' +
+      '<td><b>' + (overallPct != null ? overallPct.toFixed(0) + '%' : '—') + '</b></td>' +
+      '<td><b>' + escapeHtml(r.flag || '—') + '</b></td>' +
+      '</tr>';
     html += '</tbody></table>';
-    html += '<p class="psr-prose psr-note">Intra Hour has boxes per hour but no SKU — SKUs above are from Boxes Packed for the whole shift, not split by hour.</p>';
+    html += '<p class="psr-prose psr-note">Total hours = all SKU hours this shift. Avg BPH = total boxes ÷ total hours. Avg target/strike are hours-weighted. Line % on the total row is overall % of target.</p>';
     return html;
   }
 
   function renderPackerDetail(r) {
-    return '<div class="psr-packer-detail">' + renderHourDetail(r) + renderSkuDetail(r) + '</div>';
+    return '<div class="psr-packer-detail">' +
+      renderSkuMixDetail(r) +
+      renderHourDetail(r) +
+      renderSkuDetail(r) +
+      '</div>';
+  }
+
+  function mixCell(r) {
+    var mix = r.skuMix;
+    if (!mix) return '—';
+    if (mix.isMixed) {
+      return '<span class="psr-mixed">Mixed</span> ' + escapeHtml(mix.label);
+    }
+    return escapeHtml(mix.label);
   }
 
   function renderShiftTable(rows, totals) {
     if (!rows.length) {
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
+    var mixedN = rows.filter(function (r) { return r.skuMix && r.skuMix.isMixed; }).length;
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer for boxes each hour and which SKUs they were on.</p>';
+    html += '<p class="psr-prose">Click a packer for SKU mix, boxes each hour, and SKU performance. ' +
+      '<b>' + mixedN + '</b> packer' + (mixedN === 1 ? '' : 's') + ' on mixed SKUs this shift.</p>';
     html += '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Packer</th><th>SKU mix</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
       html += '<tr class="' + flagClass(r.flag) + ' psr-row" data-packer="' + escapeHtml(r.workerDisplay) + '" data-idx="' + idx + '" style="cursor:pointer">' +
         '<td><b>' + escapeHtml(r.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
+        '<td>' + mixCell(r) + '</td>' +
         '<td>' + (r.hours != null ? r.hours.toFixed(2) : '—') + '</td>' +
         '<td>' + (r.boxes != null ? Math.round(r.boxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
@@ -13142,7 +13463,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         '<td>' + escapeHtml(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="7">' + renderPackerDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="8">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
@@ -13154,23 +13475,26 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     if (!rows.length) {
       return '<p class="psr-prose">No Intra Hour rows loaded.</p>';
     }
-    var html = '<p class="psr-prose">Boxes packed each clock hour. Expand a packer to see which SKUs they worked on that shift (SKU is not in the Intra export).</p>';
+    var html = '<p class="psr-prose">Boxes packed each clock hour. SKU mix is for the whole shift (Intra has no SKU column).</p>';
     rows.forEach(function (H) {
       html += '<div class="psr-hour-block">' +
         '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +
         escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' boxes · ' +
         H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') + '</div>';
-      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>SKUs on shift</th></tr></thead><tbody>';
+      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>SKU mix (shift)</th></tr></thead><tbody>';
       H.packers.forEach(function (p) {
-        var skuTxt = (p.skus && p.skus.length)
-          ? p.skus.map(function (s) {
-            return 'SKU ' + s.sku + ' (' + Math.round(s.boxes || 0) + ' boxes)';
-          }).join(', ')
-          : '—';
+        var info = p.skuInfo || {};
+        var mix = info.mix;
+        var mixTxt = '—';
+        if (mix) {
+          mixTxt = mix.isMixed
+            ? ('Mixed: ' + mix.label)
+            : ('SKU ' + mix.label);
+        }
         html += '<tr>' +
           '<td><b>' + escapeHtml(p.workerDisplay) + '</b></td>' +
           '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
-          '<td>' + escapeHtml(skuTxt) + '</td>' +
+          '<td>' + escapeHtml(mixTxt) + '</td>' +
           '</tr>';
       });
       html += '</tbody></table></div>';
@@ -13209,7 +13533,9 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>.</p>' +
       '<h2>Hour + SKU</h2>' +
-      '<p>Click a packer (or open <b>By hour</b>) to see boxes each hour from Intra, and which SKUs they were on from Boxes. The Intra export does not include SKU, so hour and SKU cannot be joined into one cell.</p>' +
+      '<p>Click a packer (or open <b>By hour</b>) to see boxes each hour from Intra, SKU mix and performance from Boxes. The Intra export does not include SKU, so hour and SKU cannot be joined into one cell. Packers on more than one SKU are marked <b>Mixed</b>.</p>' +
+      '<h2>Export</h2>' +
+      '<p>After Build report, click <b>Export report</b> to download an Excel workbook with Summary, Morning, Afternoon, SKU detail (with Total/avg), By hour, Exclusions, and SKU targets.</p>' +
       '</div>';
   }
 
@@ -13266,6 +13592,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       statusEl.textContent = bits.join(' · ');
       view = 'morning';
       render();
+      refreshReadyState();
       toast('Report ready');
     } catch (e) {
       report = null;
@@ -13277,6 +13604,40 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       console.error(e);
     } finally {
       runBtn.disabled = !scriptsOk();
+      if (exportBtn) exportBtn.disabled = !(scriptsOk() && report);
+    }
+  }
+
+  function downloadExport() {
+    if (!report) {
+      toast('Build report first');
+      return;
+    }
+    if (!scriptsOk() || typeof PSR.buildExportWorkbook !== 'function') {
+      toast('Export not available');
+      return;
+    }
+    try {
+      var wb = PSR.buildExportWorkbook(report);
+      var buf = PSR.workbookToArrayBuffer(wb);
+      var blob = new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = 'packer_shift_report_' + stamp + '.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      toast('Report downloaded');
+    } catch (e) {
+      console.error(e);
+      toast('Export failed');
+      statusEl.className = 'psr-status err';
+      statusEl.textContent = (e && e.message) ? e.message : String(e);
     }
   }
 
@@ -13300,6 +13661,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     });
   });
   runBtn.addEventListener('click', function () { run(); });
+  if (exportBtn) exportBtn.addEventListener('click', downloadExport);
   clearBtn.addEventListener('click', clearAll);
   viewsEl.addEventListener('click', function (e) {
     var tab = e.target && e.target.closest ? e.target.closest('[data-psr-view]') : null;

@@ -50,6 +50,16 @@ var afternoon = {};
 report.afternoon.forEach(function (r) { afternoon[r.workerDisplay] = r; });
 check((afternoon['Alice Smith'].hourLines || []).some(function (h) { return h.hour >= 14; }),
   'Alice afternoon has Intra hours from 14:00+');
+check(morning['Alice Smith'].skuMix && morning['Alice Smith'].skuMix.isMixed === true, 'Alice morning is mixed SKUs');
+check(morning['Alice Smith'].skuMix.parts.length === 2, 'Alice morning mix has 2 SKUs');
+check(morning['Bob Jones'].skuMix && morning['Bob Jones'].skuMix.isMixed === false, 'Bob morning is single SKU');
+
+var wb = PSR.buildExportWorkbook(report);
+check(wb && wb.SheetNames && wb.SheetNames.indexOf('Morning shift') !== -1, 'Export has Morning shift sheet');
+check(wb.SheetNames.indexOf('SKU detail') !== -1, 'Export has SKU detail sheet');
+check(wb.SheetNames.indexOf('By hour') !== -1, 'Export has By hour sheet');
+var buf = PSR.workbookToArrayBuffer(wb);
+check(buf && buf.byteLength > 1000, 'Export workbook writes bytes');
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);
