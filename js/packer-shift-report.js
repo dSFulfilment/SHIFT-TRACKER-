@@ -23,7 +23,6 @@
     700: { target: 21, strike: 19.0 }
   };
   var FACILITY_NAME = 'Dandenong South';
-  var MIN_HOURS = 0.25;
 
   var BOXES_COLS = [
     'Report Date', 'Shift', 'Pnp Worker Name', 'Station Name', 'Primary Sku',
@@ -200,7 +199,6 @@
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
       missing_time: 0,
-      under_15_min: 0,
       unknown_sku_lines: 0
     };
     var warnings = [];
@@ -257,18 +255,12 @@
         line.unknownSku = true;
         exclusions.unknown_sku_lines += 1;
       }
-      if (line.hours < MIN_HOURS) {
-        line.included = false;
-        line.excludeReason = 'Under 15-minute filter';
-        exclusions.under_15_min += 1;
-      } else {
-        line.included = true;
-      }
+      line.included = true;
       raw.push(line);
     });
 
     function lineVerdict(L) {
-      if (!L.included) return 'excluded (<15 min)';
+      if (!L.included) return 'excluded';
       if (L.unknownSku || L.targetBph == null) return 'no target';
       if (L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph) return 'under strike';
       if (L.actualBph != null && L.targetBph != null && L.actualBph < L.targetBph) return 'under target';
@@ -331,7 +323,7 @@
       }
       var excluded = skuRows.filter(function (r) { return r.verdict.indexOf('excluded') === 0; });
       if (excluded.length) {
-        bits.push(excluded.length + ' short SKU line(s) under 15 min left out of the score (changeover noise).');
+        bits.push(excluded.length + ' incomplete SKU line(s) left out (missing boxes or packing time).');
       }
       return bits.join(' ');
     }
@@ -354,9 +346,7 @@
         var hasUnknown = included.some(function (L) { return L.unknownSku; });
         var display = included[0].workerDisplay;
         var skuRows = skuWhyRows(wlines);
-        var shortN = wlines.filter(function (L) {
-          return !L.included && L.excludeReason === 'Under 15-minute filter';
-        }).length;
+        var shortN = wlines.filter(function (L) { return !L.included; }).length;
         if (!known.length) {
           var skus = [];
           included.forEach(function (L) {
@@ -462,8 +452,7 @@
       intraRows: intraRows || [],
       warnings: warnings,
       skuTargets: SKU_TARGETS,
-      facilityName: FACILITY_NAME,
-      minHours: MIN_HOURS
+      facilityName: FACILITY_NAME
     };
   }
 
@@ -491,7 +480,6 @@
   return {
     SKU_TARGETS: SKU_TARGETS,
     FACILITY_NAME: FACILITY_NAME,
-    MIN_HOURS: MIN_HOURS,
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
     validateHeaders: validateHeaders,

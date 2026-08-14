@@ -48,10 +48,12 @@ class FixtureReportTests(unittest.TestCase):
     def test_blank_rows_dropped(self):
         self.assertGreaterEqual(self.boxes_dropped["blank_worker_or_sku"], 2)
 
-    def test_under_15_min_excluded(self):
-        self.assertGreaterEqual(self.report.exclusions.under_15_min, 1)
+    def test_short_lines_still_scored(self):
         names = {r.worker_display for r in self.report.morning}
-        self.assertNotIn("Eve Short", names)
+        self.assertIn("Eve Short", names)
+        by_name = {r.worker_display: r for r in self.report.morning}
+        self.assertEqual(by_name["Eve Short"].flag, "Below target")
+        self.assertFalse(hasattr(self.report.exclusions, "under_15_min") and self.report.exclusions.under_15_min)
 
     def test_morning_flags(self):
         by_name = {r.worker_display: r for r in self.report.morning}

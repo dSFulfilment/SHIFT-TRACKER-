@@ -126,7 +126,7 @@
 
   function renderShiftTable(rows, totals) {
     if (!rows.length) {
-      return '<p class="psr-prose">No included packers for this shift (after the 15-minute rule).</p>';
+      return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Click a packer to see which SKUs made the shift work — or didn’t.</p>';
@@ -158,7 +158,6 @@
       ['Blank worker name or Primary Sku', e.blank_worker_or_sku],
       ['Missing Boxes Packed', e.missing_boxes],
       ['Missing Packing Time Seconds', e.missing_time],
-      ['Under 15-minute filter (changeover/setup noise)', e.under_15_min],
       ['Unknown SKU lines (kept & flagged, not dropped)', e.unknown_sku_lines]
     ];
     var html = '<table class="psr-table"><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody>';
@@ -182,7 +181,7 @@
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Scoring uses Boxes only; Intra is kept for the hour reference view.</p>' +
+      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Every Boxes line with packing time is scored — nothing is dropped for being short. Intra is kept for the hour reference view.</p>' +
       '<h2>Shift amount / why</h2>' +
       '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';

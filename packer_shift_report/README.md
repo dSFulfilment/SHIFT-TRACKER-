@@ -33,7 +33,7 @@ python -m packer_shift_report \
 | Raw data | Every packer+SKU line; Hours / BPH / targets as formulas |
 | Morning shift | One row per packer, worst→best, red/amber/green |
 | Afternoon shift | Same for afternoon |
-| Exclusions | Counts by reason (blank SKU, &lt;15 min, etc.) |
+| Exclusions | Counts by reason (blank SKU, missing fields, etc.) |
 | Intra hour (reference) | Kept for a later hour-slowdown view |
 
 Morning / Afternoon metrics use `SUMIFS` into Raw data. Target BPH uses `INDEX`/`MATCH` into SKU targets.
@@ -41,7 +41,7 @@ Morning / Afternoon metrics use `SUMIFS` into Raw data. Target BPH uses `INDEX`/
 ## Rules (summary)
 
 - Inputs: **Boxes Packed by Worker** (scoring) + **Intra Hour** (reference only)
-- Hours on SKU = Packing Time Seconds / 3600; drop lines &lt; 0.25 h
+- Hours on SKU = Packing Time Seconds / 3600; **all** timed lines are scored (no short-line filter)
 - % of target = boxes ÷ Σ(hours × SKU target) on included known-SKU lines
 - Flags: Below target / Dipped below strike / On/above target
 - Unknown Primary Sku → keep line, flag “no target defined for SKU X” (never guess)

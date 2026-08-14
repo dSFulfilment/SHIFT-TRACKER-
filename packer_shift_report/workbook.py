@@ -10,7 +10,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .compute import PackerShiftResult, ReportData
-from .constants import MIN_HOURS_ON_SKU, SKU_TARGETS
+from .constants import SKU_TARGETS
 
 # Sheet titles (used in formulas — keep stable)
 SHEET_HOW = "How this works"
@@ -72,10 +72,9 @@ def _write_how(ws, data: ReportData):
         "Exports are assumed to be the Dandenong South shift files you selected.",
         "",
         "How each packer+SKU line is measured",
-        f"• Hours on SKU = Packing Time Seconds ÷ 3600",
+        "• Hours on SKU = Packing Time Seconds ÷ 3600",
         "• Actual BPH = Boxes Packed ÷ Hours on SKU",
-        f"• Lines under {MIN_HOURS_ON_SKU:.2f} hours (15 minutes) are excluded — that is usually changeover/",
-        "  setup noise (1–2 slow boxes right after a SKU switch), not real shift performance.",
+        "• Every line with boxes and packing time is included — nothing is dropped for being short.",
         "",
         "How the shift score is calculated (per packer, per shift)",
         "• % of target = (total Boxes Packed on included lines) ÷ (total of Hours×SKU Target BPH",
@@ -214,8 +213,8 @@ def _write_raw(ws, data: ReportData):
             13,
             f'=IF(OR(I{i}="",K{i}="",K{i}="no target defined"),"",I{i}*K{i})',
         )
-        # Include flag: 1 = long enough for scoring (unknown SKU still 1 — flagged in notes)
-        ws.cell(i, 14, f'=IF(I{i}="","",IF(I{i}<{MIN_HOURS_ON_SKU},0,1))')
+        # Include flag: 1 when hours can be computed (unknown SKU still 1 — flagged in notes)
+        ws.cell(i, 14, f'=IF(I{i}="","",1)')
         ws.cell(
             i,
             15,

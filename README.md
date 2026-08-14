@@ -23,7 +23,7 @@ pip install -r requirements.txt
 python -m packer_shift_report --dir ./exports --out packer_shift_report.xlsx
 ```
 
-See `packer_shift_report/README.md` for column validation, the 15-minute filter, and formula sheets.
+See `packer_shift_report/README.md` for column validation and formula sheets.
 
 ## Optional developer tests
 

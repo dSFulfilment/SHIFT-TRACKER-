@@ -31,11 +31,10 @@ check(Math.abs(morning['Alice Smith'].pctOfTarget - (130 / 110 * 100)) < 0.01, '
 check(morning['Bob Jones'] && morning['Bob Jones'].flag === 'Below target', 'Bob below target');
 check(morning['Bob Jones'].why && morning['Bob Jones'].why.indexOf('short by') !== -1, 'Bob why explains shortfall');
 check(morning['Bob Jones'].skuLines && morning['Bob Jones'].skuLines.length >= 1, 'Bob has SKU breakdown');
-check(report.morningTotals && report.morningTotals.packers === 2, 'Morning shift totals packers');
-check(!morning['Eve Short'], 'Eve under 15 min excluded from morning');
+check(report.morningTotals && report.morningTotals.packers === 3, 'Morning shift totals packers');
+check(morning['Eve Short'] && morning['Eve Short'].flag === 'Below target', 'Eve short line still scored');
 check(report.afternoon.length === 1 && report.afternoon[0].workerDisplay === 'Alice Smith', 'Alice afternoon separate row');
-check(report.exclusions.under_15_min === 1, 'under_15_min counted');
-check(report.exclusions.not_dandenong_south == null, 'no facility-summary exclusion');
+check(report.exclusions.under_15_min == null, 'no under-15-min exclusion');
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .constants import MIN_HOURS_ON_SKU, SKU_TARGETS
+from .constants import SKU_TARGETS
 from .load import normalize_worker_key, parse_sku
 
 
@@ -14,7 +14,6 @@ class ExclusionStats:
     blank_worker_or_sku: int = 0
     missing_boxes: int = 0
     missing_time: int = 0
-    under_15_min: int = 0
     unknown_sku_lines: int = 0  # included but flagged — not an exclusion
 
     def as_rows(self) -> List[Tuple[str, int]]:
@@ -22,7 +21,6 @@ class ExclusionStats:
             ("Blank worker name or Primary Sku (trailing totals / incomplete rows)", self.blank_worker_or_sku),
             ("Missing Boxes Packed", self.missing_boxes),
             ("Missing Packing Time Seconds", self.missing_time),
-            ("Under 15-minute filter (Hours on SKU < 0.25 — changeover/setup noise)", self.under_15_min),
             ("Lines with Primary Sku not in target table (kept, flagged — not dropped)", self.unknown_sku_lines),
         ]
 
@@ -209,10 +207,6 @@ def build_raw_lines(
 
         included = True
         reason = ""
-        if hours < MIN_HOURS_ON_SKU:
-            included = False
-            reason = "Under 15-minute filter"
-            exclusions.under_15_min += 1
 
         lines.append(
             RawLine(
@@ -240,7 +234,7 @@ def build_raw_lines(
 
 def _line_verdict(line: RawLine) -> str:
     if not line.included:
-        return "excluded (<15 min)"
+        return "excluded"
     if line.unknown_sku or line.target_bph is None:
         return "no target"
     if line.actual_bph is not None and line.strike_bph is not None and line.actual_bph < line.strike_bph:
@@ -332,9 +326,7 @@ def explain_why(
         )
     excluded = [r for r in sku_rows if r.verdict.startswith("excluded")]
     if excluded:
-        bits.append(
-            f"{len(excluded)} short SKU line(s) under 15 min left out of the score (changeover noise)."
-        )
+        bits.append(f"{len(excluded)} incomplete SKU line(s) left out (missing boxes or packing time).")
     return " ".join(bits)
 
 
@@ -383,7 +375,7 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
         boxes = sum(L.boxes for L in included)
         known = [L for L in included if L.target_bph is not None]
         has_unknown = any(L.unknown_sku for L in included)
-        short_n = sum(1 for L in wlines if (not L.included) and L.exclude_reason == "Under 15-minute filter")
+        short_n = sum(1 for L in wlines if not L.included)
         sku_rows = _sku_why_rows(wlines)
 
         if not known:

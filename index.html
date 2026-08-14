@@ -12388,7 +12388,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     700: { target: 21, strike: 19.0 }
   };
   var FACILITY_NAME = 'Dandenong South';
-  var MIN_HOURS = 0.25;
 
   var BOXES_COLS = [
     'Report Date', 'Shift', 'Pnp Worker Name', 'Station Name', 'Primary Sku',
@@ -12565,7 +12564,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
       missing_time: 0,
-      under_15_min: 0,
       unknown_sku_lines: 0
     };
     var warnings = [];
@@ -12622,18 +12620,12 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         line.unknownSku = true;
         exclusions.unknown_sku_lines += 1;
       }
-      if (line.hours < MIN_HOURS) {
-        line.included = false;
-        line.excludeReason = 'Under 15-minute filter';
-        exclusions.under_15_min += 1;
-      } else {
-        line.included = true;
-      }
+      line.included = true;
       raw.push(line);
     });
 
     function lineVerdict(L) {
-      if (!L.included) return 'excluded (<15 min)';
+      if (!L.included) return 'excluded';
       if (L.unknownSku || L.targetBph == null) return 'no target';
       if (L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph) return 'under strike';
       if (L.actualBph != null && L.targetBph != null && L.actualBph < L.targetBph) return 'under target';
@@ -12696,7 +12688,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       }
       var excluded = skuRows.filter(function (r) { return r.verdict.indexOf('excluded') === 0; });
       if (excluded.length) {
-        bits.push(excluded.length + ' short SKU line(s) under 15 min left out of the score (changeover noise).');
+        bits.push(excluded.length + ' incomplete SKU line(s) left out (missing boxes or packing time).');
       }
       return bits.join(' ');
     }
@@ -12719,9 +12711,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         var hasUnknown = included.some(function (L) { return L.unknownSku; });
         var display = included[0].workerDisplay;
         var skuRows = skuWhyRows(wlines);
-        var shortN = wlines.filter(function (L) {
-          return !L.included && L.excludeReason === 'Under 15-minute filter';
-        }).length;
+        var shortN = wlines.filter(function (L) { return !L.included; }).length;
         if (!known.length) {
           var skus = [];
           included.forEach(function (L) {
@@ -12827,8 +12817,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       intraRows: intraRows || [],
       warnings: warnings,
       skuTargets: SKU_TARGETS,
-      facilityName: FACILITY_NAME,
-      minHours: MIN_HOURS
+      facilityName: FACILITY_NAME
     };
   }
 
@@ -12856,7 +12845,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   return {
     SKU_TARGETS: SKU_TARGETS,
     FACILITY_NAME: FACILITY_NAME,
-    MIN_HOURS: MIN_HOURS,
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
     validateHeaders: validateHeaders,
@@ -12997,7 +12985,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   function renderShiftTable(rows, totals) {
     if (!rows.length) {
-      return '<p class="psr-prose">No included packers for this shift (after the 15-minute rule).</p>';
+      return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Click a packer to see which SKUs made the shift work — or didn’t.</p>';
@@ -13029,7 +13017,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       ['Blank worker name or Primary Sku', e.blank_worker_or_sku],
       ['Missing Boxes Packed', e.missing_boxes],
       ['Missing Packing Time Seconds', e.missing_time],
-      ['Under 15-minute filter (changeover/setup noise)', e.under_15_min],
       ['Unknown SKU lines (kept & flagged, not dropped)', e.unknown_sku_lines]
     ];
     var html = '<table class="psr-table"><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody>';
@@ -13053,7 +13040,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Scoring uses Boxes only; Intra is kept for the hour reference view.</p>' +
+      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Every Boxes line with packing time is scored — nothing is dropped for being short. Intra is kept for the hour reference view.</p>' +
       '<h2>Shift amount / why</h2>' +
       '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';
