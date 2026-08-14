@@ -13207,10 +13207,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
     // Optional map kept for compatibility; auto breaks (15m >4h, +30m >6h) always apply.
     var breakMinutesMap = breakMinutesByWorkerShiftMap || {};
-    // Prefer Intra clock-hour count (minus auto breaks) for shift length; else Raw; else Exec.
-    var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
-    var shiftHoursExec = execHoursByWorker(execAll);
-
+    // Prefer Intra clock-hour count (minus auto breaks) for shift length.
+    // Raw Data / Exec Summary Shift (Hours) are not used for Shift h yet.
     function resolveShiftHours(workerKey, shiftKey) {
       var ik = workerKey + '|' + shiftKey;
       if (intraHoursMap[ik] != null && intraHoursMap[ik] > 0) {
@@ -13220,9 +13218,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           brk = breakMinutesMap[ik];
         }
         var eff = Math.max(0, intraH - (brk > 0 ? brk / 60 : 0));
-        if (eff <= 0) {
-          // Breaks consumed the Intra span — fall through to Raw/Exec/packing.
-        } else {
+        if (eff > 0) {
           return {
             shiftHours: eff,
             shiftHoursSource: brk > 0 ? 'intra_less_breaks' : 'intra',
@@ -13230,26 +13226,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
             breakMinutes: brk > 0 ? brk : 0
           };
         }
-      }
-      if (shiftHoursRaw[workerKey] != null) {
-        var rawH = shiftHoursRaw[workerKey];
-        var rawBrk = autoBreakMinutes(rawH);
-        return {
-          shiftHours: Math.max(0, rawH - rawBrk / 60),
-          shiftHoursSource: rawBrk > 0 ? 'raw_data_less_breaks' : 'raw_data',
-          intraHours: null,
-          breakMinutes: rawBrk
-        };
-      }
-      if (shiftHoursExec[workerKey] != null) {
-        var execH = shiftHoursExec[workerKey];
-        var execBrk = autoBreakMinutes(execH);
-        return {
-          shiftHours: Math.max(0, execH - execBrk / 60),
-          shiftHoursSource: execBrk > 0 ? 'executive_summary_less_breaks' : 'executive_summary',
-          intraHours: null,
-          breakMinutes: execBrk
-        };
       }
       return { shiftHours: null, shiftHoursSource: null, intraHours: null, breakMinutes: 0 };
     }
@@ -14456,7 +14432,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
-      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Else Raw Data / Executive Summary (same auto-break rule).</p>' +
+      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Raw Data / Executive Summary shift times are not used for Shift h yet.</p>' +
       '<h2>What each file is for</h2>' +
       '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +

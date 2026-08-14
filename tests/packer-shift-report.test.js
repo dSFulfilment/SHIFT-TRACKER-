@@ -116,7 +116,7 @@ check(wb2.SheetNames.indexOf('Sizes (Raw Data)') !== -1 || wb2.SheetNames.indexO
   'export with Raw Data has sizes sheet');
 check(wb2.SheetNames.indexOf('Raw Data export') !== -1, 'export with Raw Data has Raw Data export sheet');
 
-console.log('\nPacker shift report JS — Shift hours (Dandenong South)');
+console.log('\nPacker shift report JS — Shift hours (Intra only; Raw/Exec not used yet)');
 var execCsv = fs.readFileSync(path.join(__dirname, '../fixtures/packer-shift/Executive_Summary.csv'), 'utf8');
 var execSheet = PSR.csvTextToSheetRows(execCsv, 'Executive_Summary.csv', PSR.EXEC_SUMMARY_COLS);
 var execLoaded = PSR.loadExecutiveSummaryRows(execSheet);
@@ -170,22 +170,16 @@ var execAlice = [{
   packingHours: 6.5
 }];
 var fromRaw = PSR.buildReport(aliceBoxes, 0, [], rawShift, execAlice);
-check(Math.abs(fromRaw.morning[0].shiftHours - (7.25 - 0.75)) < 0.01,
-  'Shift h prefers Raw Data Shift (Hours) minus auto breaks');
-check(fromRaw.morning[0].shiftHoursSource === 'raw_data_less_breaks',
-  'shiftHoursSource is raw_data_less_breaks when over 6h');
-check(fromRaw.morning[0].breakMinutes === 45, 'Raw Shift h over 6h → 45m auto break');
+check(fromRaw.morning[0].shiftHours == null, 'Raw Data Shift (Hours) not used for Shift h yet');
+check(fromRaw.morning[0].shiftHoursSource == null, 'no Raw/Exec shiftHoursSource without Intra');
 check(Math.abs(fromRaw.morning[0].hours - 4) < 0.01, 'Pack h still from Boxes packing time');
 
 var fromExec = PSR.buildReport(aliceBoxes, 0, [], [], execAlice);
-check(Math.abs(fromExec.morning[0].shiftHours - (6.5 - 0.75)) < 0.01,
-  'Shift h falls back to Executive Summary minus auto breaks');
-check(fromExec.morning[0].shiftHoursSource === 'executive_summary_less_breaks',
-  'shiftHoursSource is executive_summary_less_breaks when over 6h');
-check(fromExec.morning[0].breakMinutes === 45, 'Exec Shift h over 6h → 45m auto break');
+check(fromExec.morning[0].shiftHours == null, 'Executive Summary hours not used for Shift h yet');
+check(fromExec.morning[0].shiftHoursSource == null, 'no Exec shiftHoursSource without Intra');
 
 var noShift = PSR.buildReport(aliceBoxes, 0, [], [], []);
-check(noShift.morning[0].shiftHours == null, 'Shift h empty without Raw/Exec');
+check(noShift.morning[0].shiftHours == null, 'Shift h empty without Intra');
 
 check(loaded.rows.some(function (r) { return r.shiftHours > 0; }),
   'Raw Data fixture carries Shift (Hours) for DS rows');
