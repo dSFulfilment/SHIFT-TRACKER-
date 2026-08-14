@@ -111,6 +111,8 @@ check(html.indexOf('Boxes each hour') !== -1, 'Intra boxes-each-hour detail pres
 check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.indexOf('Sizes (Boxes)') !== -1,
   'Sizes column / detail present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
+check(html.indexOf('summarizePackerTotalAvg') !== -1, 'Total/avg uses shared Shift-h-aware summary');
+check(html.indexOf('Total BPH / % / flag use') !== -1, 'Total/avg explains Shift h vs Pack h');
 check(html.indexOf('id="psrExportBtn"') !== -1, 'Export report button exists');
 check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlined');
 check(html.indexOf('data-psr-view="mixed"') === -1, 'Separate Mixed SKUs Packer tab removed');
@@ -123,8 +125,10 @@ check(html.indexOf('By SKU') !== -1 && html.indexOf('renderCombinedBySku') !== -
 check(html.indexOf('Raw idle') !== -1 && html.indexOf('Raw BPH') !== -1,
   'By SKU shows Raw idle / Raw BPH columns');
 check(html.indexOf('loadExecutiveSummaryRows') !== -1, 'Executive Summary loader inlined');
-check(html.indexOf('Shift h') !== -1 && html.indexOf('Shift (Hours)') !== -1,
-  'Shift h column / Raw Shift (Hours) documented');
+check(html.indexOf('<b>Intra h</b>') !== -1 || html.indexOf('Intra h total') !== -1,
+  'Intra hours total shown in Packer UI');
+check(html.indexOf('Intra hours all up') !== -1, 'Export includes Intra hours all up');
+
 check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile, execFile') !== -1 ||
   html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile, execFile') !== -1,
   'Packer builds from Boxes + Intra + optional Raw + Exec (+ breaks)');

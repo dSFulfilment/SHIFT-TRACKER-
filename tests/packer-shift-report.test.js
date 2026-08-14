@@ -36,6 +36,7 @@ check(morning['Alice Smith'] && morning['Alice Smith'].flag === 'On/above target
 check(morning['Alice Smith'].hoursBasis === 'intra', 'Alice need uses Intra shift length');
 check(morning['Alice Smith'].shiftHours === 2 && morning['Alice Smith'].shiftHoursSource === 'intra',
   'Alice Shift h = Intra clock-hour count');
+check(report.morningTotals.intraHours === 2, 'Morning Intra h total = Alice 2 (Bob/Eve have no Intra)');
 check(Math.abs(morning['Alice Smith'].pctOfTarget - (130 / (110 * 2 / 6) * 100)) < 0.01,
   'Alice % of target scales need by Intra hours');
 check(morning['Bob Jones'] && morning['Bob Jones'].flag === 'Below strike', 'Bob below strike (red)');
@@ -297,6 +298,36 @@ var lookup = PSR.breakMinutesLookupFromStorage({
   }
 }, '2026-08-13');
 check(lookup['Fair Strike|morning_shift'] === 45, 'storage lookup resolves roster name + day groups');
+
+console.log('\nPacker shift report JS — Total / avg uses Shift h when Intra scores');
+var totPackOnly = PSR.summarizePackerTotalAvg({
+  hoursBasis: 'packing',
+  hours: 4.25,
+  shiftHours: null,
+  pctOfTarget: 168,
+  flag: 'On/above target',
+  skuLines: [
+    { sku: 200, hours: 4.25, boxes: 121, targetBph: 17, strikeBph: 15.3, verdict: 'on/above target' }
+  ]
+});
+check(Math.abs(totPackOnly.avgBph - 28.5) < 0.1, 'packing-basis Total BPH = boxes/Pack h');
+check(totPackOnly.useShiftHours === false, 'packing-basis does not use Shift h');
+
+var totShift = PSR.summarizePackerTotalAvg({
+  hoursBasis: 'intra_less_breaks',
+  hours: 4.25,
+  shiftHours: 8,
+  breakMinutes: 45,
+  pctOfTarget: 89,
+  flag: 'Below strike',
+  skuLines: [
+    { sku: 200, hours: 4.25, boxes: 121, targetBph: 17, strikeBph: 15.3, verdict: 'on/above target' }
+  ]
+});
+check(totShift.useShiftHours === true, 'Intra-basis Total uses Shift h');
+check(Math.abs(totShift.avgBph - (121 / 8)) < 0.1, 'Total BPH = boxes/Shift h (not Pack h)');
+check(totShift.avgBph < totShift.avgStrike, 'Shift-basis BPH sits under strike — matches Below strike');
+check(totShift.pctOfTarget === 89 && totShift.flag === 'Below strike', 'Total % / flag match packer score');
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);
