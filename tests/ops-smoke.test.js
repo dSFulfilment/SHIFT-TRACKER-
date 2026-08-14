@@ -89,9 +89,10 @@ check(html.indexOf("__shiftTrackerRefresh()") !== -1,
 
 console.log('\nOps smoke — Packer shift report (3× xlsx, inlined)');
 check(html.indexOf('id="psrRoot"') !== -1, 'Packer shift report root exists');
-check(html.indexOf('id="psrUploadBtn"') !== -1 && html.indexOf('id="psrMulti"') !== -1,
-  'Packer Upload multi-file control exists');
-check(html.indexOf('id="psrBoxes"') === -1, 'Old per-slot file inputs removed');
+check(html.indexOf('id="psrBoxes"') !== -1 && html.indexOf('id="psrIntra"') !== -1 && html.indexOf('id="psrSummary"') !== -1,
+  'Packer has three separate file inputs');
+check(html.indexOf('id="psrUploadBtn"') === -1 && html.indexOf('id="psrMulti"') === -1,
+  'Single multi-file Upload control removed');
 check(html.indexOf('window.PackerShiftReport') !== -1 || html.indexOf('root.PackerShiftReport') !== -1,
   'PackerShiftReport inlined into index.html');
 check(html.indexOf('typeof XLSX') !== -1 || html.indexOf('XLSX.read') !== -1,
