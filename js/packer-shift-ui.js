@@ -256,7 +256,7 @@
       html += '</tbody></table>';
       if (sum.useShiftHours) {
         html += '<p class="psr-prose psr-note">Total BPH / % / strike colour use <b>Shift h</b> (Intra'
-          + (sum.breakMinutes > 0 ? ' minus tea/meal' : '')
+          + (sum.breakMinutes > 0 ? ' minus auto breaks' : '')
           + '), not Pack h. SKU rows still show packing time.</p>';
       }
     }
@@ -334,7 +334,7 @@
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Boxes Packed by Worker + Intra Hour side by side. Click a packer for <b>By SKU</b> and hour breakdown. '
       + '<b>Pack h / Boxes (file)</b> from Boxes. <b>Intra h / Intra boxes</b> from Intra. '
-      + '<b>Shift h</b> = Intra − breaks (when Breaks matched).</p>';
+      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h).</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Intra h</th><th>Shift h</th>' +
       '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
@@ -440,7 +440,7 @@
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
-      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours for that shift, minus tea (~15m) and meal (~30m) from the Breaks tab when that packer is on a group; else Raw Data / Executive Summary.</p>' +
+      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Else Raw Data / Executive Summary (same auto-break rule).</p>' +
       '<h2>What each file is for</h2>' +
       '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +
@@ -463,29 +463,6 @@
     else if (view === 'exclusions') panelEl.innerHTML = renderExclusions();
     else if (view === 'targets') panelEl.innerHTML = renderTargets();
     else panelEl.innerHTML = renderHow();
-  }
-
-  function readJsonLocal(key) {
-    try {
-      var raw = localStorage.getItem(key);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /** Tea/meal minutes from Breaks for the linked ops day (names matched to export workers). */
-  function loadBreakMinutesForReport() {
-    if (!PSR || typeof PSR.breakMinutesLookupFromStorage !== 'function') return {};
-    var linked = window.__opsDayLink && typeof window.__opsDayLink.get === 'function'
-      ? window.__opsDayLink.get()
-      : null;
-    var dateKey = linked && linked.dateKey ? linked.dateKey : null;
-    var bp = readJsonLocal('breakPlanner');
-    var planner = readJsonLocal('planner');
-    if (!bp) return {};
-    return PSR.breakMinutesLookupFromStorage(bp, planner, dateKey) || {};
   }
 
   async function run() {
@@ -514,21 +491,18 @@
     try {
       var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
       var execFile = (execIn && execIn.files && execIn.files[0]) ? execIn.files[0] : null;
-      var breakMins = loadBreakMinutesForReport();
-      var breakN = Object.keys(breakMins).length;
       report = await PSR.buildReportFromFiles(
         boxesIn.files[0],
         intraIn.files[0],
         rawFile,
-        execFile,
-        breakMins
+        execFile
       );
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
-        'Boxes lines: ' + report.rawLines.length
+        'Boxes lines: ' + report.rawLines.length,
+        'Auto breaks: 15m >4h · +30m >6h'
       ];
-      if (breakN) bits.push('Breaks applied: ' + breakN);
       if (report.rawDataRows && report.rawDataRows.length) {
         bits.push('Raw Data: ' + report.rawDataRows.length + ' rows');
       }
@@ -541,7 +515,7 @@
       view = 'morning';
       render();
       refreshReadyState();
-      toast(breakN ? 'Report ready (breaks applied)' : 'Report ready');
+      toast('Report ready');
     } catch (e) {
       report = null;
       viewsEl.hidden = true;

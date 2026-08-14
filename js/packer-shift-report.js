@@ -567,7 +567,20 @@
     return d;
   }
 
-  /** Tea (often ~15m) + Meal (often ~30m) from a Breaks group time range. */
+  /**
+   * Auto breaks from shift length (all packers):
+   * — over 4 hours → 15 min
+   * — over 6 hours → +30 min (45 total)
+   */
+  function autoBreakMinutes(shiftHours) {
+    if (shiftHours == null || !isFinite(shiftHours) || shiftHours <= 0) return 0;
+    var mins = 0;
+    if (shiftHours > 4) mins += 15;
+    if (shiftHours > 6) mins += 30;
+    return mins;
+  }
+
+  /** Tea (often ~15m) + Meal (often ~30m) from a Breaks group time range (legacy helper). */
   function breakMinutesForGroup(g) {
     if (!g) return 0;
     return minutesBetweenHm(g.teaStart, g.teaEnd) + minutesBetweenHm(g.mealStart, g.mealEnd);
@@ -632,12 +645,14 @@
   /**
    * Need boxes for target/strike using Intra shift length when available.
    * Share Intra hours across SKUs by Boxes packing-time weight (fairer strike bar).
-   * Subtract scheduled tea/meal break minutes from Intra length when provided.
+   * Subtract auto breaks (15m over 4h, +30m over 6h) unless breakMinutes is passed explicitly.
    * Falls back to packing hours when Intra has no usable hours for that packer+shift.
    */
   function needBoxesFromHours(knownLines, packHours, intraHours, breakMinutes) {
-    var breakH = (breakMinutes != null && isFinite(breakMinutes) && breakMinutes > 0)
-      ? (breakMinutes / 60) : 0;
+    var brk = (breakMinutes != null && isFinite(breakMinutes))
+      ? breakMinutes
+      : autoBreakMinutes(intraHours);
+    var breakH = (brk != null && isFinite(brk) && brk > 0) ? (brk / 60) : 0;
     var effectiveIntra = null;
     if (intraHours != null && isFinite(intraHours) && intraHours > 0) {
       effectiveIntra = Math.max(0, intraHours - breakH);
@@ -658,7 +673,7 @@
       hoursBasis: useIntra ? (breakH > 0 ? 'intra_less_breaks' : 'intra') : 'packing',
       hoursForNeed: useIntra ? effectiveIntra : packHours,
       intraHours: intraHours != null ? intraHours : null,
-      breakMinutes: breakH > 0 ? breakMinutes : 0,
+      breakMinutes: breakH > 0 ? brk : 0,
       breakHours: breakH
     };
   }
@@ -788,32 +803,51 @@
     });
     var execAll = execSummaryRows || [];
     var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
+    // Optional map kept for compatibility; auto breaks (15m >4h, +30m >6h) always apply.
     var breakMinutesMap = breakMinutesByWorkerShiftMap || {};
-    // Prefer Intra clock-hour count (minus tea/meal) for shift length; else Raw; else Exec.
+    // Prefer Intra clock-hour count (minus auto breaks) for shift length; else Raw; else Exec.
     var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
     var shiftHoursExec = execHoursByWorker(execAll);
 
     function resolveShiftHours(workerKey, shiftKey) {
       var ik = workerKey + '|' + shiftKey;
       if (intraHoursMap[ik] != null && intraHoursMap[ik] > 0) {
-        var brk = breakMinutesMap[ik] != null ? breakMinutesMap[ik] : 0;
-        var eff = Math.max(0, intraHoursMap[ik] - (brk > 0 ? brk / 60 : 0));
+        var intraH = intraHoursMap[ik];
+        var brk = autoBreakMinutes(intraH);
+        if (breakMinutesMap[ik] != null && isFinite(breakMinutesMap[ik]) && breakMinutesMap[ik] > brk) {
+          brk = breakMinutesMap[ik];
+        }
+        var eff = Math.max(0, intraH - (brk > 0 ? brk / 60 : 0));
         if (eff <= 0) {
           // Breaks consumed the Intra span — fall through to Raw/Exec/packing.
         } else {
           return {
             shiftHours: eff,
             shiftHoursSource: brk > 0 ? 'intra_less_breaks' : 'intra',
-            intraHours: intraHoursMap[ik],
+            intraHours: intraH,
             breakMinutes: brk > 0 ? brk : 0
           };
         }
       }
       if (shiftHoursRaw[workerKey] != null) {
-        return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data', intraHours: null, breakMinutes: 0 };
+        var rawH = shiftHoursRaw[workerKey];
+        var rawBrk = autoBreakMinutes(rawH);
+        return {
+          shiftHours: Math.max(0, rawH - rawBrk / 60),
+          shiftHoursSource: rawBrk > 0 ? 'raw_data_less_breaks' : 'raw_data',
+          intraHours: null,
+          breakMinutes: rawBrk
+        };
       }
       if (shiftHoursExec[workerKey] != null) {
-        return { shiftHours: shiftHoursExec[workerKey], shiftHoursSource: 'executive_summary', intraHours: null, breakMinutes: 0 };
+        var execH = shiftHoursExec[workerKey];
+        var execBrk = autoBreakMinutes(execH);
+        return {
+          shiftHours: Math.max(0, execH - execBrk / 60),
+          shiftHoursSource: execBrk > 0 ? 'executive_summary_less_breaks' : 'executive_summary',
+          intraHours: null,
+          breakMinutes: execBrk
+        };
       }
       return { shiftHours: null, shiftHoursSource: null, intraHours: null, breakMinutes: 0 };
     }
@@ -1060,7 +1094,9 @@
           return;
         }
         var intraH = intraHoursMap[key + '|' + shiftKey] || 0;
-        var breakMins = breakMinutesMap[key + '|' + shiftKey] || 0;
+        var breakMins = autoBreakMinutes(intraH);
+        var mapBrk = breakMinutesMap[key + '|' + shiftKey];
+        if (mapBrk != null && isFinite(mapBrk) && mapBrk > breakMins) breakMins = mapBrk;
         var need = needBoxesFromHours(known, hours, intraH, breakMins);
         var targetBoxes = need.targetBoxes;
         var strikeBoxes = need.strikeBoxes;
@@ -1069,7 +1105,7 @@
         var pctStrike = strikeBoxes > 0 ? (boxesKnown / strikeBoxes * 100) : null;
         // Packer flag uses overall average vs strike/target — a weak SKU line
         // does not force Below strike if hours×strike still clears.
-        // When Intra hours exist, need boxes use Intra shift length minus tea/meal.
+        // When Intra hours exist, need boxes use Intra − auto breaks (15m >4h, +30m >6h).
         var flag;
         if (pct == null) flag = 'No target defined';
         else if (strikeBoxes > 0 && boxesKnown < strikeBoxes) flag = 'Below strike';
@@ -1560,6 +1596,7 @@
     csvTextToSheetRows: csvTextToSheetRows,
     needBoxesFromHours: needBoxesFromHours,
     intraHoursByWorkerShift: intraHoursByWorkerShift,
+    autoBreakMinutes: autoBreakMinutes,
     breakMinutesForGroup: breakMinutesForGroup,
     minutesBetweenHm: minutesBetweenHm,
     breakMinutesByWorkerShift: breakMinutesByWorkerShift,

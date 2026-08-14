@@ -12969,7 +12969,20 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return d;
   }
 
-  /** Tea (often ~15m) + Meal (often ~30m) from a Breaks group time range. */
+  /**
+   * Auto breaks from shift length (all packers):
+   * — over 4 hours → 15 min
+   * — over 6 hours → +30 min (45 total)
+   */
+  function autoBreakMinutes(shiftHours) {
+    if (shiftHours == null || !isFinite(shiftHours) || shiftHours <= 0) return 0;
+    var mins = 0;
+    if (shiftHours > 4) mins += 15;
+    if (shiftHours > 6) mins += 30;
+    return mins;
+  }
+
+  /** Tea (often ~15m) + Meal (often ~30m) from a Breaks group time range (legacy helper). */
   function breakMinutesForGroup(g) {
     if (!g) return 0;
     return minutesBetweenHm(g.teaStart, g.teaEnd) + minutesBetweenHm(g.mealStart, g.mealEnd);
@@ -13034,12 +13047,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   /**
    * Need boxes for target/strike using Intra shift length when available.
    * Share Intra hours across SKUs by Boxes packing-time weight (fairer strike bar).
-   * Subtract scheduled tea/meal break minutes from Intra length when provided.
+   * Subtract auto breaks (15m over 4h, +30m over 6h) unless breakMinutes is passed explicitly.
    * Falls back to packing hours when Intra has no usable hours for that packer+shift.
    */
   function needBoxesFromHours(knownLines, packHours, intraHours, breakMinutes) {
-    var breakH = (breakMinutes != null && isFinite(breakMinutes) && breakMinutes > 0)
-      ? (breakMinutes / 60) : 0;
+    var brk = (breakMinutes != null && isFinite(breakMinutes))
+      ? breakMinutes
+      : autoBreakMinutes(intraHours);
+    var breakH = (brk != null && isFinite(brk) && brk > 0) ? (brk / 60) : 0;
     var effectiveIntra = null;
     if (intraHours != null && isFinite(intraHours) && intraHours > 0) {
       effectiveIntra = Math.max(0, intraHours - breakH);
@@ -13060,7 +13075,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       hoursBasis: useIntra ? (breakH > 0 ? 'intra_less_breaks' : 'intra') : 'packing',
       hoursForNeed: useIntra ? effectiveIntra : packHours,
       intraHours: intraHours != null ? intraHours : null,
-      breakMinutes: breakH > 0 ? breakMinutes : 0,
+      breakMinutes: breakH > 0 ? brk : 0,
       breakHours: breakH
     };
   }
@@ -13190,32 +13205,51 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     });
     var execAll = execSummaryRows || [];
     var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
+    // Optional map kept for compatibility; auto breaks (15m >4h, +30m >6h) always apply.
     var breakMinutesMap = breakMinutesByWorkerShiftMap || {};
-    // Prefer Intra clock-hour count (minus tea/meal) for shift length; else Raw; else Exec.
+    // Prefer Intra clock-hour count (minus auto breaks) for shift length; else Raw; else Exec.
     var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
     var shiftHoursExec = execHoursByWorker(execAll);
 
     function resolveShiftHours(workerKey, shiftKey) {
       var ik = workerKey + '|' + shiftKey;
       if (intraHoursMap[ik] != null && intraHoursMap[ik] > 0) {
-        var brk = breakMinutesMap[ik] != null ? breakMinutesMap[ik] : 0;
-        var eff = Math.max(0, intraHoursMap[ik] - (brk > 0 ? brk / 60 : 0));
+        var intraH = intraHoursMap[ik];
+        var brk = autoBreakMinutes(intraH);
+        if (breakMinutesMap[ik] != null && isFinite(breakMinutesMap[ik]) && breakMinutesMap[ik] > brk) {
+          brk = breakMinutesMap[ik];
+        }
+        var eff = Math.max(0, intraH - (brk > 0 ? brk / 60 : 0));
         if (eff <= 0) {
           // Breaks consumed the Intra span — fall through to Raw/Exec/packing.
         } else {
           return {
             shiftHours: eff,
             shiftHoursSource: brk > 0 ? 'intra_less_breaks' : 'intra',
-            intraHours: intraHoursMap[ik],
+            intraHours: intraH,
             breakMinutes: brk > 0 ? brk : 0
           };
         }
       }
       if (shiftHoursRaw[workerKey] != null) {
-        return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data', intraHours: null, breakMinutes: 0 };
+        var rawH = shiftHoursRaw[workerKey];
+        var rawBrk = autoBreakMinutes(rawH);
+        return {
+          shiftHours: Math.max(0, rawH - rawBrk / 60),
+          shiftHoursSource: rawBrk > 0 ? 'raw_data_less_breaks' : 'raw_data',
+          intraHours: null,
+          breakMinutes: rawBrk
+        };
       }
       if (shiftHoursExec[workerKey] != null) {
-        return { shiftHours: shiftHoursExec[workerKey], shiftHoursSource: 'executive_summary', intraHours: null, breakMinutes: 0 };
+        var execH = shiftHoursExec[workerKey];
+        var execBrk = autoBreakMinutes(execH);
+        return {
+          shiftHours: Math.max(0, execH - execBrk / 60),
+          shiftHoursSource: execBrk > 0 ? 'executive_summary_less_breaks' : 'executive_summary',
+          intraHours: null,
+          breakMinutes: execBrk
+        };
       }
       return { shiftHours: null, shiftHoursSource: null, intraHours: null, breakMinutes: 0 };
     }
@@ -13462,7 +13496,9 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           return;
         }
         var intraH = intraHoursMap[key + '|' + shiftKey] || 0;
-        var breakMins = breakMinutesMap[key + '|' + shiftKey] || 0;
+        var breakMins = autoBreakMinutes(intraH);
+        var mapBrk = breakMinutesMap[key + '|' + shiftKey];
+        if (mapBrk != null && isFinite(mapBrk) && mapBrk > breakMins) breakMins = mapBrk;
         var need = needBoxesFromHours(known, hours, intraH, breakMins);
         var targetBoxes = need.targetBoxes;
         var strikeBoxes = need.strikeBoxes;
@@ -13471,7 +13507,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         var pctStrike = strikeBoxes > 0 ? (boxesKnown / strikeBoxes * 100) : null;
         // Packer flag uses overall average vs strike/target — a weak SKU line
         // does not force Below strike if hours×strike still clears.
-        // When Intra hours exist, need boxes use Intra shift length minus tea/meal.
+        // When Intra hours exist, need boxes use Intra − auto breaks (15m >4h, +30m >6h).
         var flag;
         if (pct == null) flag = 'No target defined';
         else if (strikeBoxes > 0 && boxesKnown < strikeBoxes) flag = 'Below strike';
@@ -13962,6 +13998,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     csvTextToSheetRows: csvTextToSheetRows,
     needBoxesFromHours: needBoxesFromHours,
     intraHoursByWorkerShift: intraHoursByWorkerShift,
+    autoBreakMinutes: autoBreakMinutes,
     breakMinutesForGroup: breakMinutesForGroup,
     minutesBetweenHm: minutesBetweenHm,
     breakMinutesByWorkerShift: breakMinutesByWorkerShift,
@@ -14235,7 +14272,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       html += '</tbody></table>';
       if (sum.useShiftHours) {
         html += '<p class="psr-prose psr-note">Total BPH / % / strike colour use <b>Shift h</b> (Intra'
-          + (sum.breakMinutes > 0 ? ' minus tea/meal' : '')
+          + (sum.breakMinutes > 0 ? ' minus auto breaks' : '')
           + '), not Pack h. SKU rows still show packing time.</p>';
       }
     }
@@ -14313,7 +14350,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Boxes Packed by Worker + Intra Hour side by side. Click a packer for <b>By SKU</b> and hour breakdown. '
       + '<b>Pack h / Boxes (file)</b> from Boxes. <b>Intra h / Intra boxes</b> from Intra. '
-      + '<b>Shift h</b> = Intra − breaks (when Breaks matched).</p>';
+      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h).</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Intra h</th><th>Shift h</th>' +
       '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
@@ -14419,7 +14456,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
-      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours for that shift, minus tea (~15m) and meal (~30m) from the Breaks tab when that packer is on a group; else Raw Data / Executive Summary.</p>' +
+      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Else Raw Data / Executive Summary (same auto-break rule).</p>' +
       '<h2>What each file is for</h2>' +
       '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +
@@ -14442,29 +14479,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     else if (view === 'exclusions') panelEl.innerHTML = renderExclusions();
     else if (view === 'targets') panelEl.innerHTML = renderTargets();
     else panelEl.innerHTML = renderHow();
-  }
-
-  function readJsonLocal(key) {
-    try {
-      var raw = localStorage.getItem(key);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /** Tea/meal minutes from Breaks for the linked ops day (names matched to export workers). */
-  function loadBreakMinutesForReport() {
-    if (!PSR || typeof PSR.breakMinutesLookupFromStorage !== 'function') return {};
-    var linked = window.__opsDayLink && typeof window.__opsDayLink.get === 'function'
-      ? window.__opsDayLink.get()
-      : null;
-    var dateKey = linked && linked.dateKey ? linked.dateKey : null;
-    var bp = readJsonLocal('breakPlanner');
-    var planner = readJsonLocal('planner');
-    if (!bp) return {};
-    return PSR.breakMinutesLookupFromStorage(bp, planner, dateKey) || {};
   }
 
   async function run() {
@@ -14493,21 +14507,18 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     try {
       var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
       var execFile = (execIn && execIn.files && execIn.files[0]) ? execIn.files[0] : null;
-      var breakMins = loadBreakMinutesForReport();
-      var breakN = Object.keys(breakMins).length;
       report = await PSR.buildReportFromFiles(
         boxesIn.files[0],
         intraIn.files[0],
         rawFile,
-        execFile,
-        breakMins
+        execFile
       );
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
-        'Boxes lines: ' + report.rawLines.length
+        'Boxes lines: ' + report.rawLines.length,
+        'Auto breaks: 15m >4h · +30m >6h'
       ];
-      if (breakN) bits.push('Breaks applied: ' + breakN);
       if (report.rawDataRows && report.rawDataRows.length) {
         bits.push('Raw Data: ' + report.rawDataRows.length + ' rows');
       }
@@ -14520,7 +14531,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       view = 'morning';
       render();
       refreshReadyState();
-      toast(breakN ? 'Report ready (breaks applied)' : 'Report ready');
+      toast('Report ready');
     } catch (e) {
       report = null;
       viewsEl.hidden = true;
