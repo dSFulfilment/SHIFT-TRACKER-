@@ -254,28 +254,17 @@
   function renderHourDetail(r) {
     var hours = r.hourLines || [];
     if (!hours.length) {
-      return '<h3 class="psr-detail-h">Boxes each hour vs target</h3>' +
+      return '<h3 class="psr-detail-h">Boxes each hour</h3>' +
         '<p class="psr-prose">No Intra Hour rows for this packer on this shift (hours before 14:00 = Morning, 14:00+ = Afternoon).</p>';
     }
     var total = hours.reduce(function (s, h) { return s + h.boxes; }, 0);
-    var html = '<h3 class="psr-detail-h">Boxes each hour vs target</h3>' +
-      '<p class="psr-prose">Intra boxes that hour vs SKU target (1h). SKU from Intra when present, else Boxes shift mix.</p>' +
-      '<table class="psr-table"><thead><tr>' +
-      '<th>Hour</th><th>Boxes</th><th>SKU</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
-      '</tr></thead><tbody>';
+    var html = '<h3 class="psr-detail-h">Boxes each hour</h3>' +
+      '<p class="psr-prose">Intra Hour boxes only — target / flags come from Boxes Packed by Worker.</p>' +
+      '<table class="psr-table"><thead><tr><th>Hour</th><th>Boxes</th></tr></thead><tbody>';
     hours.forEach(function (h) {
-      html += '<tr class="' + flagClass(h.flag) + '">' +
-        '<td>' + escapeHtml(h.hourLabel) + '</td>' +
-        '<td>' + Math.round(h.boxes).toLocaleString() + '</td>' +
-        '<td>' + escapeHtml(h.skuLabel || '—') + '</td>' +
-        '<td>' + (h.targetBoxes != null ? h.targetBoxes.toFixed(1) : '—') + '</td>' +
-        '<td>' + (h.pctOfTarget != null ? h.pctOfTarget.toFixed(0) + '%' : '—') + '</td>' +
-        '<td>' + (h.boxGap != null ? ((h.boxGap >= 0 ? '+' : '') + Math.round(h.boxGap)) : '—') + '</td>' +
-        '<td>' + escapeHtml(h.flag || '—') + '</td>' +
-        '</tr>';
+      html += '<tr><td>' + escapeHtml(h.hourLabel) + '</td><td>' + Math.round(h.boxes).toLocaleString() + '</td></tr>';
     });
-    html += '<tr class="psr-total-row"><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() +
-      '</b></td><td colspan="5"></td></tr>';
+    html += '<tr class="psr-total-row"><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
     html += '</tbody></table>';
     return html;
   }
@@ -343,33 +332,21 @@
     if (!rows.length) {
       return '<p class="psr-prose">No Intra Hour rows loaded.</p>';
     }
-    var html = '<p class="psr-prose">Each Intra hour vs SKU target (1h). SKU from Intra Primary Sku when present; otherwise Boxes shift mix (blend if multi-SKU).</p>';
+    var html = '<p class="psr-prose">Boxes packed each clock hour (Intra). Target / flags come from Boxes Packed by Worker — not these hourly counts.</p>';
     rows.forEach(function (H) {
-      var ok = 0;
-      var dip = 0;
-      var strike = 0;
-      H.packers.forEach(function (p) {
-        if (p.flag === 'On/above target') ok += 1;
-        else if (p.flag === 'Below target') dip += 1;
-        else if (p.flag === 'Below strike') strike += 1;
-      });
       html += '<div class="psr-hour-block">' +
         '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +
         escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' boxes · ' +
-        H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') +
-        ' · OK ' + ok + ' · Target ' + dip + ' · Strike ' + strike + '</div>';
-      html += '<table class="psr-table"><thead><tr>' +
-        '<th>Packer</th><th>Boxes</th><th>SKU</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
-        '</tr></thead><tbody>';
+        H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') + '</div>';
+      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>Sizes (shift)</th></tr></thead><tbody>';
       H.packers.forEach(function (p) {
-        html += '<tr class="' + flagClass(p.flag) + '">' +
+        var info = p.skuInfo || {};
+        var mix = info.mix;
+        var mixTxt = mix && mix.label ? mix.label : '—';
+        html += '<tr>' +
           '<td><b>' + escapeHtml(p.workerDisplay) + '</b></td>' +
           '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
-          '<td>' + escapeHtml(p.skuLabel || '—') + '</td>' +
-          '<td>' + (p.targetBoxes != null ? Number(p.targetBoxes).toFixed(1) : '—') + '</td>' +
-          '<td>' + (p.pctOfTarget != null ? Number(p.pctOfTarget).toFixed(0) + '%' : '—') + '</td>' +
-          '<td>' + (p.boxGap != null ? ((p.boxGap >= 0 ? '+' : '') + Math.round(p.boxGap)) : '—') + '</td>' +
-          '<td>' + escapeHtml(p.flag || '—') + '</td>' +
+          '<td>' + escapeHtml(mixTxt) + '</td>' +
           '</tr>';
       });
       html += '</tbody></table></div>';
@@ -409,12 +386,12 @@
       '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
       '<p><b>Pack h</b> = Boxes packing time (scoring). <b>Shift h</b> = Raw Data <b>Shift (Hours)</b> for Dandenong South, or Executive Summary packing/direct hours if Raw has no shift length.</p>' +
-      '<h2>Intra hour vs target</h2>' +
-      '<p>Each Intra clock hour is scored against SKU target for <b>1 hour</b>. SKU comes from Intra <b>Primary Sku</b> when that column exists; otherwise from the packer’s Boxes SKU mix that shift (hours-weighted blend if multi-SKU). Overall packer flag still uses Boxes Pack h.</p>' +
+      '<h2>What each file is for</h2>' +
+      '<p><b>Boxes Packed by Worker</b> = SKU targets, % of target, and flags. <b>Intra Hour</b> = boxes packed each clock hour only (see throughput; not used for target flags).</p>' +
       '<h2>One packer view</h2>' +
-      '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row, plus hour-by-hour vs target.</p>' +
+      '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row, plus Intra boxes each hour.</p>' +
       '<h2>Export</h2>' +
-      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour with targets, etc.).</p>' +
+      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour, etc.).</p>' +
       '</div>';
   }
 
