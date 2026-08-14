@@ -102,6 +102,96 @@
   function workerKey(name) {
     return String(name).trim().replace(/\s+/g, ' ');
   }
+  function downtimeMatchKey(name) {
+    return workerKey(name).toLowerCase();
+  }
+
+  /**
+   * Parse copied downtime (TSV/CSV/Excel paste) for compare only — not used in Shift h.
+   * Columns: packer/worker/name + downtime/minutes/hours (or two columns, no header).
+   * Returns { byWorker: { lowerName: minutes }, rows, unmatched: [] }.
+   */
+  function parseDowntimeMinutesCell(raw, unitHint) {
+    if (raw == null || String(raw).trim() === '') return null;
+    var s = String(raw).trim().toLowerCase();
+    var hm = s.match(/^(\d+)\s*:\s*(\d{1,2})$/);
+    if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+    var withM = s.match(/^([\d.]+)\s*m(?:in(?:ute)?s?)?$/);
+    if (withM) return parseFloat(withM[1]);
+    var withH = s.match(/^([\d.]+)\s*h(?:(?:ou)?rs?)?$/);
+    if (withH) return parseFloat(withH[1]) * 60;
+    var n = parseFloat(s.replace(/,/g, ''));
+    if (!isFinite(n) || n < 0) return null;
+    if (unitHint === 'hours') return n * 60;
+    if (unitHint === 'minutes') return n;
+    // Bare number: treat as minutes (typical copy from downtime sheets).
+    return n;
+  }
+
+  function parseDowntimePaste(text) {
+    var byWorker = {};
+    var rows = [];
+    var warnings = [];
+    if (text == null || String(text).trim() === '') {
+      return { byWorker: byWorker, rows: rows, warnings: warnings };
+    }
+    var lines = String(text).replace(/^\uFEFF/, '').split(/\r\n|\n|\r/);
+    var delim = null;
+    function splitLine(line) {
+      if (delim === '\t' || (delim == null && line.indexOf('\t') !== -1)) {
+        delim = '\t';
+        return line.split('\t');
+      }
+      if (delim === ',' || (delim == null && line.indexOf(',') !== -1)) {
+        delim = ',';
+        return line.split(',').map(function (c) { return c.replace(/^"|"$/g, '').trim(); });
+      }
+      return line.trim().split(/\s{2,}|\s+/);
+    }
+    var nameIdx = 0;
+    var minsIdx = 1;
+    var unitHint = 'minutes';
+    var start = 0;
+    if (lines.length) {
+      var firstCells = splitLine(lines[0]).map(function (c) { return String(c || '').trim().toLowerCase(); });
+      var looksHeader = firstCells.some(function (c) {
+        return /name|worker|packer|operator|downtime|idle|minute|hour/.test(c);
+      });
+      if (looksHeader) {
+        start = 1;
+        nameIdx = -1;
+        minsIdx = -1;
+        for (var i = 0; i < firstCells.length; i++) {
+          var h = firstCells[i];
+          if (nameIdx < 0 && /name|worker|packer|operator/.test(h)) nameIdx = i;
+          if (minsIdx < 0 && /downtime|idle|minute|hour/.test(h)) {
+            minsIdx = i;
+            if (/hour/.test(h) && !/minute/.test(h)) unitHint = 'hours';
+            else unitHint = 'minutes';
+          }
+        }
+        if (nameIdx < 0) nameIdx = 0;
+        if (minsIdx < 0) minsIdx = Math.min(1, firstCells.length - 1);
+      }
+    }
+    for (var r = start; r < lines.length; r++) {
+      var line = lines[r];
+      if (!line || !String(line).trim()) continue;
+      var cells = splitLine(line);
+      if (cells.length < 2) continue;
+      var name = String(cells[nameIdx] != null ? cells[nameIdx] : '').trim();
+      var mins = parseDowntimeMinutesCell(cells[minsIdx], unitHint);
+      if (!name || mins == null) continue;
+      var key = downtimeMatchKey(name);
+      // Keep the larger downtime if duplicated.
+      if (byWorker[key] == null || mins > byWorker[key]) byWorker[key] = mins;
+      rows.push({ workerDisplay: name, workerKey: workerKey(name), downtimeMinutes: mins });
+    }
+    if (!rows.length && String(text).trim()) {
+      warnings.push('Downtime paste had no usable name + minutes rows.');
+    }
+    return { byWorker: byWorker, rows: rows, warnings: warnings };
+  }
   function num(v) {
     if (v == null || v === '') return null;
     if (typeof v === 'number' && isFinite(v)) return v;
@@ -785,7 +875,7 @@
     });
   }
 
-  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows, breakMinutesByWorkerShiftMap) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows, breakMinutesByWorkerShiftMap, downtimeByWorker) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
@@ -802,6 +892,11 @@
       rawDataByWorker[r.workerKey].push(r);
     });
     var execAll = execSummaryRows || [];
+    var downtimeMap = downtimeByWorker || {};
+    function downtimeFor(nameOrKey) {
+      var k = downtimeMatchKey(nameOrKey);
+      return downtimeMap[k] != null && isFinite(downtimeMap[k]) ? downtimeMap[k] : null;
+    }
     var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
     // Optional map kept for compatibility; auto breaks (15m >4h, +30m >6h) always apply.
     var breakMinutesMap = breakMinutesByWorkerShiftMap || {};
@@ -1050,6 +1145,7 @@
             intraHours: shNone.intraHours != null ? shNone.intraHours : (hLines.length || null),
             intraBoxes: hLines.length ? intraBoxesSum : null,
             breakMinutes: shNone.breakMinutes || 0,
+            downtimeMinutes: downtimeFor(key),
             boxes: boxes,
             targetBoxes: 0,
             pctOfTarget: null,
@@ -1105,6 +1201,7 @@
           intraHours: need.intraHours != null ? need.intraHours : (shInfo.intraHours != null ? shInfo.intraHours : (hLines.length || null)),
           intraBoxes: hLines.length ? intraBoxesSum : null,
           breakMinutes: need.breakMinutes || shInfo.breakMinutes || 0,
+          downtimeMinutes: downtimeFor(key),
           boxes: boxes,
           targetBoxes: targetBoxes,
           strikeBoxes: strikeBoxes,
@@ -1188,7 +1285,8 @@
       warnings: warnings,
       skuTargets: SKU_TARGETS,
       facilityName: FACILITY_NAME,
-      breakMinutesByWorkerShift: breakMinutesMap
+      breakMinutesByWorkerShift: breakMinutesMap,
+      downtimeByWorker: downtimeMap
     };
   }
 
@@ -1238,7 +1336,7 @@
     return loadExecutiveSummaryRows(sheetRows);
   }
 
-  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile, breakMinutesByWorkerShiftMap) {
+  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile, breakMinutesByWorkerShiftMap, downtimeText) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
@@ -1248,26 +1346,34 @@
     );
     var rawParsed = await loadRawDataFile(rawFile || null);
     var execParsed = await loadExecutiveSummaryFile(execFile || null);
+    var downtimeParsed = parseDowntimePaste(downtimeText || '');
     var report = buildReport(
       boxesParsed.rows,
       boxesParsed.droppedBlank,
       intraRows,
       rawParsed.rows,
       execParsed.rows,
-      breakMinutesByWorkerShiftMap || {}
+      breakMinutesByWorkerShiftMap || {},
+      downtimeParsed.byWorker
     );
     report.rawDataMeta = {
-      droppedFacility: rawParsed.droppedFacility,
-      droppedBlank: rawParsed.droppedBlank,
-      fileName: rawFile ? (rawFile.name || '') : ''
+      droppedFacility: rawParsed.droppedFacility || 0,
+      droppedBlank: rawParsed.droppedBlank || 0
     };
     report.execSummaryMeta = {
-      droppedFacility: execParsed.droppedFacility,
-      droppedBlank: execParsed.droppedBlank,
-      facilityFiltered: execParsed.facilityFiltered,
-      fileName: execFile ? (execFile.name || '') : '',
-      workers: (execParsed.rows || []).length
+      droppedFacility: execParsed.droppedFacility || 0,
+      droppedBlank: execParsed.droppedBlank || 0,
+      facilityFiltered: !!execParsed.facilityFiltered
     };
+    report.downtimeMeta = {
+      rows: downtimeParsed.rows.length,
+      matched: (report.morning || []).concat(report.afternoon || []).filter(function (r) {
+        return r.downtimeMinutes != null;
+      }).length
+    };
+    if (downtimeParsed.warnings && downtimeParsed.warnings.length) {
+      report.warnings = (report.warnings || []).concat(downtimeParsed.warnings);
+    }
     return report;
   }
 
@@ -1292,7 +1398,7 @@
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Intra hours', 'Break mins',
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Intra hours', 'Break mins', 'Downtime mins',
         'Boxes (file)', 'Intra boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
@@ -1304,6 +1410,7 @@
         r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
         r.intraHours != null ? Number(r.intraHours.toFixed(2)) : '',
         r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
+        r.downtimeMinutes != null ? Math.round(r.downtimeMinutes) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
         r.intraBoxes != null ? Math.round(r.intraBoxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
@@ -1580,6 +1687,8 @@
     summarizePackerTotalAvg: summarizePackerTotalAvg,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
+    parseDowntimePaste: parseDowntimePaste,
+    parseDowntimeMinutesCell: parseDowntimeMinutesCell,
     buildExportWorkbook: buildExportWorkbook,
     workbookToArrayBuffer: workbookToArrayBuffer,
     loadBoxesRows: loadBoxesRows,

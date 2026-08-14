@@ -1294,6 +1294,11 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-file{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid #E5E8EF;border-radius:10px;background:#fff;font-size:.72rem;font-weight:700;color:#374151}
 #tabPacker .psr-file em{font-weight:600;color:#6B7280;font-style:normal}
 #tabPacker .psr-file input{font-size:.72rem;font-weight:500}
+#tabPacker .psr-file textarea{
+  width:100%;min-height:5.5rem;resize:vertical;font:inherit;font-size:.72rem;font-weight:500;
+  padding:8px;border:1px solid #D1D5DB;border-radius:8px;background:#F8FAFC;color:#111827;
+}
+#tabPacker .psr-file.psr-downtime{grid-column:1 / -1}
 #tabPacker .psr-hint{margin:8px 0 0;font-size:.7rem;line-height:1.45;color:#6B7280}
 #tabPacker .psr-hint code{font-size:.68rem;background:#EEF2FF;padding:1px 5px;border-radius:4px}
 #tabPacker .psr-body{flex:1;min-height:0;overflow:auto;padding:12px 16px 24px}
@@ -2162,19 +2167,15 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <span>2. Intra Hour Floor Performance <em>(required)</em></span>
           <input type="file" id="psrIntra" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </label>
-        <label class="psr-file">
-          <span>3. Raw Data <em>(optional — DS sizes + shift hours)</em></span>
-          <input type="file" id="psrRaw" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        </label>
-        <label class="psr-file">
-          <span>4. Executive Summary <em>(optional — DS hours)</em></span>
-          <input type="file" id="psrExec" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        <label class="psr-file psr-downtime">
+          <span>3. Downtime <em>(optional — paste to compare)</em></span>
+          <textarea id="psrDowntime" rows="4" placeholder="Paste name + downtime minutes from Excel, e.g.&#10;Packer&#9;Downtime&#10;Alice Smith&#9;45&#10;Bob Jones&#9;30"></textarea>
         </label>
       </div>
-      <p class="psr-hint">Need <b>Boxes</b> + <b>Intra Hour</b>. <b>Raw Data</b> is filtered to Dandenong South (Shift Hours + sizes). <b>Executive Summary</b> supplies hours if it is the DS export (or has Facility Name = Dandenong South). Source files are never modified.</p>
+      <p class="psr-hint">Need <b>Boxes</b> + <b>Intra Hour</b>. Optional <b>Downtime</b> paste (name + minutes) sits beside flags for compare only — it does not change Shift h or scoring. Source files are never modified.</p>
     </div>
     <div class="psr-body">
-      <div id="psrStatus" class="psr-status">Select Boxes + Intra Hour (+ Raw Data / Exec Summary optional), then Build report.</div>
+      <div id="psrStatus" class="psr-status">Select Boxes + Intra Hour (optional Downtime paste), then Build report.</div>
       <div class="psr-views" id="psrViews" hidden>
         <div class="psr-tabs" role="tablist">
           <button type="button" data-psr-view="morning" class="active">Morning shift</button>
@@ -12504,6 +12505,96 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   function workerKey(name) {
     return String(name).trim().replace(/\s+/g, ' ');
   }
+  function downtimeMatchKey(name) {
+    return workerKey(name).toLowerCase();
+  }
+
+  /**
+   * Parse copied downtime (TSV/CSV/Excel paste) for compare only — not used in Shift h.
+   * Columns: packer/worker/name + downtime/minutes/hours (or two columns, no header).
+   * Returns { byWorker: { lowerName: minutes }, rows, unmatched: [] }.
+   */
+  function parseDowntimeMinutesCell(raw, unitHint) {
+    if (raw == null || String(raw).trim() === '') return null;
+    var s = String(raw).trim().toLowerCase();
+    var hm = s.match(/^(\d+)\s*:\s*(\d{1,2})$/);
+    if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+    var withM = s.match(/^([\d.]+)\s*m(?:in(?:ute)?s?)?$/);
+    if (withM) return parseFloat(withM[1]);
+    var withH = s.match(/^([\d.]+)\s*h(?:(?:ou)?rs?)?$/);
+    if (withH) return parseFloat(withH[1]) * 60;
+    var n = parseFloat(s.replace(/,/g, ''));
+    if (!isFinite(n) || n < 0) return null;
+    if (unitHint === 'hours') return n * 60;
+    if (unitHint === 'minutes') return n;
+    // Bare number: treat as minutes (typical copy from downtime sheets).
+    return n;
+  }
+
+  function parseDowntimePaste(text) {
+    var byWorker = {};
+    var rows = [];
+    var warnings = [];
+    if (text == null || String(text).trim() === '') {
+      return { byWorker: byWorker, rows: rows, warnings: warnings };
+    }
+    var lines = String(text).replace(/^\uFEFF/, '').split(/\r\n|\n|\r/);
+    var delim = null;
+    function splitLine(line) {
+      if (delim === '\t' || (delim == null && line.indexOf('\t') !== -1)) {
+        delim = '\t';
+        return line.split('\t');
+      }
+      if (delim === ',' || (delim == null && line.indexOf(',') !== -1)) {
+        delim = ',';
+        return line.split(',').map(function (c) { return c.replace(/^"|"$/g, '').trim(); });
+      }
+      return line.trim().split(/\s{2,}|\s+/);
+    }
+    var nameIdx = 0;
+    var minsIdx = 1;
+    var unitHint = 'minutes';
+    var start = 0;
+    if (lines.length) {
+      var firstCells = splitLine(lines[0]).map(function (c) { return String(c || '').trim().toLowerCase(); });
+      var looksHeader = firstCells.some(function (c) {
+        return /name|worker|packer|operator|downtime|idle|minute|hour/.test(c);
+      });
+      if (looksHeader) {
+        start = 1;
+        nameIdx = -1;
+        minsIdx = -1;
+        for (var i = 0; i < firstCells.length; i++) {
+          var h = firstCells[i];
+          if (nameIdx < 0 && /name|worker|packer|operator/.test(h)) nameIdx = i;
+          if (minsIdx < 0 && /downtime|idle|minute|hour/.test(h)) {
+            minsIdx = i;
+            if (/hour/.test(h) && !/minute/.test(h)) unitHint = 'hours';
+            else unitHint = 'minutes';
+          }
+        }
+        if (nameIdx < 0) nameIdx = 0;
+        if (minsIdx < 0) minsIdx = Math.min(1, firstCells.length - 1);
+      }
+    }
+    for (var r = start; r < lines.length; r++) {
+      var line = lines[r];
+      if (!line || !String(line).trim()) continue;
+      var cells = splitLine(line);
+      if (cells.length < 2) continue;
+      var name = String(cells[nameIdx] != null ? cells[nameIdx] : '').trim();
+      var mins = parseDowntimeMinutesCell(cells[minsIdx], unitHint);
+      if (!name || mins == null) continue;
+      var key = downtimeMatchKey(name);
+      // Keep the larger downtime if duplicated.
+      if (byWorker[key] == null || mins > byWorker[key]) byWorker[key] = mins;
+      rows.push({ workerDisplay: name, workerKey: workerKey(name), downtimeMinutes: mins });
+    }
+    if (!rows.length && String(text).trim()) {
+      warnings.push('Downtime paste had no usable name + minutes rows.');
+    }
+    return { byWorker: byWorker, rows: rows, warnings: warnings };
+  }
   function num(v) {
     if (v == null || v === '') return null;
     if (typeof v === 'number' && isFinite(v)) return v;
@@ -13187,7 +13278,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     });
   }
 
-  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows, breakMinutesByWorkerShiftMap) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows, breakMinutesByWorkerShiftMap, downtimeByWorker) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
@@ -13204,6 +13295,11 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       rawDataByWorker[r.workerKey].push(r);
     });
     var execAll = execSummaryRows || [];
+    var downtimeMap = downtimeByWorker || {};
+    function downtimeFor(nameOrKey) {
+      var k = downtimeMatchKey(nameOrKey);
+      return downtimeMap[k] != null && isFinite(downtimeMap[k]) ? downtimeMap[k] : null;
+    }
     var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
     // Optional map kept for compatibility; auto breaks (15m >4h, +30m >6h) always apply.
     var breakMinutesMap = breakMinutesByWorkerShiftMap || {};
@@ -13452,6 +13548,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
             intraHours: shNone.intraHours != null ? shNone.intraHours : (hLines.length || null),
             intraBoxes: hLines.length ? intraBoxesSum : null,
             breakMinutes: shNone.breakMinutes || 0,
+            downtimeMinutes: downtimeFor(key),
             boxes: boxes,
             targetBoxes: 0,
             pctOfTarget: null,
@@ -13507,6 +13604,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           intraHours: need.intraHours != null ? need.intraHours : (shInfo.intraHours != null ? shInfo.intraHours : (hLines.length || null)),
           intraBoxes: hLines.length ? intraBoxesSum : null,
           breakMinutes: need.breakMinutes || shInfo.breakMinutes || 0,
+          downtimeMinutes: downtimeFor(key),
           boxes: boxes,
           targetBoxes: targetBoxes,
           strikeBoxes: strikeBoxes,
@@ -13590,7 +13688,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       warnings: warnings,
       skuTargets: SKU_TARGETS,
       facilityName: FACILITY_NAME,
-      breakMinutesByWorkerShift: breakMinutesMap
+      breakMinutesByWorkerShift: breakMinutesMap,
+      downtimeByWorker: downtimeMap
     };
   }
 
@@ -13640,7 +13739,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return loadExecutiveSummaryRows(sheetRows);
   }
 
-  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile, breakMinutesByWorkerShiftMap) {
+  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile, breakMinutesByWorkerShiftMap, downtimeText) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
@@ -13650,26 +13749,34 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     );
     var rawParsed = await loadRawDataFile(rawFile || null);
     var execParsed = await loadExecutiveSummaryFile(execFile || null);
+    var downtimeParsed = parseDowntimePaste(downtimeText || '');
     var report = buildReport(
       boxesParsed.rows,
       boxesParsed.droppedBlank,
       intraRows,
       rawParsed.rows,
       execParsed.rows,
-      breakMinutesByWorkerShiftMap || {}
+      breakMinutesByWorkerShiftMap || {},
+      downtimeParsed.byWorker
     );
     report.rawDataMeta = {
-      droppedFacility: rawParsed.droppedFacility,
-      droppedBlank: rawParsed.droppedBlank,
-      fileName: rawFile ? (rawFile.name || '') : ''
+      droppedFacility: rawParsed.droppedFacility || 0,
+      droppedBlank: rawParsed.droppedBlank || 0
     };
     report.execSummaryMeta = {
-      droppedFacility: execParsed.droppedFacility,
-      droppedBlank: execParsed.droppedBlank,
-      facilityFiltered: execParsed.facilityFiltered,
-      fileName: execFile ? (execFile.name || '') : '',
-      workers: (execParsed.rows || []).length
+      droppedFacility: execParsed.droppedFacility || 0,
+      droppedBlank: execParsed.droppedBlank || 0,
+      facilityFiltered: !!execParsed.facilityFiltered
     };
+    report.downtimeMeta = {
+      rows: downtimeParsed.rows.length,
+      matched: (report.morning || []).concat(report.afternoon || []).filter(function (r) {
+        return r.downtimeMinutes != null;
+      }).length
+    };
+    if (downtimeParsed.warnings && downtimeParsed.warnings.length) {
+      report.warnings = (report.warnings || []).concat(downtimeParsed.warnings);
+    }
     return report;
   }
 
@@ -13694,7 +13801,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Intra hours', 'Break mins',
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Intra hours', 'Break mins', 'Downtime mins',
         'Boxes (file)', 'Intra boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
@@ -13706,6 +13813,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
         r.intraHours != null ? Number(r.intraHours.toFixed(2)) : '',
         r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
+        r.downtimeMinutes != null ? Math.round(r.downtimeMinutes) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
         r.intraBoxes != null ? Math.round(r.intraBoxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
@@ -13982,6 +14090,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     summarizePackerTotalAvg: summarizePackerTotalAvg,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
+    parseDowntimePaste: parseDowntimePaste,
+    parseDowntimeMinutesCell: parseDowntimeMinutesCell,
     buildExportWorkbook: buildExportWorkbook,
     workbookToArrayBuffer: workbookToArrayBuffer,
     loadBoxesRows: loadBoxesRows,
@@ -13991,7 +14101,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 </script>
 <script>
 /**
- * Packer tab UI — Boxes + Intra + Raw Data; packer detail combines by SKU.
+ * Packer tab UI — Boxes + Intra + optional Downtime paste for compare.
  */
 (function () {
   'use strict';
@@ -14008,8 +14118,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   var clearBtn = document.getElementById('psrClearBtn');
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
-  var rawIn = document.getElementById('psrRaw');
-  var execIn = document.getElementById('psrExec');
+  var downtimeIn = document.getElementById('psrDowntime');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
@@ -14039,11 +14148,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return inp && inp.files && inp.files[0] ? inp.files[0].name : '';
   }
 
+  function downtimePasteText() {
+    return downtimeIn && downtimeIn.value ? String(downtimeIn.value).trim() : '';
+  }
+
   function refreshReadyState() {
     var hasBoxes = !!(boxesIn && boxesIn.files && boxesIn.files[0]);
     var hasIntra = !!(intraIn && intraIn.files && intraIn.files[0]);
-    var hasRaw = !!(rawIn && rawIn.files && rawIn.files[0]);
-    var hasExec = !!(execIn && execIn.files && execIn.files[0]);
+    var hasDowntime = !!downtimePasteText();
     var ok = scriptsOk();
 
     runBtn.disabled = !ok;
@@ -14060,8 +14172,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       var parts = [];
       parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
       parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: not selected');
-      parts.push(hasRaw ? ('Raw Data: ' + fileLabel(rawIn)) : 'Raw Data: not selected');
-      parts.push(hasExec ? ('Exec Summary: ' + fileLabel(execIn)) : 'Exec Summary: not selected');
+      parts.push(hasDowntime ? 'Downtime: pasted' : 'Downtime: none');
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
         (hasBoxes && hasIntra
@@ -14172,6 +14283,10 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
     var html = '<h3 class="psr-detail-h">By SKU</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
+    if (r.downtimeMinutes != null) {
+      html += '<p class="psr-prose psr-note">Downtime paste: <b>' + Math.round(r.downtimeMinutes) +
+        'm</b> (compare only — not subtracted from Shift h).</p>';
+    }
     html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU. '
       + 'Strike colours: <b>green</b> above target · <b>orange</b> above strike · <b>red</b> below strike.</p>';
 
@@ -14326,10 +14441,11 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Boxes Packed by Worker + Intra Hour side by side. Click a packer for <b>By SKU</b> and hour breakdown. '
       + '<b>Pack h / Boxes (file)</b> from Boxes. <b>Intra h / Intra boxes</b> from Intra. '
-      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h).</p>';
+      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h). '
+      + '<b>Downtime</b> is paste-compare only.</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Intra h</th><th>Shift h</th>' +
-      '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Downtime</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
@@ -14345,10 +14461,11 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
         '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
+        '<td>' + (r.downtimeMinutes != null ? Math.round(r.downtimeMinutes) + 'm' : '—') + '</td>' +
         '<td>' + strikeBadge(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="11">' + renderPackerDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="12">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
@@ -14430,15 +14547,17 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
+      '<p>Pick <b>Boxes</b> + <b>Intra Hour</b>, optionally paste <b>Downtime</b> (name + minutes) to compare, then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
       '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Raw Data / Executive Summary shift times are not used for Shift h yet.</p>' +
+      '<h2>Downtime</h2>' +
+      '<p>Paste from Excel (tab or comma): a name column and a downtime minutes column. Matched to packers for side-by-side compare only — it does <b>not</b> change BPH, strike, or Shift h.</p>' +
       '<h2>What each file is for</h2>' +
       '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +
-      '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row, plus Intra boxes each hour.</p>' +
+      '<p>Open a packer for one <b>By SKU</b> table plus Intra boxes each hour.</p>' +
       '<h2>Export</h2>' +
-      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour, etc.).</p>' +
+      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, By hour, etc.).</p>' +
       '</div>';
   }
 
@@ -14481,13 +14600,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     statusEl.textContent = 'Reading exports…';
     runBtn.disabled = true;
     try {
-      var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
-      var execFile = (execIn && execIn.files && execIn.files[0]) ? execIn.files[0] : null;
+      var downtimeText = downtimePasteText();
       report = await PSR.buildReportFromFiles(
         boxesIn.files[0],
         intraIn.files[0],
-        rawFile,
-        execFile
+        null,
+        null,
+        null,
+        downtimeText
       );
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
@@ -14495,8 +14615,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         'Boxes lines: ' + report.rawLines.length,
         'Auto breaks: 15m >4h · +30m >6h'
       ];
-      if (report.rawDataRows && report.rawDataRows.length) {
-        bits.push('Raw Data: ' + report.rawDataRows.length + ' rows');
+      if (report.downtimeMeta && report.downtimeMeta.rows) {
+        bits.push('Downtime: ' + report.downtimeMeta.matched + '/' + report.downtimeMeta.rows + ' matched');
       }
       if (report.morningTotals && report.morningTotals.pctOfTarget != null) {
         bits.push('Morning shift ' + report.morningTotals.pctOfTarget.toFixed(0) + '% of target');
@@ -14558,8 +14678,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   function clearAll() {
     if (boxesIn) boxesIn.value = '';
     if (intraIn) intraIn.value = '';
-    if (rawIn) rawIn.value = '';
-    if (execIn) execIn.value = '';
+    if (downtimeIn) downtimeIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -14567,7 +14686,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, rawIn, execIn].forEach(function (inp) {
+  [boxesIn, intraIn].forEach(function (inp) {
     if (!inp) return;
     inp.addEventListener('change', function () {
       report = null;
@@ -14576,6 +14695,11 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       refreshReadyState();
     });
   });
+  if (downtimeIn) {
+    downtimeIn.addEventListener('input', function () {
+      if (!report) refreshReadyState();
+    });
+  }
   runBtn.addEventListener('click', function () { run(); });
   if (exportBtn) exportBtn.addEventListener('click', downloadExport);
   clearBtn.addEventListener('click', clearAll);

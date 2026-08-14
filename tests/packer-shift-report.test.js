@@ -341,5 +341,19 @@ check(Math.abs(totShift.avgBph - (121 / 8)) < 0.1, 'Total BPH = boxes/Shift h (n
 check(totShift.avgBph < totShift.avgStrike, 'Shift-basis BPH sits under strike — matches Below strike');
 check(totShift.pctOfTarget === 89 && totShift.flag === 'Below strike', 'Total % / flag match packer score');
 
+console.log('\nPacker shift report JS — Downtime paste for compare');
+var dt = PSR.parseDowntimePaste('Packer\tDowntime\nAlice Smith\t45\nBob Jones\t30');
+check(dt.byWorker['alice smith'] === 45 && dt.byWorker['bob jones'] === 30, 'parses TSV name + minutes');
+check(PSR.parseDowntimeMinutesCell('1:15') === 75, 'parses H:MM downtime');
+check(PSR.parseDowntimeMinutesCell('0.5', 'hours') === 30, 'hours column → minutes');
+var withDt = PSR.buildReport(boxes, 0, intra, [], [], {}, dt.byWorker);
+var aliceDt = withDt.morning.filter(function (r) { return r.workerDisplay === 'Alice Smith'; })[0];
+check(aliceDt && aliceDt.downtimeMinutes === 45, 'Alice downtime = 45m for compare');
+var flagBefore = PSR.buildReport(boxes, 0, intra).morning.filter(function (r) { return r.workerDisplay === 'Alice Smith'; })[0].flag;
+check(aliceDt.flag === flagBefore, 'downtime is compare-only — flag unchanged vs no downtime');
+var wbDt = PSR.buildExportWorkbook(withDt);
+check(JSON.stringify(wbDt.Sheets['Morning shift']).indexOf('Downtime mins') !== -1,
+  'Export includes Downtime mins column');
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);
