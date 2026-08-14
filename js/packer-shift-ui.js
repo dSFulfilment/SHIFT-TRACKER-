@@ -1,5 +1,5 @@
 /**
- * Packer tab UI — Boxes + Intra + Raw Data; packer detail combines by SKU.
+ * Packer tab UI — Boxes + Intra + optional Downtime paste for compare.
  */
 (function () {
   'use strict';
@@ -16,8 +16,7 @@
   var clearBtn = document.getElementById('psrClearBtn');
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
-  var rawIn = document.getElementById('psrRaw');
-  var execIn = document.getElementById('psrExec');
+  var downtimeIn = document.getElementById('psrDowntime');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
@@ -47,11 +46,14 @@
     return inp && inp.files && inp.files[0] ? inp.files[0].name : '';
   }
 
+  function downtimePasteText() {
+    return downtimeIn && downtimeIn.value ? String(downtimeIn.value).trim() : '';
+  }
+
   function refreshReadyState() {
     var hasBoxes = !!(boxesIn && boxesIn.files && boxesIn.files[0]);
     var hasIntra = !!(intraIn && intraIn.files && intraIn.files[0]);
-    var hasRaw = !!(rawIn && rawIn.files && rawIn.files[0]);
-    var hasExec = !!(execIn && execIn.files && execIn.files[0]);
+    var hasDowntime = !!downtimePasteText();
     var ok = scriptsOk();
 
     runBtn.disabled = !ok;
@@ -68,8 +70,7 @@
       var parts = [];
       parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
       parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: not selected');
-      parts.push(hasRaw ? ('Raw Data: ' + fileLabel(rawIn)) : 'Raw Data: not selected');
-      parts.push(hasExec ? ('Exec Summary: ' + fileLabel(execIn)) : 'Exec Summary: not selected');
+      parts.push(hasDowntime ? 'Downtime: pasted' : 'Downtime: none');
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
         (hasBoxes && hasIntra
@@ -180,6 +181,10 @@
 
     var html = '<h3 class="psr-detail-h">By SKU</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
+    if (r.downtimeMinutes != null) {
+      html += '<p class="psr-prose psr-note">Downtime paste: <b>' + Math.round(r.downtimeMinutes) +
+        'm</b> (compare only — not subtracted from Shift h).</p>';
+    }
     html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU. '
       + 'Strike colours: <b>green</b> above target · <b>orange</b> above strike · <b>red</b> below strike.</p>';
 
@@ -334,10 +339,11 @@
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Boxes Packed by Worker + Intra Hour side by side. Click a packer for <b>By SKU</b> and hour breakdown. '
       + '<b>Pack h / Boxes (file)</b> from Boxes. <b>Intra h / Intra boxes</b> from Intra. '
-      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h).</p>';
+      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h). '
+      + '<b>Downtime</b> is paste-compare only.</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Intra h</th><th>Shift h</th>' +
-      '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Downtime</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
@@ -353,10 +359,11 @@
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
         '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
+        '<td>' + (r.downtimeMinutes != null ? Math.round(r.downtimeMinutes) + 'm' : '—') + '</td>' +
         '<td>' + strikeBadge(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="11">' + renderPackerDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="12">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
@@ -438,15 +445,17 @@
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
+      '<p>Pick <b>Boxes</b> + <b>Intra Hour</b>, optionally paste <b>Downtime</b> (name + minutes) to compare, then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
-      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Else Raw Data / Executive Summary (same auto-break rule).</p>' +
+      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Raw Data / Executive Summary shift times are not used for Shift h yet.</p>' +
+      '<h2>Downtime</h2>' +
+      '<p>Paste from Excel (tab or comma): a name column and a downtime minutes column. Matched to packers for side-by-side compare only — it does <b>not</b> change BPH, strike, or Shift h.</p>' +
       '<h2>What each file is for</h2>' +
       '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +
-      '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row, plus Intra boxes each hour.</p>' +
+      '<p>Open a packer for one <b>By SKU</b> table plus Intra boxes each hour.</p>' +
       '<h2>Export</h2>' +
-      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour, etc.).</p>' +
+      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, By hour, etc.).</p>' +
       '</div>';
   }
 
@@ -489,13 +498,14 @@
     statusEl.textContent = 'Reading exports…';
     runBtn.disabled = true;
     try {
-      var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
-      var execFile = (execIn && execIn.files && execIn.files[0]) ? execIn.files[0] : null;
+      var downtimeText = downtimePasteText();
       report = await PSR.buildReportFromFiles(
         boxesIn.files[0],
         intraIn.files[0],
-        rawFile,
-        execFile
+        null,
+        null,
+        null,
+        downtimeText
       );
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
@@ -503,8 +513,8 @@
         'Boxes lines: ' + report.rawLines.length,
         'Auto breaks: 15m >4h · +30m >6h'
       ];
-      if (report.rawDataRows && report.rawDataRows.length) {
-        bits.push('Raw Data: ' + report.rawDataRows.length + ' rows');
+      if (report.downtimeMeta && report.downtimeMeta.rows) {
+        bits.push('Downtime: ' + report.downtimeMeta.matched + '/' + report.downtimeMeta.rows + ' matched');
       }
       if (report.morningTotals && report.morningTotals.pctOfTarget != null) {
         bits.push('Morning shift ' + report.morningTotals.pctOfTarget.toFixed(0) + '% of target');
@@ -566,8 +576,7 @@
   function clearAll() {
     if (boxesIn) boxesIn.value = '';
     if (intraIn) intraIn.value = '';
-    if (rawIn) rawIn.value = '';
-    if (execIn) execIn.value = '';
+    if (downtimeIn) downtimeIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -575,7 +584,7 @@
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, rawIn, execIn].forEach(function (inp) {
+  [boxesIn, intraIn].forEach(function (inp) {
     if (!inp) return;
     inp.addEventListener('change', function () {
       report = null;
@@ -584,6 +593,11 @@
       refreshReadyState();
     });
   });
+  if (downtimeIn) {
+    downtimeIn.addEventListener('input', function () {
+      if (!report) refreshReadyState();
+    });
+  }
   runBtn.addEventListener('click', function () { run(); });
   if (exportBtn) exportBtn.addEventListener('click', downloadExport);
   clearBtn.addEventListener('click', clearAll);

@@ -87,12 +87,13 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
-console.log('\nOps smoke — Packer shift report (Boxes + Intra + Raw Data + Exec, inlined)');
+console.log('\nOps smoke — Packer shift report (Boxes + Intra + Downtime paste, inlined)');
 check(html.indexOf('id="psrRoot"') !== -1, 'Packer shift report root exists');
 check(html.indexOf('id="psrBoxes"') !== -1 && html.indexOf('id="psrIntra"') !== -1,
   'Packer has Boxes + Intra file inputs');
-check(html.indexOf('id="psrRaw"') !== -1, 'Packer has Raw Data file input');
-check(html.indexOf('id="psrExec"') !== -1, 'Packer has Executive Summary file input');
+check(html.indexOf('id="psrDowntime"') !== -1, 'Packer has Downtime paste area');
+check(html.indexOf('id="psrRaw"') === -1 && html.indexOf('id="psrExec"') === -1,
+  'Raw Data / Exec Summary uploads removed from Packer UI');
 check(html.indexOf('id="psrSummary"') === -1, 'Overall Summary picker removed');
 check(html.indexOf('window.PackerShiftReport') !== -1 || html.indexOf('root.PackerShiftReport') !== -1,
   'PackerShiftReport inlined into index.html');
@@ -129,22 +130,20 @@ check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlin
 check(html.indexOf('data-psr-view="mixed"') === -1, 'Separate Mixed SKUs Packer tab removed');
 check(html.indexOf('class="psr-mixed"') === -1 && html.indexOf("psr-mixed\">Mixed") === -1,
   'No Mixed badge chips in Packer UI');
-check(html.indexOf('Box Sku Sizes') !== -1, 'Raw Data Box Sku Sizes referenced');
 check(html.indexOf('parseBoxSkuSizes') !== -1, 'parseBoxSkuSizes inlined');
 check(html.indexOf('By SKU') !== -1 && html.indexOf('renderCombinedBySku') !== -1,
-  'Combined By SKU (Boxes + Raw Data) detail present');
-check(html.indexOf('Raw idle') !== -1 && html.indexOf('Raw BPH') !== -1,
-  'By SKU shows Raw idle / Raw BPH columns');
-check(html.indexOf('loadExecutiveSummaryRows') !== -1, 'Executive Summary loader inlined');
+  'Combined By SKU detail present');
+check(html.indexOf('function parseDowntimePaste') !== -1, 'Downtime paste parser inlined');
+check(html.indexOf('>Downtime<') !== -1 || html.indexOf('Downtime mins') !== -1,
+  'Downtime compare column / export present');
 check(html.indexOf('<b>Intra h</b>') !== -1 || html.indexOf('Intra h total') !== -1,
   'Intra hours total shown in Packer UI');
 check(html.indexOf('Intra hours all up') !== -1, 'Export includes Intra hours all up');
 
-check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile, execFile') !== -1 ||
-  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile, execFile') !== -1,
-  'Packer builds from Boxes + Intra + optional Raw + Exec (+ breaks)');
+check(html.indexOf('downtimeText') !== -1 || html.indexOf('downtimePasteText') !== -1,
+  'Packer builds with optional Downtime paste');
 check(html.indexOf('sizesCell') !== -1 || html.indexOf('function sizesCell') !== -1,
-  'Combined sizes cell (Boxes + Raw Data) present');
+  'Sizes cell present');
 
 console.log('\nOps smoke — auto breaks on Intra shift length');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
