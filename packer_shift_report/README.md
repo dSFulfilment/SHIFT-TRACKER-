@@ -43,7 +43,7 @@ Morning / Afternoon metrics use `SUMIFS` into Raw data. Target BPH uses `INDEX`/
 - Inputs: **Boxes Packed by Worker** (scoring) + **Intra Hour** (reference only)
 - Hours on SKU = Packing Time Seconds / 3600; **all** timed lines are scored (no short-line filter)
 - % of target = boxes ÷ Σ(hours × SKU target) on included known-SKU lines
-- Flags: Below target / Dipped below strike / On/above target
+- Flags: Below strike (red) / Below target (yellow) / On/above target (green). Overall average vs strike — a weak SKU line does not force red if the average clears.
 - Unknown Primary Sku → keep line, flag “no target defined for SKU X” (never guess)
 
 ## Packer tab

@@ -76,15 +76,15 @@
   }
 
   function flagClass(flag) {
-    if (flag === 'Below target') return 'flag-below';
-    if (flag === 'Dipped below strike') return 'flag-dip';
+    if (flag === 'Below strike') return 'flag-below'; // red
+    if (flag === 'Below target') return 'flag-dip';   // yellow
     if (flag === 'On/above target') return 'flag-ok';
     return 'flag-none';
   }
 
   function verdictClass(v) {
-    if (v === 'under strike') return 'flag-below';
-    if (v === 'under target') return 'flag-dip';
+    if (v === 'under strike') return 'flag-below'; // red
+    if (v === 'under target') return 'flag-dip';   // yellow
     if (v === 'on/above target') return 'flag-ok';
     return 'flag-none';
   }
@@ -103,7 +103,7 @@
       '<div><b>Target boxes</b><span>' + Math.round(t.targetBoxes).toLocaleString() + '</span></div>' +
       '<div><b>% of target</b><span>' + pct + '</span></div>' +
       '<div><b>Gap</b><span>' + gap + '</span></div>' +
-      '<div><b>Flags</b><span>Below ' + t.below + ' · Dip ' + t.dipped + ' · OK ' + t.onTarget + '</span></div>' +
+      '<div><b>Flags</b><span>Strike ' + t.below + ' · Target ' + t.dipped + ' · OK ' + t.onTarget + '</span></div>' +
       '</div>';
   }
 

@@ -34,11 +34,27 @@ var morning = {};
 report.morning.forEach(function (r) { morning[r.workerDisplay] = r; });
 check(morning['Alice Smith'] && morning['Alice Smith'].flag === 'On/above target', 'Alice morning on/above');
 check(Math.abs(morning['Alice Smith'].pctOfTarget - (130 / 110 * 100)) < 0.01, 'Alice % of target');
-check(morning['Bob Jones'] && morning['Bob Jones'].flag === 'Below target', 'Bob below target');
+check(morning['Bob Jones'] && morning['Bob Jones'].flag === 'Below strike', 'Bob below strike (red)');
 check(morning['Bob Jones'].why && morning['Bob Jones'].why.indexOf('short by') !== -1, 'Bob why explains shortfall');
 check(morning['Bob Jones'].skuLines && morning['Bob Jones'].skuLines.length >= 1, 'Bob has SKU breakdown');
 check(report.morningTotals && report.morningTotals.packers === 3, 'Morning shift totals packers');
-check(morning['Eve Short'] && morning['Eve Short'].flag === 'Below target', 'Eve short line still scored');
+check(morning['Eve Short'] && morning['Eve Short'].flag === 'Below strike', 'Eve below strike still scored');
+
+// Averages out: one SKU under strike, overall still clears strike + target → green
+var dipBoxes = [
+  { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Pat Dip', 'Station Name': 'A1', 'Primary Sku': 250, 'Boxes Packed': 14, 'Packing Time Seconds': 3600 },
+  { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Pat Dip', 'Station Name': 'A1', 'Primary Sku': 500, 'Boxes Packed': 50, 'Packing Time Seconds': 3600 }
+];
+var dipReport = PSR.buildReport(dipBoxes, 0, []);
+check(dipReport.morning[0].flag === 'On/above target', 'Pat Dip averages out above strike → on/above');
+check(dipReport.morning[0].skuLines.some(function (L) { return L.verdict === 'under strike'; }), 'Pat Dip still has an under-strike SKU line');
+
+// Above strike but below target → yellow
+var midBoxes = [
+  { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Mid Pack', 'Station Name': 'M1', 'Primary Sku': 250, 'Boxes Packed': 45, 'Packing Time Seconds': 10800 }
+];
+var midReport = PSR.buildReport(midBoxes, 0, []);
+check(midReport.morning[0].flag === 'Below target', 'Mid Pack above strike but below target → yellow');
 check(report.afternoon.length === 1 && report.afternoon[0].workerDisplay === 'Alice Smith', 'Alice afternoon separate row');
 check(report.exclusions.under_15_min == null, 'no under-15-min exclusion');
 

@@ -64,6 +64,9 @@
     'seconds per item': 'Seconds per Item',
     'pouches per hour': 'Pouches per Hour',
     'report date hour': 'Report Date Hour',
+    'idle time %': 'Idle Time %',
+    'idle time': 'Idle Time %',
+    'box dynamic efficiency %': 'Box Dynamic Efficiency %',
     'boxes per hour': 'Boxes per Hour',
     'first scan': 'First Scan',
     'last scan': 'Last Scan',
@@ -609,18 +612,31 @@
       return rows;
     }
 
-    function explainWhy(flag, pct, scoreBoxes, targetBoxes, skuRows) {
+    function explainWhy(flag, pct, scoreBoxes, targetBoxes, skuRows, strikeBoxes) {
       var gap = targetBoxes != null ? scoreBoxes - targetBoxes : null;
+      var strikeGap = strikeBoxes != null ? scoreBoxes - strikeBoxes : null;
       var bits = [];
       if (flag === 'No target defined') {
         bits.push('Cannot score % of target — no SKU on this shift has a target in the table.');
+      } else if (flag === 'Below strike' && pct != null && strikeGap != null) {
+        bits.push(
+          'Overall below strike — short by ' + Math.abs(strikeGap).toFixed(0) +
+          ' boxes vs hours × strike lines (' + pct.toFixed(0) + '% of target).'
+        );
       } else if (flag === 'Below target' && pct != null && gap != null) {
-        bits.push('Finished at ' + pct.toFixed(0) + '% of target — short by ' + Math.abs(gap).toFixed(0) + ' boxes for the hours worked.');
-      } else if (flag === 'Dipped below strike' && pct != null && gap != null) {
-        var weak = skuRows.filter(function (r) { return r.verdict === 'under strike'; }).map(function (r) { return r.sku; });
-        bits.push('Beat overall target (' + pct.toFixed(0) + '%, +' + gap.toFixed(0) + ' boxes) but dipped under the strike line on SKU ' + (weak.join(', ') || '?') + '.');
+        bits.push(
+          'Above strike overall, but finished at ' + pct.toFixed(0) +
+          '% of target — short by ' + Math.abs(gap).toFixed(0) + ' boxes for the hours worked.'
+        );
       } else if (flag === 'On/above target' && pct != null && gap != null) {
         bits.push('Hit target at ' + pct.toFixed(0) + '% — ' + gap.toFixed(0) + ' boxes above what hours × SKU targets required.');
+        var weak = skuRows.filter(function (r) { return r.verdict === 'under strike'; }).map(function (r) { return r.sku; });
+        if (weak.length) {
+          bits.push(
+            'Some SKU lines under strike (' + weak.join(', ') +
+            ') but the average still clears strike and target.'
+          );
+        }
       }
       var under = skuRows.filter(function (r) { return r.verdict === 'under strike' || r.verdict === 'under target'; });
       var strong = skuRows.filter(function (r) { return r.verdict === 'on/above target'; });
@@ -630,7 +646,7 @@
             (r.verdict === 'under strike' ? ' / strike ' + r.strikeBph : '');
         }).join('; '));
       }
-      if (strong.length && flag !== 'Below target') {
+      if (strong.length && flag !== 'Below strike') {
         bits.push('Held up by: ' + strong.filter(function (r) { return r.actualBph != null && r.targetBph != null; }).map(function (r) {
           return 'SKU ' + r.sku + ' ' + r.actualBph.toFixed(1) + ' BPH (target ' + r.targetBph + ')';
         }).join('; '));
@@ -718,8 +734,10 @@
             pctOfTarget: null,
             flag: 'No target defined',
             notes: skus.length ? ('no target defined for SKU ' + skus.join(', ')) : '',
-            why: explainWhy('No target defined', null, 0, 0, skuRows),
+            why: explainWhy('No target defined', null, 0, 0, skuRows, 0),
             boxGap: null,
+            strikeBoxes: 0,
+            pctOfStrike: null,
             skuLines: skuRows,
             skuMix: skuMix,
             rawLines: wlines,
@@ -730,15 +748,18 @@
           return;
         }
         var targetBoxes = known.reduce(function (s, L) { return s + L.hours * L.targetBph; }, 0);
+        var strikeBoxes = known.reduce(function (s, L) {
+          return s + (L.strikeBph != null ? L.hours * L.strikeBph : 0);
+        }, 0);
         var boxesKnown = known.reduce(function (s, L) { return s + L.boxes; }, 0);
         var pct = targetBoxes > 0 ? (boxesKnown / targetBoxes * 100) : null;
-        var dipped = known.some(function (L) {
-          return L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph;
-        });
+        var pctStrike = strikeBoxes > 0 ? (boxesKnown / strikeBoxes * 100) : null;
+        // Packer flag uses overall average vs strike/target — a weak SKU line
+        // does not force Below strike if hours×strike still clears.
         var flag;
         if (pct == null) flag = 'No target defined';
+        else if (strikeBoxes > 0 && boxesKnown < strikeBoxes) flag = 'Below strike';
         else if (pct < 100) flag = 'Below target';
-        else if (dipped) flag = 'Dipped below strike';
         else flag = 'On/above target';
         var notes = '';
         if (hasUnknown) {
@@ -754,10 +775,12 @@
           hours: hours,
           boxes: boxes,
           targetBoxes: targetBoxes,
+          strikeBoxes: strikeBoxes,
           pctOfTarget: pct,
+          pctOfStrike: pctStrike,
           flag: flag,
           notes: notes,
-          why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows),
+          why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows, strikeBoxes),
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
           skuMix: skuMix,
@@ -794,8 +817,8 @@
         targetBoxes: target,
         pctOfTarget: target > 0 ? score / target * 100 : null,
         boxGap: target > 0 ? score - target : null,
-        below: results.filter(function (r) { return r.flag === 'Below target'; }).length,
-        dipped: results.filter(function (r) { return r.flag === 'Dipped below strike'; }).length,
+        below: results.filter(function (r) { return r.flag === 'Below strike'; }).length,
+        dipped: results.filter(function (r) { return r.flag === 'Below target'; }).length,
         onTarget: results.filter(function (r) { return r.flag === 'On/above target'; }).length,
         noTarget: results.filter(function (r) { return r.flag === 'No target defined'; }).length
       };
