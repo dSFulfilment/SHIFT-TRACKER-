@@ -12,6 +12,7 @@
   var viewsEl = document.getElementById('psrViews');
   var panelEl = document.getElementById('psrPanel');
   var runBtn = document.getElementById('psrRunBtn');
+  var exportBtn = document.getElementById('psrExportBtn');
   var clearBtn = document.getElementById('psrClearBtn');
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
@@ -50,6 +51,7 @@
     var ok = scriptsOk();
 
     runBtn.disabled = !ok;
+    if (exportBtn) exportBtn.disabled = !(ok && report);
 
     if (!ok) {
       statusEl.className = 'psr-status err';
@@ -329,6 +331,8 @@
       '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>.</p>' +
       '<h2>Hour + SKU</h2>' +
       '<p>Click a packer (or open <b>By hour</b>) to see boxes each hour from Intra, SKU mix and performance from Boxes. The Intra export does not include SKU, so hour and SKU cannot be joined into one cell. Packers on more than one SKU are marked <b>Mixed</b>.</p>' +
+      '<h2>Export</h2>' +
+      '<p>After Build report, click <b>Export report</b> to download an Excel workbook with Summary, Morning, Afternoon, SKU detail (with Total/avg), By hour, Exclusions, and SKU targets.</p>' +
       '</div>';
   }
 
@@ -385,6 +389,7 @@
       statusEl.textContent = bits.join(' · ');
       view = 'morning';
       render();
+      refreshReadyState();
       toast('Report ready');
     } catch (e) {
       report = null;
@@ -396,6 +401,40 @@
       console.error(e);
     } finally {
       runBtn.disabled = !scriptsOk();
+      if (exportBtn) exportBtn.disabled = !(scriptsOk() && report);
+    }
+  }
+
+  function downloadExport() {
+    if (!report) {
+      toast('Build report first');
+      return;
+    }
+    if (!scriptsOk() || typeof PSR.buildExportWorkbook !== 'function') {
+      toast('Export not available');
+      return;
+    }
+    try {
+      var wb = PSR.buildExportWorkbook(report);
+      var buf = PSR.workbookToArrayBuffer(wb);
+      var blob = new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = 'packer_shift_report_' + stamp + '.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      toast('Report downloaded');
+    } catch (e) {
+      console.error(e);
+      toast('Export failed');
+      statusEl.className = 'psr-status err';
+      statusEl.textContent = (e && e.message) ? e.message : String(e);
     }
   }
 
@@ -419,6 +458,7 @@
     });
   });
   runBtn.addEventListener('click', function () { run(); });
+  if (exportBtn) exportBtn.addEventListener('click', downloadExport);
   clearBtn.addEventListener('click', clearAll);
   viewsEl.addEventListener('click', function (e) {
     var tab = e.target && e.target.closest ? e.target.closest('[data-psr-view]') : null;

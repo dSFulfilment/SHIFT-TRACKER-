@@ -166,7 +166,14 @@
   }
 
   function rootXLSX() {
-    var X = (typeof XLSX !== 'undefined') ? XLSX : (typeof window !== 'undefined' ? window.XLSX : null);
+    var X = (typeof XLSX !== 'undefined') ? XLSX : null;
+    if (!X && typeof window !== 'undefined') X = window.XLSX;
+    if (!X && typeof global !== 'undefined') X = global.XLSX;
+    if (!X && typeof require === 'function') {
+      try { X = require('./xlsx.mini.min.js'); } catch (e1) {
+        try { X = require('../js/xlsx.mini.min.js'); } catch (e2) { X = null; }
+      }
+    }
     if (!X) throw new Error('SheetJS (XLSX) is not loaded');
     return X;
   }
@@ -630,6 +637,179 @@
     return buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows);
   }
 
+  function sheetFromAoA(aoa) {
+    var X = rootXLSX();
+    return X.utils.aoa_to_sheet(aoa);
+  }
+
+  function appendSheet(wb, name, aoa) {
+    var X = rootXLSX();
+    X.utils.book_append_sheet(wb, sheetFromAoA(aoa), name);
+  }
+
+  function shiftSheetAoA(rows, totals) {
+    var aoa = [
+      ['Shift amount', totals ? totals.shiftLabel : ''],
+      ['Packers', totals ? totals.packers : 0],
+      ['Hours all up', totals ? Number(totals.hours.toFixed(2)) : 0],
+      ['Boxes packed', totals ? Math.round(totals.boxes) : 0],
+      ['Target boxes', totals ? Number(totals.targetBoxes.toFixed(1)) : 0],
+      ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
+      ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
+      [],
+      ['Packer', 'SKU mix', 'Mixed?', 'Hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+    ];
+    (rows || []).forEach(function (r) {
+      aoa.push([
+        r.workerDisplay,
+        r.skuMix ? r.skuMix.label : '',
+        r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
+        r.hours != null ? Number(r.hours.toFixed(2)) : '',
+        r.boxes != null ? Math.round(r.boxes) : '',
+        r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
+        r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+        r.boxGap != null ? Math.round(r.boxGap) : '',
+        r.flag || '',
+        r.why || ''
+      ]);
+    });
+    return aoa;
+  }
+
+  function skuDetailAoA(morning, afternoon) {
+    var aoa = [[
+      'Shift', 'Packer', 'SKU', 'Hours', 'Boxes', 'Actual BPH', 'Target BPH', 'Strike BPH',
+      'Line %', 'Verdict', 'SKU mix', 'Mixed?', 'Packer % of target', 'Packer flag'
+    ]];
+    function addShift(rows) {
+      (rows || []).forEach(function (r) {
+        var lines = r.skuLines || [];
+        var totH = 0;
+        var totB = 0;
+        var knownH = 0;
+        var knownTB = 0;
+        var strikeH = 0;
+        var strikeW = 0;
+        lines.forEach(function (L) {
+          if (L.verdict && String(L.verdict).indexOf('excluded') === 0) return;
+          totH += L.hours || 0;
+          totB += L.boxes || 0;
+          if (L.targetBph != null && L.hours != null) {
+            knownH += L.hours;
+            knownTB += L.hours * L.targetBph;
+          }
+          if (L.strikeBph != null && L.hours != null) {
+            strikeH += L.hours;
+            strikeW += L.hours * L.strikeBph;
+          }
+          aoa.push([
+            r.shiftLabel,
+            r.workerDisplay,
+            L.sku,
+            L.hours != null ? Number(L.hours.toFixed(2)) : '',
+            L.boxes != null ? Math.round(L.boxes) : '',
+            L.actualBph != null ? Number(L.actualBph.toFixed(1)) : '',
+            L.targetBph != null ? L.targetBph : '',
+            L.strikeBph != null ? L.strikeBph : '',
+            L.linePct != null ? Number(L.linePct.toFixed(0)) : '',
+            L.verdict || '',
+            r.skuMix ? r.skuMix.label : '',
+            r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
+            r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+            r.flag || ''
+          ]);
+        });
+        aoa.push([
+          r.shiftLabel,
+          r.workerDisplay,
+          'Total / avg',
+          Number(totH.toFixed(2)),
+          Math.round(totB),
+          totH > 0 ? Number((totB / totH).toFixed(1)) : '',
+          knownH > 0 ? Number((knownTB / knownH).toFixed(1)) : '',
+          strikeH > 0 ? Number((strikeW / strikeH).toFixed(1)) : '',
+          r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(0)) : '',
+          r.flag || '',
+          r.skuMix ? r.skuMix.label : '',
+          r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
+          r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+          r.flag || ''
+        ]);
+      });
+    }
+    addShift(morning);
+    addShift(afternoon);
+    return aoa;
+  }
+
+  function byHourAoA(byHour) {
+    var aoa = [['Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU mix (shift)', 'Mixed?']];
+    (byHour || []).forEach(function (H) {
+      (H.packers || []).forEach(function (p) {
+        var mix = p.skuInfo && p.skuInfo.mix;
+        aoa.push([
+          H.hourLabel,
+          H.shiftLabel,
+          p.workerDisplay,
+          Math.round(p.boxes),
+          mix ? mix.label : '',
+          mix && mix.isMixed ? 'Yes' : 'No'
+        ]);
+      });
+    });
+    return aoa;
+  }
+
+  /** Build a downloadable xlsx workbook object from a built report. */
+  function buildExportWorkbook(report) {
+    var X = rootXLSX();
+    if (!X || !X.utils) throw new Error('SheetJS XLSX not available for export');
+    var wb = X.utils.book_new();
+    var mt = report.morningTotals || {};
+    var at = report.afternoonTotals || {};
+    appendSheet(wb, 'Summary', [
+      ['Packer shift report', FACILITY_NAME],
+      ['Generated', new Date().toISOString()],
+      [],
+      ['Morning packers', mt.packers || 0],
+      ['Morning hours all up', mt.hours != null ? Number(mt.hours.toFixed(2)) : 0],
+      ['Morning boxes', mt.boxes != null ? Math.round(mt.boxes) : 0],
+      ['Morning % of target', mt.pctOfTarget != null ? Number(mt.pctOfTarget.toFixed(1)) : ''],
+      [],
+      ['Afternoon packers', at.packers || 0],
+      ['Afternoon hours all up', at.hours != null ? Number(at.hours.toFixed(2)) : 0],
+      ['Afternoon boxes', at.boxes != null ? Math.round(at.boxes) : 0],
+      ['Afternoon % of target', at.pctOfTarget != null ? Number(at.pctOfTarget.toFixed(1)) : ''],
+      [],
+      ['Notes'],
+      ['Scoring from Boxes Packed by Worker. Intra Hour is for hourly boxes only (no SKU).'],
+      ['Every timed Boxes line is scored. Mixed = more than one SKU on the shift.']
+    ]);
+    appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
+    appendSheet(wb, 'Afternoon shift', shiftSheetAoA(report.afternoon, report.afternoonTotals));
+    appendSheet(wb, 'SKU detail', skuDetailAoA(report.morning, report.afternoon));
+    appendSheet(wb, 'By hour', byHourAoA(report.byHour));
+    var ex = report.exclusions || {};
+    appendSheet(wb, 'Exclusions', [
+      ['Reason', 'Count'],
+      ['Blank worker name or Primary Sku', ex.blank_worker_or_sku || 0],
+      ['Missing Boxes Packed', ex.missing_boxes || 0],
+      ['Missing Packing Time Seconds', ex.missing_time || 0],
+      ['Unknown SKU lines (kept & flagged)', ex.unknown_sku_lines || 0]
+    ]);
+    var skuAoa = [['Primary Sku', 'Target BPH', 'Strike line BPH']];
+    Object.keys(SKU_TARGETS).map(Number).sort(function (a, b) { return a - b; }).forEach(function (sku) {
+      skuAoa.push([sku, SKU_TARGETS[sku].target, SKU_TARGETS[sku].strike]);
+    });
+    appendSheet(wb, 'SKU targets', skuAoa);
+    return wb;
+  }
+
+  function workbookToArrayBuffer(wb) {
+    var X = rootXLSX();
+    return X.write(wb, { bookType: 'xlsx', type: 'array' });
+  }
+
   return {
     SKU_TARGETS: SKU_TARGETS,
     FACILITY_NAME: FACILITY_NAME,
@@ -638,6 +818,8 @@
     validateHeaders: validateHeaders,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
+    buildExportWorkbook: buildExportWorkbook,
+    workbookToArrayBuffer: workbookToArrayBuffer,
     loadBoxesRows: loadBoxesRows,
     readWorkbookArrayBuffer: readWorkbookArrayBuffer
   };

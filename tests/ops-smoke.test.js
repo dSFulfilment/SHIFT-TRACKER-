@@ -103,6 +103,8 @@ check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended st
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
 check(html.indexOf('SKU mix') !== -1 && html.indexOf('psr-mixed') !== -1, 'Mixed SKU mix column present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
+check(html.indexOf('id="psrExportBtn"') !== -1, 'Export report button exists');
+check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlined');
 check(html.indexOf('buildReportFromFiles(boxesFile, intraFile)') !== -1 ||
   html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0])') !== -1,
   'Packer builds from Boxes + Intra only');
