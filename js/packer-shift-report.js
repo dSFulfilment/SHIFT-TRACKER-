@@ -23,7 +23,6 @@
     700: { target: 21, strike: 19.0 }
   };
   var FACILITY_NAME = 'Dandenong South';
-  var MIN_HOURS = 0.25;
 
   var BOXES_COLS = [
     'Report Date', 'Shift', 'Pnp Worker Name', 'Station Name', 'Primary Sku',
@@ -195,15 +194,115 @@
     return kept;
   }
 
+  /** Intra has no SKU — clock hour ≥ 14 → Afternoon (same rule as analytics). */
+  function shiftKeyFromClockHour(h) {
+    return h >= 14 ? 'afternoon_shift' : 'morning_shift';
+  }
+
+  function parseReportDateHour(v) {
+    if (v == null || v === '') return null;
+    if (v instanceof Date && !isNaN(v.getTime())) {
+      return {
+        date: v,
+        hour: v.getHours(),
+        label: (v.getHours() < 10 ? '0' : '') + v.getHours() + ':00',
+        sortKey: v.getTime()
+      };
+    }
+    var s = String(v).trim();
+    // "2026-08-13 14:00" / "2026-08-13T14:00:00" / Excel-ish
+    var m = s.match(/(\d{1,2}):(\d{2})/);
+    var hour = m ? parseInt(m[1], 10) : null;
+    if (hour == null || !isFinite(hour)) return null;
+    var label = (hour < 10 ? '0' : '') + hour + ':00';
+    var day = s.slice(0, 10);
+    return { date: s, hour: hour, label: label, sortKey: day + 'T' + label };
+  }
+
+  function normalizeIntraHours(intraRows) {
+    var out = [];
+    (intraRows || []).forEach(function (d) {
+      var display = String(d['Pnp Worker Name']).trim();
+      if (!display) return;
+      var boxes = num(d['Boxes Packed']);
+      if (boxes == null) return;
+      var parsed = parseReportDateHour(d['Report Date Hour']);
+      if (!parsed) return;
+      out.push({
+        reportDateHour: d['Report Date Hour'],
+        hourLabel: parsed.label,
+        hour: parsed.hour,
+        sortKey: parsed.sortKey,
+        shiftKey: shiftKeyFromClockHour(parsed.hour),
+        shiftLabel: parsed.hour >= 14 ? 'Afternoon' : 'Morning',
+        workerDisplay: display,
+        workerKey: workerKey(display),
+        boxes: boxes
+      });
+    });
+    out.sort(function (a, b) {
+      if (a.sortKey < b.sortKey) return -1;
+      if (a.sortKey > b.sortKey) return 1;
+      return a.workerDisplay.localeCompare(b.workerDisplay);
+    });
+    return out;
+  }
+
+  function hourLinesFor(workerKeyName, shiftKey, hourLines) {
+    return (hourLines || []).filter(function (h) {
+      return h.workerKey === workerKeyName && h.shiftKey === shiftKey;
+    });
+  }
+
+  function buildByHour(hourLines, morning, afternoon) {
+    var skuByWorkerShift = {};
+    function index(rows) {
+      (rows || []).forEach(function (r) {
+        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = (r.skuLines || []).map(function (L) {
+          return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
+        });
+      });
+    }
+    index(morning);
+    index(afternoon);
+
+    var byHour = {};
+    (hourLines || []).forEach(function (h) {
+      var k = h.sortKey + '|' + h.hourLabel;
+      if (!byHour[k]) {
+        byHour[k] = {
+          hourLabel: h.hourLabel,
+          sortKey: h.sortKey,
+          shiftKey: h.shiftKey,
+          shiftLabel: h.shiftLabel,
+          boxes: 0,
+          packers: []
+        };
+      }
+      byHour[k].boxes += h.boxes;
+      byHour[k].packers.push({
+        workerDisplay: h.workerDisplay,
+        workerKey: h.workerKey,
+        boxes: h.boxes,
+        skus: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || []
+      });
+    });
+    return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
+      if (a.sortKey < b.sortKey) return -1;
+      if (a.sortKey > b.sortKey) return 1;
+      return 0;
+    });
+  }
+
   function buildReport(boxesRows, boxesDroppedBlank, intraRows) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
       missing_time: 0,
-      under_15_min: 0,
       unknown_sku_lines: 0
     };
     var warnings = [];
+    var hourLinesAll = normalizeIntraHours(intraRows);
 
     var raw = [];
     (boxesRows || []).forEach(function (r) {
@@ -257,18 +356,12 @@
         line.unknownSku = true;
         exclusions.unknown_sku_lines += 1;
       }
-      if (line.hours < MIN_HOURS) {
-        line.included = false;
-        line.excludeReason = 'Under 15-minute filter';
-        exclusions.under_15_min += 1;
-      } else {
-        line.included = true;
-      }
+      line.included = true;
       raw.push(line);
     });
 
     function lineVerdict(L) {
-      if (!L.included) return 'excluded (<15 min)';
+      if (!L.included) return 'excluded';
       if (L.unknownSku || L.targetBph == null) return 'no target';
       if (L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph) return 'under strike';
       if (L.actualBph != null && L.targetBph != null && L.actualBph < L.targetBph) return 'under target';
@@ -331,7 +424,7 @@
       }
       var excluded = skuRows.filter(function (r) { return r.verdict.indexOf('excluded') === 0; });
       if (excluded.length) {
-        bits.push(excluded.length + ' short SKU line(s) under 15 min left out of the score (changeover noise).');
+        bits.push(excluded.length + ' incomplete SKU line(s) left out (missing boxes or packing time).');
       }
       return bits.join(' ');
     }
@@ -354,9 +447,7 @@
         var hasUnknown = included.some(function (L) { return L.unknownSku; });
         var display = included[0].workerDisplay;
         var skuRows = skuWhyRows(wlines);
-        var shortN = wlines.filter(function (L) {
-          return !L.included && L.excludeReason === 'Under 15-minute filter';
-        }).length;
+        var shortN = wlines.filter(function (L) { return !L.included; }).length;
         if (!known.length) {
           var skus = [];
           included.forEach(function (L) {
@@ -366,6 +457,7 @@
             shiftKey: shiftKey,
             shiftLabel: included[0].shiftLabel,
             workerDisplay: display,
+            workerKey: key,
             hours: hours,
             boxes: boxes,
             targetBoxes: 0,
@@ -375,6 +467,7 @@
             why: explainWhy('No target defined', null, 0, 0, skuRows),
             boxGap: null,
             skuLines: skuRows,
+            hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
             excludedShortLines: shortN
           });
           return;
@@ -400,6 +493,7 @@
           shiftKey: shiftKey,
           shiftLabel: included[0].shiftLabel,
           workerDisplay: display,
+          workerKey: key,
           hours: hours,
           boxes: boxes,
           targetBoxes: targetBoxes,
@@ -409,6 +503,7 @@
           why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows),
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
+          hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
           excludedShortLines: shortN
         });
       });
@@ -460,10 +555,11 @@
       exclusions: exclusions,
       facilityWorkers: Object.keys(workerSet).sort(),
       intraRows: intraRows || [],
+      hourLines: hourLinesAll,
+      byHour: buildByHour(hourLinesAll, morning, afternoon),
       warnings: warnings,
       skuTargets: SKU_TARGETS,
-      facilityName: FACILITY_NAME,
-      minHours: MIN_HOURS
+      facilityName: FACILITY_NAME
     };
   }
 
@@ -491,7 +587,6 @@
   return {
     SKU_TARGETS: SKU_TARGETS,
     FACILITY_NAME: FACILITY_NAME,
-    MIN_HOURS: MIN_HOURS,
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
     validateHeaders: validateHeaders,

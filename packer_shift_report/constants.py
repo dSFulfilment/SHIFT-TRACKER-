@@ -15,10 +15,6 @@ SKU_TARGETS = {
 
 FACILITY_NAME = "Dandenong South"
 
-# Changeover / setup noise — packer+SKU lines under this are not real performance.
-# Example: switching SKUs often packs 1–2 boxes slowly right after the switch.
-MIN_HOURS_ON_SKU = 0.25  # 15 minutes
-
 BOXES_REQUIRED_COLUMNS = [
     "Report Date",
     "Shift",
