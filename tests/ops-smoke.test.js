@@ -87,15 +87,15 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
-console.log('\nOps smoke — Packer avg BPH status');
-check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Blended overall BPH status helper exists');
-check(html.indexOf("'Avg BPH'") !== -1, 'KPI strip shows Avg BPH');
-check(html.indexOf('status = avg BPH') !== -1, 'People table notes status uses avg BPH');
-check(html.indexOf('id="pkChipBar"') !== -1 && html.indexOf('function renderChipBar') !== -1,
-  'Packer section filter chip bar exists');
-check(html.indexOf("'Pack hrs'") !== -1, 'KPI strip shows packing hours');
-check(html.indexOf("data-filter=\"") !== -1 && html.indexOf("chipBtn('sku'") !== -1 && html.indexOf("chipBtn('status'") !== -1,
-  'SKU and status filter chips are wired');
+console.log('\nOps smoke — Packer shift report (3× xlsx)');
+check(html.indexOf('id="psrRoot"') !== -1, 'Packer shift report root exists');
+check(html.indexOf('id="psrBoxes"') !== -1 && html.indexOf('id="psrIntra"') !== -1 && html.indexOf('id="psrSummary"') !== -1,
+  'Three export file inputs exist');
+check(html.indexOf('js/packer-shift-report.js') !== -1 && html.indexOf('js/xlsx.mini.min.js') !== -1,
+  'SheetJS + packer-shift-report scripts linked');
+check(html.indexOf('js/packer-shift-ui.js') !== -1, 'Packer shift UI script linked');
+check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
+check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 
 console.log('\nOps smoke — day-linked breaks (BPH ignores breaks)');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
