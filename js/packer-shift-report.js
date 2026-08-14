@@ -39,6 +39,46 @@
   function normHeader(h) {
     return String(h == null ? '' : h).trim().replace(/\s+/g, ' ');
   }
+  function headerKey(h) {
+    return normHeader(h).toLowerCase();
+  }
+  // Real exports sometimes tweak punctuation/casing — map aliases → canonical names.
+  var HEADER_ALIASES = {
+    'report date': 'Report Date',
+    'shift': 'Shift',
+    'pnp worker name': 'Pnp Worker Name',
+    'pnp worker': 'Pnp Worker Name',
+    'worker name': 'Pnp Worker Name',
+    'station name': 'Station Name',
+    'station': 'Station Name',
+    'primary sku': 'Primary Sku',
+    'primary skus': 'Primary Sku',
+    'sku': 'Primary Sku',
+    'boxes packed': 'Boxes Packed',
+    'items packed': 'Items Packed',
+    'pouches packed': 'Pouches Packed',
+    'packing time seconds': 'Packing Time Seconds',
+    'packing time (seconds)': 'Packing Time Seconds',
+    'packing timeseconds': 'Packing Time Seconds',
+    'seconds per item': 'Seconds per Item',
+    'pouches per hour': 'Pouches per Hour',
+    'report date hour': 'Report Date Hour',
+    'facility name': 'Facility Name',
+    'facility': 'Facility Name',
+    'idle time %': 'Idle Time %',
+    'idle time%': 'Idle Time %',
+    'idle time': 'Idle Time %',
+    'total boxes packed': 'Total Boxes Packed',
+    'packing time (hours)': 'Packing Time (Hours)',
+    'packing time hours': 'Packing Time (Hours)',
+    'boxes per hour': 'Boxes per Hour'
+  };
+  function canonicalizeHeader(h) {
+    var n = normHeader(h);
+    if (!n) return '';
+    var mapped = HEADER_ALIASES[headerKey(n)];
+    return mapped || n;
+  }
   function blank(v) {
     return v == null || String(v).trim() === '';
   }
@@ -70,15 +110,13 @@
   }
 
   function validateHeaders(fileLabel, headers, required) {
-    var found = headers.map(normHeader).filter(function (h, i, arr) {
-      // keep empties in the middle; trim trailing empties only
-      return true;
-    });
-    while (found.length && found[found.length - 1] === '') found.pop();
+    var canon = headers.map(canonicalizeHeader);
+    while (canon.length && canon[canon.length - 1] === '') canon.pop();
     var set = {};
-    found.forEach(function (h) { set[h] = true; });
+    canon.forEach(function (h) { if (h) set[h] = true; });
     var missing = required.filter(function (c) { return !set[c]; });
     if (missing.length) {
+      var found = canon.filter(Boolean);
       var err = new Error(
         fileLabel + ': missing required column(s): ' + missing.join(', ') +
         '. Found headers: ' + (found.join(', ') || '(none)') +
@@ -90,7 +128,29 @@
       err.found = found;
       throw err;
     }
-    return found;
+    return canon;
+  }
+
+  function findHeaderRow(aoa, required) {
+    var need = required.map(headerKey);
+    var maxScan = Math.min(aoa.length, 20);
+    for (var r = 0; r < maxScan; r++) {
+      var row = aoa[r] || [];
+      var keys = {};
+      for (var i = 0; i < row.length; i++) {
+        var c = canonicalizeHeader(row[i]);
+        if (c) keys[headerKey(c)] = true;
+      }
+      var hits = 0;
+      for (var n = 0; n < need.length; n++) {
+        if (keys[need[n]]) hits++;
+      }
+      // Enough required names on this row to treat it as the header
+      if (hits >= Math.min(4, need.length) || hits === need.length) {
+        return r;
+      }
+    }
+    return 0;
   }
 
   function sheetToRows(workbook, fileLabel, required) {
@@ -101,9 +161,10 @@
       validateHeaders(fileLabel, [], required);
       return [];
     }
-    var headers = validateHeaders(fileLabel, aoa[0], required);
+    var headerIdx = findHeaderRow(aoa, required);
+    var headers = validateHeaders(fileLabel, aoa[headerIdx], required);
     var rows = [];
-    for (var r = 1; r < aoa.length; r++) {
+    for (var r = headerIdx + 1; r < aoa.length; r++) {
       var line = aoa[r] || [];
       var obj = {};
       var any = false;
@@ -149,7 +210,8 @@
   function facilityWorkers(summaryRows) {
     var map = {};
     summaryRows.forEach(function (d) {
-      if (String(d['Facility Name'] == null ? '' : d['Facility Name']).trim() !== FACILITY_NAME) return;
+      var fac = String(d['Facility Name'] == null ? '' : d['Facility Name']).trim().toLowerCase();
+      if (fac !== FACILITY_NAME.toLowerCase()) return;
       var display = String(d['Pnp Worker Name']).trim();
       var key = workerKey(display);
       if (key && !map[key]) map[key] = display;

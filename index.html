@@ -1292,6 +1292,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-uploads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
 @media (max-width:900px){#tabPacker .psr-uploads{grid-template-columns:1fr}}
 #tabPacker .psr-file{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid #E5E8EF;border-radius:10px;background:#fff;font-size:.72rem;font-weight:700;color:#374151}
+#tabPacker .psr-file em{font-weight:600;color:#6B7280;font-style:normal}
 #tabPacker .psr-file input{font-size:.72rem;font-weight:500}
 #tabPacker .psr-hint{margin:8px 0 0;font-size:.7rem;line-height:1.45;color:#6B7280}
 #tabPacker .psr-hint code{font-size:.68rem;background:#EEF2FF;padding:1px 5px;border-radius:4px}
@@ -2120,28 +2121,28 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         <h1 class="psr-title">Packer</h1>
         <p class="psr-sub">Dandenong South · performance vs SKU target · Morning &amp; Afternoon</p>
         <div class="psr-actions">
-          <button type="button" id="psrRunBtn" class="psr-primary" disabled>Build report</button>
+          <button type="button" id="psrRunBtn" class="psr-primary">Build report</button>
           <button type="button" id="psrClearBtn">Clear</button>
         </div>
       </div>
       <div class="psr-uploads" aria-label="Shift export files">
         <label class="psr-file">
-          <span>1. Boxes Packed by Worker</span>
+          <span>1. Boxes Packed by Worker <em>(required)</em></span>
           <input type="file" id="psrBoxes" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </label>
         <label class="psr-file">
-          <span>2. Intra Hour Floor Performance</span>
+          <span>2. Intra Hour Floor Performance <em>(optional)</em></span>
           <input type="file" id="psrIntra" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </label>
         <label class="psr-file">
-          <span>3. Overall Summary by Packer and Date</span>
+          <span>3. Overall Summary by Packer and Date <em>(required)</em></span>
           <input type="file" id="psrSummary" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </label>
       </div>
-      <p class="psr-hint">Validates columns before scoring — missing/renamed columns stop with a clear error (no guessing). Summary file is only used to keep Facility Name = Dandenong South; its blended BPH is not used for targets. Source files are never modified. For the auditable Excel with SUMIFS formulas you can also run <code>python -m packer_shift_report --dir ./exports</code>.</p>
+      <p class="psr-hint">Need files <b>1</b> and <b>3</b>, then Build report. Open via <code>npm start</code> from this project (so <code>js/</code> loads). Or Excel: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code>. Source files are never modified.</p>
     </div>
     <div class="psr-body">
-      <div id="psrStatus" class="psr-status">Upload the three shift exports, then Build report.</div>
+      <div id="psrStatus" class="psr-status">Select Boxes + Summary, then Build report.</div>
       <div class="psr-views" id="psrViews" hidden>
         <div class="psr-tabs" role="tablist">
           <button type="button" data-psr-view="morning" class="active">Morning shift</button>
