@@ -98,10 +98,12 @@
     var gap = t.boxGap != null
       ? ((t.boxGap >= 0 ? '+' : '') + Math.round(t.boxGap).toLocaleString() + ' boxes vs target')
       : '—';
+    var intraH = t.intraHours != null ? t.intraHours : 0;
     return '<div class="psr-totals">' +
       '<div><b>Shift amount</b><span>' + escapeHtml(t.shiftLabel) + '</span></div>' +
       '<div><b>Packers</b><span>' + t.packers + '</span></div>' +
-      '<div><b>Hours</b><span>' + t.hours.toFixed(1) + '</span></div>' +
+      '<div><b>Pack h</b><span>' + t.hours.toFixed(1) + '</span></div>' +
+      '<div><b>Intra h</b><span>' + Number(intraH).toFixed(1) + '</span></div>' +
       '<div><b>Boxes packed</b><span>' + Math.round(t.boxes).toLocaleString() + '</span></div>' +
       '<div><b>Target boxes</b><span>' + Math.round(t.targetBoxes).toLocaleString() + '</span></div>' +
       '<div><b>% of target</b><span>' + pct + '</span></div>' +
@@ -246,14 +248,22 @@
       return '<h3 class="psr-detail-h">Boxes each hour</h3>' +
         '<p class="psr-prose">No Intra Hour rows for this packer on this shift (hours before 14:00 = Morning, 14:00+ = Afternoon).</p>';
     }
-    var total = hours.reduce(function (s, h) { return s + h.boxes; }, 0);
+    var totalBoxes = hours.reduce(function (s, h) { return s + h.boxes; }, 0);
+    var intraHours = r.intraHours != null ? r.intraHours : hours.length;
     var html = '<h3 class="psr-detail-h">Boxes each hour</h3>' +
-      '<p class="psr-prose">Intra Hour boxes only — packer target / flags use Shift h (Intra − breaks) when Intra is loaded.</p>' +
+      '<p class="psr-prose"><b>Intra h total: ' + Number(intraHours).toFixed(0) + '</b> clock hour'
+      + (intraHours === 1 ? '' : 's')
+      + (r.breakMinutes > 0
+        ? (' · breaks −' + Math.round(r.breakMinutes) + 'm → Shift h ' +
+          (r.shiftHours != null ? r.shiftHours.toFixed(2) : '—'))
+        : '')
+      + '. Packer target / flags use Shift h when Intra is loaded.</p>' +
       '<table class="psr-table"><thead><tr><th>Hour</th><th>Boxes</th></tr></thead><tbody>';
     hours.forEach(function (h) {
       html += '<tr><td>' + escapeHtml(h.hourLabel) + '</td><td>' + Math.round(h.boxes).toLocaleString() + '</td></tr>';
     });
-    html += '<tr class="psr-total-row"><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
+    html += '<tr class="psr-total-row"><td><b>Total · ' + Number(intraHours).toFixed(0) + ' Intra h</b></td><td><b>' +
+      Math.round(totalBoxes).toLocaleString() + '</b></td></tr>';
     html += '</tbody></table>';
     return html;
   }
@@ -321,7 +331,17 @@
     if (!rows.length) {
       return '<p class="psr-prose">No Intra Hour rows loaded.</p>';
     }
-    var html = '<p class="psr-prose">Boxes packed each clock hour (Intra). Target / flags come from Boxes Packed by Worker — not these hourly counts.</p>';
+    var clockSlots = rows.length;
+    var packerHours = 0;
+    var totalBoxes = 0;
+    rows.forEach(function (H) {
+      packerHours += (H.packers || []).length;
+      totalBoxes += H.boxes || 0;
+    });
+    var html = '<p class="psr-prose"><b>Intra h total: ' + packerHours + '</b> packer-hours across <b>' +
+      clockSlots + '</b> clock hour' + (clockSlots === 1 ? '' : 's') +
+      ' · ' + Math.round(totalBoxes).toLocaleString() + ' boxes. '
+      + 'Target / flags use Shift h (Intra − breaks) on Morning / Afternoon — not these hourly counts alone.</p>';
     rows.forEach(function (H) {
       html += '<div class="psr-hour-block">' +
         '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +

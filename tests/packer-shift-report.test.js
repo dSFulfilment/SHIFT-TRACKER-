@@ -36,6 +36,7 @@ check(morning['Alice Smith'] && morning['Alice Smith'].flag === 'On/above target
 check(morning['Alice Smith'].hoursBasis === 'intra', 'Alice need uses Intra shift length');
 check(morning['Alice Smith'].shiftHours === 2 && morning['Alice Smith'].shiftHoursSource === 'intra',
   'Alice Shift h = Intra clock-hour count');
+check(report.morningTotals.intraHours === 2, 'Morning Intra h total = Alice 2 (Bob/Eve have no Intra)');
 check(Math.abs(morning['Alice Smith'].pctOfTarget - (130 / (110 * 2 / 6) * 100)) < 0.01,
   'Alice % of target scales need by Intra hours');
 check(morning['Bob Jones'] && morning['Bob Jones'].flag === 'Below strike', 'Bob below strike (red)');

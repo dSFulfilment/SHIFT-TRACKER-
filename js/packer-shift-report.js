@@ -1108,6 +1108,10 @@
       var hours = results.reduce(function (s, r) { return s + r.hours; }, 0);
       var boxes = results.reduce(function (s, r) { return s + r.boxes; }, 0);
       var target = results.reduce(function (s, r) { return s + r.targetBoxes; }, 0);
+      var intraHours = results.reduce(function (s, r) {
+        if (r.intraHours != null && isFinite(r.intraHours)) return s + r.intraHours;
+        return s + ((r.hourLines && r.hourLines.length) || 0);
+      }, 0);
       var score = 0;
       results.forEach(function (r) {
         if (r.pctOfTarget != null && r.targetBoxes) score += r.targetBoxes * r.pctOfTarget / 100;
@@ -1117,6 +1121,7 @@
         shiftLabel: shiftLabel,
         packers: results.length,
         hours: hours,
+        intraHours: intraHours,
         boxes: boxes,
         targetBoxes: target,
         pctOfTarget: target > 0 ? score / target * 100 : null,
@@ -1247,7 +1252,8 @@
     var aoa = [
       ['Shift amount', totals ? totals.shiftLabel : ''],
       ['Packers', totals ? totals.packers : 0],
-      ['Hours all up', totals ? Number(totals.hours.toFixed(2)) : 0],
+      ['Hours all up (Pack h)', totals ? Number(totals.hours.toFixed(2)) : 0],
+      ['Intra hours all up', totals && totals.intraHours != null ? Number(totals.intraHours.toFixed(2)) : 0],
       ['Boxes packed', totals ? Math.round(totals.boxes) : 0],
       ['Target boxes', totals ? Number(totals.targetBoxes.toFixed(1)) : 0],
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
