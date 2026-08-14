@@ -18,6 +18,7 @@ SHEET_SKU = "SKU targets"
 SHEET_RAW = "Raw data"
 SHEET_MORNING = "Morning shift"
 SHEET_AFTERNOON = "Afternoon shift"
+SHEET_WHY = "Why (SKU detail)"
 SHEET_EXCLUSIONS = "Exclusions"
 SHEET_INTRA = "Intra hour (reference)"
 
@@ -93,7 +94,9 @@ def _write_how(ws, data: ReportData):
         "Auditability",
         "The Raw data sheet holds the export values plus Excel formulas for Hours, Actual BPH, Target BPH",
         "(INDEX/MATCH into SKU targets), Strike BPH, Target boxes, and the include flag.",
-        "Morning / Afternoon sheets use SUMIFS against Raw data so totals stay auditable if you edit Raw.",
+        "Morning / Afternoon sheets show the shift amount at the top, then each packer with a Why column.",
+        "Why (SKU detail) breaks every packer into SKU lines so you can see what dragged or held the score.",
+        "Morning / Afternoon metrics use SUMIFS against Raw data so totals stay auditable if you edit Raw.",
         "",
         "Source files are never modified — this workbook is a new output only.",
     ]
@@ -247,20 +250,53 @@ def _flag_fill(flag: str):
     return PatternFill("solid", fgColor="E5E7EB")
 
 
-def _write_shift_sheet(ws, results: List[PackerShiftResult], shift_key: str):
+def _write_shift_sheet(ws, results: List[PackerShiftResult], shift_key: str, totals=None):
+    # Shift amount summary — what the whole shift packed vs target
+    if totals is not None:
+        ws.append(["Shift amount", totals.shift_label])
+        ws.append(["Packers scored", totals.packers])
+        ws.append(["Hours worked (included)", round(totals.hours, 2)])
+        ws.append(["Boxes packed (included)", round(totals.boxes, 1)])
+        ws.append(["Target boxes (hours × SKU targets)", round(totals.target_boxes, 1)])
+        ws.append(
+            [
+                "% of target (shift)",
+                round(totals.pct_of_target, 1) if totals.pct_of_target is not None else "—",
+            ]
+        )
+        gap = totals.box_gap
+        ws.append(
+            [
+                "Box gap (ahead if +)",
+                round(gap, 1) if gap is not None else "—",
+            ]
+        )
+        ws.append(
+            [
+                "Flags",
+                f"Below {totals.below} · Dip strike {totals.dipped} · On/above {totals.on_target} · No target {totals.no_target}",
+            ]
+        )
+        ws.append([])
+        ws["A1"].font = Font(bold=True, size=12)
+
+    header_row = ws.max_row + 1
     headers = [
         "Packer",
         "Hours worked",
         "Boxes packed",
         "Target boxes",
         "% of target",
+        "Box gap",
         "Flag",
+        "Why it worked / didn't",
         "Notes",
     ]
     ws.append(headers)
     raw = f"'{SHEET_RAW}'"
-    for i, r in enumerate(results, start=2):
-        # Packer name is the SUMIFS criteria (value). Metrics are formulas into Raw data.
+    first_data = header_row + 1
+    for offset, r in enumerate(results):
+        i = first_data + offset
         ws.cell(i, 1, r.worker_display)
         ws.cell(
             i,
@@ -277,33 +313,39 @@ def _write_shift_sheet(ws, results: List[PackerShiftResult], shift_key: str):
             4,
             f'=SUMIFS({raw}!$M:$M,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)',
         )
-        # % uses Score boxes (col P) so unknown-SKU boxes do not invent a target
         ws.cell(
             i,
             5,
             f'=IF(D{i}=0,"",SUMIFS({raw}!$P:$P,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)/D{i}*100)',
         )
+        ws.cell(i, 6, f'=IF(OR(D{i}="",E{i}=""),"",SUMIFS({raw}!$P:$P,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)-D{i})')
         strike_sum = (
             f'SUMIFS({raw}!$O:$O,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)'
         )
         ws.cell(
             i,
-            6,
+            7,
             f'=IF(D{i}=0,"No target defined",IF(E{i}<100,"Below target",IF({strike_sum}>0,"Dipped below strike","On/above target")))',
         )
-        ws.cell(i, 7, r.notes)
+        ws.cell(i, 8, r.why)
+        ws.cell(i, 9, r.notes)
 
         fill = _flag_fill(r.flag)
-        for c in range(1, 8):
+        for c in range(1, 10):
             ws.cell(i, c).fill = fill
             ws.cell(i, c).border = THIN
         ws.cell(i, 2).number_format = "0.00"
         ws.cell(i, 3).number_format = "#,##0.00"
         ws.cell(i, 4).number_format = "#,##0.00"
         ws.cell(i, 5).number_format = "0.0"
+        ws.cell(i, 6).number_format = "0.0"
+        ws.cell(i, 8).alignment = Alignment(wrap_text=True, vertical="top")
 
-    _style_header(ws, len(headers))
-    legend_row = len(results) + 3
+    for c, h in enumerate(headers, start=1):
+        cell = ws.cell(header_row, c, h)
+        cell.fill = FILL_HEADER
+        cell.font = FONT_HEADER
+    legend_row = first_data + len(results) + 2
     ws.cell(legend_row, 1, "Colour key").font = Font(bold=True)
     ws.cell(legend_row + 1, 1, "Below target").fill = FILL_RED
     ws.cell(legend_row + 2, 1, "Dipped below strike").fill = FILL_AMBER
@@ -311,16 +353,94 @@ def _write_shift_sheet(ws, results: List[PackerShiftResult], shift_key: str):
     ws.cell(
         legend_row + 5,
         1,
-        "Sorted worst → best by % of target (row order). Hours/boxes/target/%/flag are formulas into Raw data.",
+        "Click a packer name into the Why (SKU detail) sheet filter to see each SKU that dragged or held the score. "
+        "Hours/boxes/target/% are SUMIFS into Raw data.",
     )
     ws.cell(legend_row + 5, 1).font = Font(italic=True, color="6B7280")
+    ws.column_dimensions["H"].width = 56
     _autosize(ws)
+    ws.freeze_panes = f"A{first_data}"
+
+
+def _write_why_detail(ws, data: ReportData):
+    ws.append(
+        [
+            "Shift",
+            "Packer",
+            "Flag",
+            "Why (shift)",
+            "SKU",
+            "Hours",
+            "Boxes",
+            "Actual BPH",
+            "Target BPH",
+            "Strike BPH",
+            "Target boxes",
+            "Line % of target",
+            "Line verdict",
+        ]
+    )
+    for block in (data.morning, data.afternoon):
+        for r in block:
+            if not r.sku_lines:
+                ws.append(
+                    [
+                        r.shift_label,
+                        r.worker_display,
+                        r.flag,
+                        r.why,
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                    ]
+                )
+                continue
+            for line in r.sku_lines:
+                ws.append(
+                    [
+                        r.shift_label,
+                        r.worker_display,
+                        r.flag,
+                        r.why,
+                        line.sku,
+                        round(line.hours, 3),
+                        line.boxes,
+                        round(line.actual_bph, 2) if line.actual_bph is not None else None,
+                        line.target_bph,
+                        line.strike_bph,
+                        round(line.target_boxes, 2) if line.target_boxes is not None else None,
+                        round(line.line_pct, 1) if line.line_pct is not None else None,
+                        line.verdict,
+                    ]
+                )
+    _style_header(ws, 13)
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=13):
+        verdict = row[12].value
+        fill = None
+        if verdict == "under strike":
+            fill = FILL_RED
+        elif verdict == "under target":
+            fill = FILL_AMBER
+        elif verdict == "on/above target":
+            fill = FILL_GREEN
+        if fill:
+            for c in row:
+                c.fill = fill
+        for c in row:
+            c.border = THIN
+    _autosize(ws)
+    ws.auto_filter.ref = f"A1:M{max(1, ws.max_row)}"
     ws.freeze_panes = "A2"
 
 
 def write_workbook(data: ReportData, out_path: Path) -> Path:
     wb = Workbook()
-    # How this works
     ws0 = wb.active
     ws0.title = SHEET_HOW
     _write_how(ws0, data)
@@ -332,10 +452,13 @@ def write_workbook(data: ReportData, out_path: Path) -> Path:
     _write_raw(ws_raw, data)
 
     ws_m = wb.create_sheet(SHEET_MORNING)
-    _write_shift_sheet(ws_m, data.morning, "morning_shift")
+    _write_shift_sheet(ws_m, data.morning, "morning_shift", data.morning_totals)
 
     ws_a = wb.create_sheet(SHEET_AFTERNOON)
-    _write_shift_sheet(ws_a, data.afternoon, "afternoon_shift")
+    _write_shift_sheet(ws_a, data.afternoon, "afternoon_shift", data.afternoon_totals)
+
+    ws_why = wb.create_sheet(SHEET_WHY)
+    _write_why_detail(ws_why, data)
 
     ws_x = wb.create_sheet(SHEET_EXCLUSIONS)
     _write_exclusions(ws_x, data)

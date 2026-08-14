@@ -238,6 +238,75 @@
       raw.push(line);
     });
 
+    function lineVerdict(L) {
+      if (!L.included) return 'excluded (<15 min)';
+      if (L.unknownSku || L.targetBph == null) return 'no target';
+      if (L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph) return 'under strike';
+      if (L.actualBph != null && L.targetBph != null && L.actualBph < L.targetBph) return 'under target';
+      return 'on/above target';
+    }
+
+    function skuWhyRows(wlines) {
+      var rows = wlines.map(function (L) {
+        var linePct = null;
+        if (L.included && L.targetBoxes && L.targetBoxes > 0 && L.targetBph != null) {
+          linePct = L.boxes / L.targetBoxes * 100;
+        }
+        return {
+          sku: L.sku,
+          hours: L.hours || 0,
+          boxes: L.boxes || 0,
+          actualBph: L.actualBph,
+          targetBph: L.targetBph,
+          strikeBph: L.strikeBph,
+          targetBoxes: L.targetBoxes,
+          linePct: linePct,
+          verdict: lineVerdict(L)
+        };
+      });
+      rows.sort(function (a, b) {
+        var ae = a.verdict.indexOf('excluded') === 0 ? 2 : (a.linePct == null ? 1 : 0);
+        var be = b.verdict.indexOf('excluded') === 0 ? 2 : (b.linePct == null ? 1 : 0);
+        if (ae !== be) return ae - be;
+        if (a.linePct != null && b.linePct != null && a.linePct !== b.linePct) return a.linePct - b.linePct;
+        return String(a.sku).localeCompare(String(b.sku));
+      });
+      return rows;
+    }
+
+    function explainWhy(flag, pct, scoreBoxes, targetBoxes, skuRows) {
+      var gap = targetBoxes != null ? scoreBoxes - targetBoxes : null;
+      var bits = [];
+      if (flag === 'No target defined') {
+        bits.push('Cannot score % of target — no SKU on this shift has a target in the table.');
+      } else if (flag === 'Below target' && pct != null && gap != null) {
+        bits.push('Finished at ' + pct.toFixed(0) + '% of target — short by ' + Math.abs(gap).toFixed(0) + ' boxes for the hours worked.');
+      } else if (flag === 'Dipped below strike' && pct != null && gap != null) {
+        var weak = skuRows.filter(function (r) { return r.verdict === 'under strike'; }).map(function (r) { return r.sku; });
+        bits.push('Beat overall target (' + pct.toFixed(0) + '%, +' + gap.toFixed(0) + ' boxes) but dipped under the strike line on SKU ' + (weak.join(', ') || '?') + '.');
+      } else if (flag === 'On/above target' && pct != null && gap != null) {
+        bits.push('Hit target at ' + pct.toFixed(0) + '% — ' + gap.toFixed(0) + ' boxes above what hours × SKU targets required.');
+      }
+      var under = skuRows.filter(function (r) { return r.verdict === 'under strike' || r.verdict === 'under target'; });
+      var strong = skuRows.filter(function (r) { return r.verdict === 'on/above target'; });
+      if (under.length) {
+        bits.push('Dragged by: ' + under.filter(function (r) { return r.actualBph != null && r.targetBph != null; }).map(function (r) {
+          return 'SKU ' + r.sku + ' ' + r.actualBph.toFixed(1) + ' BPH vs target ' + r.targetBph +
+            (r.verdict === 'under strike' ? ' / strike ' + r.strikeBph : '');
+        }).join('; '));
+      }
+      if (strong.length && flag !== 'Below target') {
+        bits.push('Held up by: ' + strong.filter(function (r) { return r.actualBph != null && r.targetBph != null; }).map(function (r) {
+          return 'SKU ' + r.sku + ' ' + r.actualBph.toFixed(1) + ' BPH (target ' + r.targetBph + ')';
+        }).join('; '));
+      }
+      var excluded = skuRows.filter(function (r) { return r.verdict.indexOf('excluded') === 0; });
+      if (excluded.length) {
+        bits.push(excluded.length + ' short SKU line(s) under 15 min left out of the score (changeover noise).');
+      }
+      return bits.join(' ');
+    }
+
     function aggregate(shiftKey) {
       var by = {};
       raw.forEach(function (L) {
@@ -255,6 +324,10 @@
         var known = included.filter(function (L) { return L.targetBph != null; });
         var hasUnknown = included.some(function (L) { return L.unknownSku; });
         var display = included[0].workerDisplay;
+        var skuRows = skuWhyRows(wlines);
+        var shortN = wlines.filter(function (L) {
+          return !L.included && L.excludeReason === 'Under 15-minute filter';
+        }).length;
         if (!known.length) {
           var skus = [];
           included.forEach(function (L) {
@@ -269,7 +342,11 @@
             targetBoxes: 0,
             pctOfTarget: null,
             flag: 'No target defined',
-            notes: skus.length ? ('no target defined for SKU ' + skus.join(', ')) : ''
+            notes: skus.length ? ('no target defined for SKU ' + skus.join(', ')) : '',
+            why: explainWhy('No target defined', null, 0, 0, skuRows),
+            boxGap: null,
+            skuLines: skuRows,
+            excludedShortLines: shortN
           });
           return;
         }
@@ -299,7 +376,11 @@
           targetBoxes: targetBoxes,
           pctOfTarget: pct,
           flag: flag,
-          notes: notes
+          notes: notes,
+          why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows),
+          boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
+          skuLines: skuRows,
+          excludedShortLines: shortN
         });
       });
       results.sort(function (a, b) {
@@ -312,10 +393,39 @@
       return results;
     }
 
+    function totalsFor(results, shiftKey, shiftLabel) {
+      var hours = results.reduce(function (s, r) { return s + r.hours; }, 0);
+      var boxes = results.reduce(function (s, r) { return s + r.boxes; }, 0);
+      var target = results.reduce(function (s, r) { return s + r.targetBoxes; }, 0);
+      var score = 0;
+      results.forEach(function (r) {
+        if (r.pctOfTarget != null && r.targetBoxes) score += r.targetBoxes * r.pctOfTarget / 100;
+      });
+      return {
+        shiftKey: shiftKey,
+        shiftLabel: shiftLabel,
+        packers: results.length,
+        hours: hours,
+        boxes: boxes,
+        targetBoxes: target,
+        pctOfTarget: target > 0 ? score / target * 100 : null,
+        boxGap: target > 0 ? score - target : null,
+        below: results.filter(function (r) { return r.flag === 'Below target'; }).length,
+        dipped: results.filter(function (r) { return r.flag === 'Dipped below strike'; }).length,
+        onTarget: results.filter(function (r) { return r.flag === 'On/above target'; }).length,
+        noTarget: results.filter(function (r) { return r.flag === 'No target defined'; }).length
+      };
+    }
+
+    var morning = aggregate('morning_shift');
+    var afternoon = aggregate('afternoon_shift');
+
     return {
       rawLines: raw,
-      morning: aggregate('morning_shift'),
-      afternoon: aggregate('afternoon_shift'),
+      morning: morning,
+      afternoon: afternoon,
+      morningTotals: totalsFor(morning, 'morning_shift', 'Morning'),
+      afternoonTotals: totalsFor(afternoon, 'afternoon_shift', 'Afternoon'),
       exclusions: exclusions,
       facilityWorkers: Object.keys(facility).map(function (k) { return facility[k]; }).sort(),
       intraRows: intraRows || [],

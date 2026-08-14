@@ -51,6 +51,19 @@ class RawLine:
 
 
 @dataclass
+class SkuLineWhy:
+    sku: Any
+    hours: float
+    boxes: float
+    actual_bph: Optional[float]
+    target_bph: Optional[float]
+    strike_bph: Optional[float]
+    target_boxes: Optional[float]
+    line_pct: Optional[float]
+    verdict: str  # under strike | under target | on/above target | no target | excluded
+
+
+@dataclass
 class PackerShiftResult:
     shift_key: str
     shift_label: str
@@ -63,6 +76,26 @@ class PackerShiftResult:
     flag: str  # Below target | Dipped below strike | On/above target | No target defined
     has_unknown_sku: bool
     notes: str = ""
+    why: str = ""
+    box_gap: Optional[float] = None  # score boxes − target boxes (positive = ahead)
+    sku_lines: List[SkuLineWhy] = field(default_factory=list)
+    excluded_short_lines: int = 0
+
+
+@dataclass
+class ShiftTotals:
+    shift_key: str
+    shift_label: str
+    packers: int
+    hours: float
+    boxes: float
+    target_boxes: float
+    pct_of_target: Optional[float]
+    box_gap: Optional[float]
+    below: int
+    dipped: int
+    on_target: int
+    no_target: int
 
 
 @dataclass
@@ -74,6 +107,8 @@ class ReportData:
     facility_workers: List[str]
     intra_rows: List[Dict[str, Any]] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    morning_totals: Optional[ShiftTotals] = None
+    afternoon_totals: Optional[ShiftTotals] = None
 
 
 def _shift_label(shift_raw) -> Tuple[str, str]:
@@ -223,6 +258,132 @@ def build_raw_lines(
     return lines
 
 
+def _line_verdict(line: RawLine) -> str:
+    if not line.included:
+        return "excluded (<15 min)"
+    if line.unknown_sku or line.target_bph is None:
+        return "no target"
+    if line.actual_bph is not None and line.strike_bph is not None and line.actual_bph < line.strike_bph:
+        return "under strike"
+    if line.actual_bph is not None and line.target_bph is not None and line.actual_bph < line.target_bph:
+        return "under target"
+    return "on/above target"
+
+
+def _sku_why_rows(lines: List[RawLine]) -> List[SkuLineWhy]:
+    out: List[SkuLineWhy] = []
+    for L in lines:
+        line_pct = None
+        if L.target_boxes and L.target_boxes > 0 and L.included and L.target_bph is not None:
+            line_pct = L.boxes / L.target_boxes * 100.0
+        out.append(
+            SkuLineWhy(
+                sku=L.sku,
+                hours=L.hours or 0.0,
+                boxes=L.boxes or 0.0,
+                actual_bph=L.actual_bph,
+                target_bph=L.target_bph,
+                strike_bph=L.strike_bph,
+                target_boxes=L.target_boxes,
+                line_pct=line_pct,
+                verdict=_line_verdict(L),
+            )
+        )
+    # Included known lines first, worst line_pct first, then excluded
+    def sk(row: SkuLineWhy):
+        if row.verdict.startswith("excluded"):
+            return (2, 0.0, str(row.sku))
+        if row.line_pct is None:
+            return (1, 0.0, str(row.sku))
+        return (0, row.line_pct, str(row.sku))
+
+    out.sort(key=sk)
+    return out
+
+
+def explain_why(
+    flag: str,
+    pct: Optional[float],
+    score_boxes: float,
+    target_boxes: float,
+    sku_rows: List[SkuLineWhy],
+) -> str:
+    """Plain-English reason a packer's shift worked or didn't."""
+    gap = score_boxes - target_boxes if target_boxes is not None else None
+    bits: List[str] = []
+
+    if flag == "No target defined":
+        bits.append("Cannot score % of target — no SKU on this shift has a target in the table.")
+    elif flag == "Below target" and pct is not None and gap is not None:
+        bits.append(
+            f"Finished at {pct:.0f}% of target — short by {abs(gap):.0f} boxes for the hours worked."
+        )
+    elif flag == "Dipped below strike" and pct is not None and gap is not None:
+        weak = [r for r in sku_rows if r.verdict == "under strike"]
+        sku_list = ", ".join(str(r.sku) for r in weak) or "?"
+        bits.append(
+            f"Beat overall target ({pct:.0f}%, +{gap:.0f} boxes) but dipped under the strike line on SKU {sku_list}."
+        )
+    elif flag == "On/above target" and pct is not None and gap is not None:
+        bits.append(
+            f"Hit target at {pct:.0f}% — {gap:.0f} boxes above what hours × SKU targets required."
+        )
+
+    under = [r for r in sku_rows if r.verdict in ("under strike", "under target")]
+    strong = [r for r in sku_rows if r.verdict == "on/above target"]
+    if under:
+        bits.append(
+            "Dragged by: "
+            + "; ".join(
+                f"SKU {r.sku} {r.actual_bph:.1f} BPH vs target {r.target_bph:g}"
+                + (f" / strike {r.strike_bph:g}" if r.verdict == "under strike" else "")
+                for r in under
+                if r.actual_bph is not None and r.target_bph is not None
+            )
+        )
+    if strong and flag != "Below target":
+        bits.append(
+            "Held up by: "
+            + "; ".join(
+                f"SKU {r.sku} {r.actual_bph:.1f} BPH (target {r.target_bph:g})"
+                for r in strong
+                if r.actual_bph is not None and r.target_bph is not None
+            )
+        )
+    excluded = [r for r in sku_rows if r.verdict.startswith("excluded")]
+    if excluded:
+        bits.append(
+            f"{len(excluded)} short SKU line(s) under 15 min left out of the score (changeover noise)."
+        )
+    return " ".join(bits)
+
+
+def shift_totals(results: List[PackerShiftResult], shift_key: str, shift_label: str) -> ShiftTotals:
+    hours = sum(r.hours for r in results)
+    boxes = sum(r.boxes for r in results)
+    target = sum(r.target_boxes for r in results)
+    score_boxes = 0.0
+    for r in results:
+        if r.pct_of_target is not None and r.target_boxes:
+            score_boxes += r.target_boxes * r.pct_of_target / 100.0
+    pct = (score_boxes / target * 100.0) if target > 0 else None
+    gap = (score_boxes - target) if target > 0 else None
+    return ShiftTotals(
+        shift_key=shift_key,
+        shift_label=shift_label,
+        packers=len(results),
+        hours=hours,
+        boxes=boxes,
+        target_boxes=target,
+        pct_of_target=pct,
+        box_gap=gap,
+        below=sum(1 for r in results if r.flag == "Below target"),
+        dipped=sum(1 for r in results if r.flag == "Dipped below strike"),
+        on_target=sum(1 for r in results if r.flag == "On/above target"),
+        no_target=sum(1 for r in results if r.flag == "No target defined"),
+    )
+
+
 def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftResult]:
     by_worker: Dict[str, List[RawLine]] = {}
     display_for: Dict[str, str] = {}
@@ -235,8 +396,6 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
     results: List[PackerShiftResult] = []
     for key, wlines in by_worker.items():
         included = [L for L in wlines if L.included]
-        # Packers who only have excluded lines still appear? Spec: per packer per shift from included lines.
-        # If nothing included, skip (they have no meaningful performance) but unknown-only short lines vanish — OK.
         if not included:
             continue
 
@@ -244,6 +403,8 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
         boxes = sum(L.boxes for L in included)
         known = [L for L in included if L.target_bph is not None]
         has_unknown = any(L.unknown_sku for L in included)
+        short_n = sum(1 for L in wlines if (not L.included) and L.exclude_reason == "Under 15-minute filter")
+        sku_rows = _sku_why_rows(wlines)
 
         if not known:
             skus = sorted({str(L.sku) for L in included if L.unknown_sku})
@@ -252,6 +413,7 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
                 if skus
                 else "All included SKUs lack a target — cannot score % of target"
             )
+            why = explain_why("No target defined", None, 0.0, 0.0, sku_rows)
             results.append(
                 PackerShiftResult(
                     shift_key=shift_key,
@@ -265,12 +427,17 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
                     flag="No target defined",
                     has_unknown_sku=True,
                     notes=sku_note,
+                    why=why,
+                    box_gap=None,
+                    sku_lines=sku_rows,
+                    excluded_short_lines=short_n,
                 )
             )
             continue
 
         target_boxes = sum(L.hours * L.target_bph for L in known)
-        pct = (boxes / target_boxes * 100.0) if target_boxes > 0 else None
+        boxes_known = sum(L.boxes for L in known)
+        pct = (boxes_known / target_boxes * 100.0) if target_boxes > 0 else None
 
         dipped = False
         for L in known:
@@ -291,19 +458,9 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
         if has_unknown:
             skus = sorted({str(L.sku) for L in included if L.unknown_sku})
             notes = "no target defined for SKU " + ", ".join(skus)
-            # Unknown SKU boxes are in `boxes` but not in target_boxes — % uses known lines' boxes only? Spec says:
-            # % = sum Boxes across included lines / sum (Hours × Target) across same lines
-            # For unknown SKU, target missing — those lines shouldn't enter the ratio as guessed targets.
-            # Recalculate % using only known-target lines for BOTH numerator and denominator for fairness.
-            boxes_known = sum(L.boxes for L in known)
-            pct = (boxes_known / target_boxes * 100.0) if target_boxes > 0 else None
-            if pct is not None and pct < 100:
-                flag = "Below target"
-            elif pct is not None and dipped:
-                flag = "Dipped below strike"
-            elif pct is not None:
-                flag = "On/above target"
-            # Keep total boxes/hours as all included (transparency)
+
+        gap = boxes_known - target_boxes if target_boxes else None
+        why = explain_why(flag, pct, boxes_known, target_boxes, sku_rows)
 
         results.append(
             PackerShiftResult(
@@ -318,10 +475,13 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
                 flag=flag,
                 has_unknown_sku=has_unknown,
                 notes=notes,
+                why=why,
+                box_gap=gap,
+                sku_lines=sku_rows,
+                excluded_short_lines=short_n,
             )
         )
 
-    # Worst → best by % of target (None / no target at bottom)
     def sort_key(r: PackerShiftResult):
         if r.pct_of_target is None:
             return (1, 0.0, r.worker_display.lower())
@@ -358,4 +518,6 @@ def build_report(
         facility_workers=sorted(facility.values(), key=lambda s: s.lower()),
         intra_rows=intra_rows or [],
         warnings=warnings,
+        morning_totals=shift_totals(morning, "morning_shift", "Morning"),
+        afternoon_totals=shift_totals(afternoon, "afternoon_shift", "Afternoon"),
     )

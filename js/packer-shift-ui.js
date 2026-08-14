@@ -1,5 +1,5 @@
 /**
- * Packer tab UI — upload 3× xlsx shift exports and show Morning / Afternoon scores.
+ * Packer tab UI — upload 3× xlsx shift exports and show Morning / Afternoon scores + why.
  */
 (function () {
   'use strict';
@@ -20,6 +20,7 @@
 
   var report = null;
   var view = 'morning';
+  var openPacker = null;
 
   function toast(msg) {
     if (!toastEl) return;
@@ -47,26 +48,78 @@
     return 'flag-none';
   }
 
-  function renderShiftTable(rows) {
+  function verdictClass(v) {
+    if (v === 'under strike') return 'flag-below';
+    if (v === 'under target') return 'flag-dip';
+    if (v === 'on/above target') return 'flag-ok';
+    return 'flag-none';
+  }
+
+  function renderTotals(t) {
+    if (!t) return '';
+    var pct = t.pctOfTarget != null ? t.pctOfTarget.toFixed(1) + '%' : '—';
+    var gap = t.boxGap != null
+      ? ((t.boxGap >= 0 ? '+' : '') + Math.round(t.boxGap).toLocaleString() + ' boxes vs target')
+      : '—';
+    return '<div class="psr-totals">' +
+      '<div><b>Shift amount</b><span>' + escapeHtml(t.shiftLabel) + '</span></div>' +
+      '<div><b>Packers</b><span>' + t.packers + '</span></div>' +
+      '<div><b>Hours</b><span>' + t.hours.toFixed(1) + '</span></div>' +
+      '<div><b>Boxes packed</b><span>' + Math.round(t.boxes).toLocaleString() + '</span></div>' +
+      '<div><b>Target boxes</b><span>' + Math.round(t.targetBoxes).toLocaleString() + '</span></div>' +
+      '<div><b>% of target</b><span>' + pct + '</span></div>' +
+      '<div><b>Gap</b><span>' + gap + '</span></div>' +
+      '<div><b>Flags</b><span>Below ' + t.below + ' · Dip ' + t.dipped + ' · OK ' + t.onTarget + '</span></div>' +
+      '</div>';
+  }
+
+  function renderSkuDetail(r) {
+    if (!r.skuLines || !r.skuLines.length) return '<p class="psr-prose">No SKU lines.</p>';
+    var html = '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
+    html += '<table class="psr-table"><thead><tr>' +
+      '<th>SKU</th><th>Hours</th><th>Boxes</th><th>Actual BPH</th><th>Target</th><th>Strike</th><th>Line %</th><th>Verdict</th>' +
+      '</tr></thead><tbody>';
+    r.skuLines.forEach(function (L) {
+      html += '<tr class="' + verdictClass(L.verdict) + '">' +
+        '<td>' + escapeHtml(L.sku) + '</td>' +
+        '<td>' + (L.hours != null ? L.hours.toFixed(2) : '—') + '</td>' +
+        '<td>' + Math.round(L.boxes).toLocaleString() + '</td>' +
+        '<td>' + (L.actualBph != null ? L.actualBph.toFixed(1) : '—') + '</td>' +
+        '<td>' + (L.targetBph != null ? L.targetBph : '—') + '</td>' +
+        '<td>' + (L.strikeBph != null ? L.strikeBph : '—') + '</td>' +
+        '<td>' + (L.linePct != null ? L.linePct.toFixed(0) + '%' : '—') + '</td>' +
+        '<td>' + escapeHtml(L.verdict) + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderShiftTable(rows, totals) {
     if (!rows.length) {
       return '<p class="psr-prose">No included packers for this shift (after facility filter and 15-minute rule).</p>';
     }
-    var html = '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>Hours</th><th>Boxes</th><th>Target boxes</th><th>% of target</th><th>Flag</th><th>Notes</th>' +
+    var html = renderTotals(totals);
+    html += '<p class="psr-prose">Click a packer to see which SKUs made the shift work — or didn’t.</p>';
+    html += '<table class="psr-table"><thead><tr>' +
+      '<th>Packer</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
-    rows.forEach(function (r) {
-      html += '<tr class="' + flagClass(r.flag) + '">' +
-        '<td>' + escapeHtml(r.workerDisplay) + '</td>' +
+    rows.forEach(function (r, idx) {
+      var open = openPacker === r.workerDisplay;
+      html += '<tr class="' + flagClass(r.flag) + ' psr-row" data-packer="' + escapeHtml(r.workerDisplay) + '" data-idx="' + idx + '" style="cursor:pointer">' +
+        '<td><b>' + escapeHtml(r.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
         '<td>' + (r.hours != null ? r.hours.toFixed(2) : '—') + '</td>' +
         '<td>' + (r.boxes != null ? Math.round(r.boxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
+        '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
         '<td>' + escapeHtml(r.flag) + '</td>' +
-        '<td>' + escapeHtml(r.notes || '') + '</td>' +
         '</tr>';
+      if (open) {
+        html += '<tr class="psr-detail"><td colspan="7">' + renderSkuDetail(r) + '</td></tr>';
+      }
     });
     html += '</tbody></table>';
-    html += '<p class="psr-prose" style="margin-top:10px">Sorted worst → best by % of target. Red = below target, amber = dipped below strike, green = on/above target.</p>';
     return html;
   }
 
@@ -100,25 +153,17 @@
 
   function renderHow() {
     return '<div class="psr-prose">' +
-      '<h2>What this shows</h2>' +
-      '<p>Per packer, per shift: are they hitting SKU targets for Dandenong South? Morning and Afternoon are never merged.</p>' +
-      '<h2>Inputs</h2>' +
-      '<ul>' +
-      '<li><b>Boxes Packed by Worker</b> — performance source (packer + SKU + shift).</li>' +
-      '<li><b>Overall Summary</b> — facility filter only (Dandenong South). Blended BPH is ignored because targets differ by SKU.</li>' +
-      '<li><b>Intra Hour</b> — kept for a later hour-slowdown view; not used in % of target.</li>' +
-      '</ul>' +
+      '<h2>Shift amount</h2>' +
+      '<p>At the top of Morning / Afternoon you get total hours, boxes packed, target boxes, and % of target for the whole shift — plus how many packers were below / dipped / on target.</p>' +
+      '<h2>Why it worked / didn’t</h2>' +
+      '<p>Click a packer. You’ll see each SKU they ran: actual BPH vs target and strike, and a short verdict (under strike, under target, on/above). The “why” sentence names which SKUs dragged the score and which held it up.</p>' +
       '<h2>Math</h2>' +
       '<ul>' +
       '<li>Hours on SKU = Packing Time Seconds ÷ 3600</li>' +
-      '<li>Actual BPH = Boxes ÷ Hours</li>' +
-      '<li>Lines under 15 minutes are excluded (SKU changeover noise).</li>' +
-      '<li>% of target = total boxes on included known-SKU lines ÷ total (hours × SKU target) × 100</li>' +
-      '<li>Below target: % &lt; 100. Dipped below strike: % ≥ 100 but any included line under that SKU’s strike. Otherwise on/above.</li>' +
+      '<li>Lines under 15 minutes excluded (changeover noise)</li>' +
+      '<li>% of target = boxes ÷ Σ(hours × SKU target) on included known-SKU lines</li>' +
       '</ul>' +
-      '<h2>Auditable Excel</h2>' +
-      '<p>For a workbook with live SUMIFS / INDEX-MATCH formulas (Raw data + Morning + Afternoon sheets), run:</p>' +
-      '<p><code>python -m packer_shift_report --dir /path/to/exports --out report.xlsx</code></p>' +
+      '<p>For the Excel with formulas: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code></p>' +
       '</div>';
   }
 
@@ -129,8 +174,8 @@
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.toggle('active', tabs[i].getAttribute('data-psr-view') === view);
     }
-    if (view === 'morning') panelEl.innerHTML = renderShiftTable(report.morning);
-    else if (view === 'afternoon') panelEl.innerHTML = renderShiftTable(report.afternoon);
+    if (view === 'morning') panelEl.innerHTML = renderShiftTable(report.morning, report.morningTotals);
+    else if (view === 'afternoon') panelEl.innerHTML = renderShiftTable(report.afternoon, report.afternoonTotals);
     else if (view === 'exclusions') panelEl.innerHTML = renderExclusions();
     else if (view === 'targets') panelEl.innerHTML = renderTargets();
     else panelEl.innerHTML = renderHow();
@@ -139,6 +184,7 @@
   async function run() {
     statusEl.className = 'psr-status';
     statusEl.textContent = 'Reading exports…';
+    openPacker = null;
     if (!PSR || typeof PSR.buildReportFromFiles !== 'function') {
       statusEl.className = 'psr-status err';
       statusEl.textContent = 'Packer shift report module failed to load (js/packer-shift-report.js).';
@@ -156,6 +202,9 @@
         'Afternoon: ' + report.afternoon.length + ' packers',
         'Raw lines: ' + report.rawLines.length
       ];
+      if (report.morningTotals && report.morningTotals.pctOfTarget != null) {
+        bits.push('Morning shift ' + report.morningTotals.pctOfTarget.toFixed(0) + '% of target');
+      }
       if (report.warnings && report.warnings.length) bits.push(report.warnings.join(' '));
       statusEl.textContent = bits.join(' · ');
       view = 'morning';
@@ -176,6 +225,7 @@
     intraIn.value = '';
     summaryIn.value = '';
     report = null;
+    openPacker = null;
     viewsEl.hidden = true;
     panelEl.innerHTML = '';
     statusEl.className = 'psr-status';
@@ -189,9 +239,19 @@
   runBtn.addEventListener('click', function () { run(); });
   clearBtn.addEventListener('click', clearAll);
   viewsEl.addEventListener('click', function (e) {
-    var btn = e.target && e.target.closest ? e.target.closest('[data-psr-view]') : null;
-    if (!btn) return;
-    view = btn.getAttribute('data-psr-view');
+    var tab = e.target && e.target.closest ? e.target.closest('[data-psr-view]') : null;
+    if (tab) {
+      view = tab.getAttribute('data-psr-view');
+      openPacker = null;
+      render();
+      return;
+    }
+  });
+  panelEl.addEventListener('click', function (e) {
+    var row = e.target && e.target.closest ? e.target.closest('tr.psr-row') : null;
+    if (!row) return;
+    var name = row.getAttribute('data-packer');
+    openPacker = openPacker === name ? null : name;
     render();
   });
 

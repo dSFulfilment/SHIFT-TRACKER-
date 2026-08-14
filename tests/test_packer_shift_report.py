@@ -64,6 +64,10 @@ class FixtureReportTests(unittest.TestCase):
         by_name = {r.worker_display: r for r in self.report.morning}
         self.assertIn("Bob Jones", by_name)
         self.assertEqual(by_name["Bob Jones"].flag, "Below target")
+        self.assertIn("short by", by_name["Bob Jones"].why.lower())
+        self.assertTrue(by_name["Bob Jones"].sku_lines)
+        self.assertIsNotNone(self.report.morning_totals)
+        self.assertGreaterEqual(self.report.morning_totals.packers, 3)
         self.assertIn("Alice Smith", by_name)
         self.assertEqual(by_name["Alice Smith"].flag, "On/above target")
         self.assertAlmostEqual(by_name["Alice Smith"].pct_of_target, 130 / 110 * 100, places=5)
@@ -105,16 +109,27 @@ class FixtureReportTests(unittest.TestCase):
                 "Raw data",
                 "Morning shift",
                 "Afternoon shift",
+                "Why (SKU detail)",
                 "Exclusions",
                 "Intra hour (reference)",
             ):
                 self.assertIn(title, wb.sheetnames)
             raw = wb["Raw data"]
-            # Hours formula present
             self.assertTrue(str(raw["I2"].value).startswith("=IF("))
             morning = wb["Morning shift"]
-            self.assertTrue(str(morning["B2"].value).startswith("=SUMIFS("))
-            # SKU targets are real cells
+            # Shift amount block at top
+            self.assertEqual(morning["A1"].value, "Shift amount")
+            # Packer table uses SUMIFS somewhere in column B
+            found_sumifs = False
+            for row in morning.iter_rows(min_col=2, max_col=2, min_row=1, max_row=40):
+                val = row[0].value
+                if isinstance(val, str) and val.startswith("=SUMIFS("):
+                    found_sumifs = True
+                    break
+            self.assertTrue(found_sumifs, "Morning sheet should SUMIFS into Raw data")
+            why = wb["Why (SKU detail)"]
+            self.assertEqual(why["A1"].value, "Shift")
+            self.assertIn("Line verdict", [c.value for c in why[1]])
             sku = wb["SKU targets"]
             self.assertEqual(sku["A2"].value, 125)
             self.assertEqual(sku["B2"].value, 17)
