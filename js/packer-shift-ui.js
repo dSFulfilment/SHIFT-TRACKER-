@@ -80,16 +80,44 @@
 
   function flagClass(flag) {
     if (flag === 'Below strike') return 'flag-below'; // red
-    if (flag === 'Below target') return 'flag-dip';   // yellow
-    if (flag === 'On/above target') return 'flag-ok';
+    if (flag === 'Below target') return 'flag-dip';   // orange — cleared strike, under target
+    if (flag === 'On/above target') return 'flag-ok'; // green
     return 'flag-none';
+  }
+
+  /** Green / orange / red labels for strike check. */
+  function strikeLabel(flag) {
+    if (flag === 'On/above target') return 'Above target';
+    if (flag === 'Below target') return 'Above strike';
+    if (flag === 'Below strike') return 'Below strike';
+    return flag || '—';
+  }
+
+  function strikeBadge(flag) {
+    return '<span class="psr-strike-badge ' + flagClass(flag) + '">' +
+      escapeHtml(strikeLabel(flag)) + '</span>';
   }
 
   function verdictClass(v) {
     if (v === 'under strike') return 'flag-below'; // red
-    if (v === 'under target') return 'flag-dip';   // yellow
+    if (v === 'under target') return 'flag-dip';   // orange
     if (v === 'on/above target') return 'flag-ok';
     return 'flag-none';
+  }
+
+  function renderStrikeBanner(r, sum) {
+    var flag = (sum && sum.flag) || r.flag;
+    var bph = sum && sum.avgBph != null ? sum.avgBph.toFixed(1) : '—';
+    var target = sum && sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—';
+    var strike = sum && sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—';
+    var pct = sum && sum.pctOfTarget != null
+      ? sum.pctOfTarget.toFixed(0) + '%'
+      : (r.pctOfTarget != null ? r.pctOfTarget.toFixed(0) + '%' : '—');
+    return '<div class="psr-strike-banner ' + flagClass(flag) + '">' +
+      strikeBadge(flag) +
+      '<span>BPH <b>' + escapeHtml(bph) + '</b> · Target <b>' + escapeHtml(target) +
+      '</b> · Strike <b>' + escapeHtml(strike) + '</b> · ' + escapeHtml(pct) + ' of target</span>' +
+      '</div>';
   }
 
   function renderTotals(t) {
@@ -153,11 +181,14 @@
     var html = '<h3 class="psr-detail-h">By SKU</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
     html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU. '
-      + 'Total / avg matches the packer flag (Shift h when Intra is used).</p>';
+      + 'Strike colours: <b>green</b> above target · <b>orange</b> above strike · <b>red</b> below strike.</p>';
 
     if (!skuLines.length) {
       html += '<p class="psr-prose">No Boxes SKU lines for this packer/shift.</p>';
     } else {
+      var sumHead = PSR.summarizePackerTotalAvg(r);
+      html += renderStrikeBanner(r, sumHead);
+
       html += '<table class="psr-table"><thead><tr>' +
         '<th>SKU</th><th>Station</th><th>Hours</th><th>Boxes</th><th>BPH</th>' +
         '<th>Target</th><th>Strike</th><th>%</th><th>Verdict</th>' +
@@ -203,7 +234,7 @@
           '</tr>';
       });
 
-      var sum = PSR.summarizePackerTotalAvg(r);
+      var sum = sumHead;
       var hoursCell = sum.useShiftHours
         ? (sum.packHours.toFixed(2) + ' pack · ' + sum.shiftHours.toFixed(2) + ' shift')
         : sum.packHours.toFixed(2);
@@ -211,7 +242,7 @@
         ? (' (−' + Math.round(sum.breakMinutes) + 'm breaks)')
         : '';
 
-      html += '<tr class="psr-total-row">' +
+      html += '<tr class="psr-total-row ' + flagClass(sum.flag) + '">' +
         '<td colspan="2"><b>Total / avg</b></td>' +
         '<td><b>' + escapeHtml(hoursCell + breakNote) + '</b></td>' +
         '<td><b>' + Math.round(sum.boxes).toLocaleString() + '</b></td>' +
@@ -219,12 +250,12 @@
         '<td><b>' + (sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—') + '</b></td>' +
         '<td><b>' + (sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—') + '</b></td>' +
         '<td><b>' + (sum.pctOfTarget != null ? sum.pctOfTarget.toFixed(0) + '%' : '—') + '</b></td>' +
-        '<td><b>' + escapeHtml(sum.flag || '—') + '</b></td>' +
+        '<td><b>' + strikeBadge(sum.flag) + '</b></td>' +
         '<td colspan="2"></td>' +
         '</tr>';
       html += '</tbody></table>';
       if (sum.useShiftHours) {
-        html += '<p class="psr-prose psr-note">Total BPH / % / flag use <b>Shift h</b> (Intra'
+        html += '<p class="psr-prose psr-note">Total BPH / % / strike colour use <b>Shift h</b> (Intra'
           + (sum.breakMinutes > 0 ? ' minus tea/meal' : '')
           + '), not Pack h. SKU rows still show packing time.</p>';
       }
@@ -322,7 +353,7 @@
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
         '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
-        '<td>' + escapeHtml(r.flag) + '</td>' +
+        '<td>' + strikeBadge(r.flag) + '</td>' +
         '</tr>';
       if (open) {
         html += '<tr class="psr-detail"><td colspan="11">' + renderPackerDetail(r) + '</td></tr>';

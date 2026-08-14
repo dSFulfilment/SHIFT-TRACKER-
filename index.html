@@ -1307,14 +1307,34 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-note{font-size:.72rem;color:#6B7280;margin-top:8px}
 #tabPacker .psr-hour-block{margin:0 0 16px}
 #tabPacker .psr-hour-head{font-size:.8rem;margin:0 0 6px;color:#374151}
-#tabPacker .psr-total-row td{border-top:2px solid #D1D5DB;background:#F9FAFB}
+#tabPacker .psr-total-row td{border-top:2px solid #D1D5DB}
 #tabPacker .psr-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #E5E8EF;border-radius:10px;overflow:hidden}
 #tabPacker .psr-table th{text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid #E5E8EF}
 #tabPacker .psr-table td{padding:8px 10px;font-size:.82rem;border-bottom:1px solid #F1F5F9}
-#tabPacker .psr-table tr.flag-below{background:#FECACA}
-#tabPacker .psr-table tr.flag-dip{background:#FDE68A}
-#tabPacker .psr-table tr.flag-ok{background:#BBF7D0}
-#tabPacker .psr-table tr.flag-none{background:#E5E7EB}
+#tabPacker .psr-table tr.flag-below,#tabPacker .psr-table tr.flag-below td{background:#FECACA}
+#tabPacker .psr-table tr.flag-dip,#tabPacker .psr-table tr.flag-dip td{background:#FED7AA}
+#tabPacker .psr-table tr.flag-ok,#tabPacker .psr-table tr.flag-ok td{background:#BBF7D0}
+#tabPacker .psr-table tr.flag-none,#tabPacker .psr-table tr.flag-none td{background:#E5E7EB}
+#tabPacker .psr-table tr.psr-total-row.flag-below td{background:#FECACA}
+#tabPacker .psr-table tr.psr-total-row.flag-dip td{background:#FED7AA}
+#tabPacker .psr-table tr.psr-total-row.flag-ok td{background:#BBF7D0}
+#tabPacker .psr-table tr.psr-total-row.flag-none td{background:#E5E7EB}
+#tabPacker .psr-strike-banner{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  margin:0 0 10px;padding:10px 12px;border-radius:10px;font-size:.85rem;font-weight:700;
+}
+#tabPacker .psr-strike-banner.flag-below{background:#FEE2E2;color:#991B1B;border:1px solid #FECACA}
+#tabPacker .psr-strike-banner.flag-dip{background:#FFEDD5;color:#9A3412;border:1px solid #FED7AA}
+#tabPacker .psr-strike-banner.flag-ok{background:#DCFCE7;color:#166534;border:1px solid #BBF7D0}
+#tabPacker .psr-strike-banner.flag-none{background:#F3F4F6;color:#374151;border:1px solid #E5E7EB}
+#tabPacker .psr-strike-badge{
+  display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:800;
+  letter-spacing:.02em;text-transform:uppercase;
+}
+#tabPacker .psr-strike-badge.flag-below{background:#DC2626;color:#fff}
+#tabPacker .psr-strike-badge.flag-dip{background:#EA580C;color:#fff}
+#tabPacker .psr-strike-badge.flag-ok{background:#16A34A;color:#fff}
+#tabPacker .psr-strike-badge.flag-none{background:#6B7280;color:#fff}
 #tabPacker .psr-prose{font-size:.85rem;line-height:1.55;color:#374151;max-width:52rem}
 #tabPacker .psr-prose h2{font-size:.95rem;margin:1rem 0 .35rem}
 #tabPacker .psr-prose ul{margin:.25rem 0 .75rem 1.1rem}
@@ -1323,7 +1343,8 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-totals div{display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:#374151}
 #tabPacker .psr-totals b{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:#6B7280}
 #tabPacker .psr-why{margin:0 0 8px;font-size:.82rem;line-height:1.45;color:#1F2937}
-#tabPacker .psr-detail td{background:#fff;padding:10px !important}
+/* Only the expand wrapper cell — nested By SKU rows keep strike colours */
+#tabPacker tr.psr-detail > td{background:#fff;padding:10px}
 
 #tabPacker .pk-chrome{flex:0 0 auto;background:var(--tab-packer-soft);backdrop-filter:blur(10px);border-bottom:1px solid #E1E4EA;border-top:3px solid var(--tab-packer);padding:6px 10px;z-index:5}
 #tabPacker .pk-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
@@ -14038,16 +14059,44 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   function flagClass(flag) {
     if (flag === 'Below strike') return 'flag-below'; // red
-    if (flag === 'Below target') return 'flag-dip';   // yellow
-    if (flag === 'On/above target') return 'flag-ok';
+    if (flag === 'Below target') return 'flag-dip';   // orange — cleared strike, under target
+    if (flag === 'On/above target') return 'flag-ok'; // green
     return 'flag-none';
+  }
+
+  /** Green / orange / red labels for strike check. */
+  function strikeLabel(flag) {
+    if (flag === 'On/above target') return 'Above target';
+    if (flag === 'Below target') return 'Above strike';
+    if (flag === 'Below strike') return 'Below strike';
+    return flag || '—';
+  }
+
+  function strikeBadge(flag) {
+    return '<span class="psr-strike-badge ' + flagClass(flag) + '">' +
+      escapeHtml(strikeLabel(flag)) + '</span>';
   }
 
   function verdictClass(v) {
     if (v === 'under strike') return 'flag-below'; // red
-    if (v === 'under target') return 'flag-dip';   // yellow
+    if (v === 'under target') return 'flag-dip';   // orange
     if (v === 'on/above target') return 'flag-ok';
     return 'flag-none';
+  }
+
+  function renderStrikeBanner(r, sum) {
+    var flag = (sum && sum.flag) || r.flag;
+    var bph = sum && sum.avgBph != null ? sum.avgBph.toFixed(1) : '—';
+    var target = sum && sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—';
+    var strike = sum && sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—';
+    var pct = sum && sum.pctOfTarget != null
+      ? sum.pctOfTarget.toFixed(0) + '%'
+      : (r.pctOfTarget != null ? r.pctOfTarget.toFixed(0) + '%' : '—');
+    return '<div class="psr-strike-banner ' + flagClass(flag) + '">' +
+      strikeBadge(flag) +
+      '<span>BPH <b>' + escapeHtml(bph) + '</b> · Target <b>' + escapeHtml(target) +
+      '</b> · Strike <b>' + escapeHtml(strike) + '</b> · ' + escapeHtml(pct) + ' of target</span>' +
+      '</div>';
   }
 
   function renderTotals(t) {
@@ -14111,11 +14160,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     var html = '<h3 class="psr-detail-h">By SKU</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
     html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU. '
-      + 'Total / avg matches the packer flag (Shift h when Intra is used).</p>';
+      + 'Strike colours: <b>green</b> above target · <b>orange</b> above strike · <b>red</b> below strike.</p>';
 
     if (!skuLines.length) {
       html += '<p class="psr-prose">No Boxes SKU lines for this packer/shift.</p>';
     } else {
+      var sumHead = PSR.summarizePackerTotalAvg(r);
+      html += renderStrikeBanner(r, sumHead);
+
       html += '<table class="psr-table"><thead><tr>' +
         '<th>SKU</th><th>Station</th><th>Hours</th><th>Boxes</th><th>BPH</th>' +
         '<th>Target</th><th>Strike</th><th>%</th><th>Verdict</th>' +
@@ -14161,7 +14213,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           '</tr>';
       });
 
-      var sum = PSR.summarizePackerTotalAvg(r);
+      var sum = sumHead;
       var hoursCell = sum.useShiftHours
         ? (sum.packHours.toFixed(2) + ' pack · ' + sum.shiftHours.toFixed(2) + ' shift')
         : sum.packHours.toFixed(2);
@@ -14169,7 +14221,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         ? (' (−' + Math.round(sum.breakMinutes) + 'm breaks)')
         : '';
 
-      html += '<tr class="psr-total-row">' +
+      html += '<tr class="psr-total-row ' + flagClass(sum.flag) + '">' +
         '<td colspan="2"><b>Total / avg</b></td>' +
         '<td><b>' + escapeHtml(hoursCell + breakNote) + '</b></td>' +
         '<td><b>' + Math.round(sum.boxes).toLocaleString() + '</b></td>' +
@@ -14177,12 +14229,12 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         '<td><b>' + (sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—') + '</b></td>' +
         '<td><b>' + (sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—') + '</b></td>' +
         '<td><b>' + (sum.pctOfTarget != null ? sum.pctOfTarget.toFixed(0) + '%' : '—') + '</b></td>' +
-        '<td><b>' + escapeHtml(sum.flag || '—') + '</b></td>' +
+        '<td><b>' + strikeBadge(sum.flag) + '</b></td>' +
         '<td colspan="2"></td>' +
         '</tr>';
       html += '</tbody></table>';
       if (sum.useShiftHours) {
-        html += '<p class="psr-prose psr-note">Total BPH / % / flag use <b>Shift h</b> (Intra'
+        html += '<p class="psr-prose psr-note">Total BPH / % / strike colour use <b>Shift h</b> (Intra'
           + (sum.breakMinutes > 0 ? ' minus tea/meal' : '')
           + '), not Pack h. SKU rows still show packing time.</p>';
       }
@@ -14280,7 +14332,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
         '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
-        '<td>' + escapeHtml(r.flag) + '</td>' +
+        '<td>' + strikeBadge(r.flag) + '</td>' +
         '</tr>';
       if (open) {
         html += '<tr class="psr-detail"><td colspan="11">' + renderPackerDetail(r) + '</td></tr>';

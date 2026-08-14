@@ -60,12 +60,12 @@ var dipReport = PSR.buildReport(dipBoxes, 0, []);
 check(dipReport.morning[0].flag === 'On/above target', 'Pat Dip averages out above strike → on/above');
 check(dipReport.morning[0].skuLines.some(function (L) { return L.verdict === 'under strike'; }), 'Pat Dip still has an under-strike SKU line');
 
-// Above strike but below target → yellow
+// Above strike but below target → orange (Below target flag)
 var midBoxes = [
   { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Mid Pack', 'Station Name': 'M1', 'Primary Sku': 250, 'Boxes Packed': 45, 'Packing Time Seconds': 10800 }
 ];
 var midReport = PSR.buildReport(midBoxes, 0, []);
-check(midReport.morning[0].flag === 'Below target', 'Mid Pack above strike but below target → yellow');
+check(midReport.morning[0].flag === 'Below target', 'Mid Pack above strike but below target → orange');
 check(report.afternoon.length === 1 && report.afternoon[0].workerDisplay === 'Alice Smith', 'Alice afternoon separate row');
 check(report.exclusions.under_15_min == null, 'no under-15-min exclusion');
 
