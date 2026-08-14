@@ -1278,6 +1278,40 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
   display:flex;flex-direction:column;font-size:13px;
 }
 #tabPacker .pk-shell{flex:1;min-height:0;display:flex;flex-direction:column;max-width:1100px;width:100%;margin:0 auto}
+
+/* Packer shift report (3× xlsx → Morning / Afternoon vs SKU target) */
+#tabPacker .psr-shell{flex:1;min-height:0;display:flex;flex-direction:column;width:100%;max-width:1100px;margin:0 auto}
+#tabPacker .psr-chrome{padding:12px 16px 8px;border-bottom:1px solid #E5E8EF;background:#F6F9FF}
+#tabPacker .psr-bar{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
+#tabPacker .psr-title{margin:0;font-size:1.15rem;font-weight:800;color:#1D4ED8;letter-spacing:-.02em}
+#tabPacker .psr-sub{margin:0;flex:1;font-size:.78rem;color:#6B7280}
+#tabPacker .psr-actions{display:flex;gap:8px}
+#tabPacker .psr-actions button{border:1px solid #D1D5DB;background:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-weight:600;font-size:.8rem;cursor:pointer}
+#tabPacker .psr-actions button:disabled{opacity:.45;cursor:default}
+#tabPacker .psr-actions .psr-primary{background:#1C2430;color:#fff;border-color:#1C2430}
+#tabPacker .psr-uploads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+@media (max-width:900px){#tabPacker .psr-uploads{grid-template-columns:1fr}}
+#tabPacker .psr-file{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid #E5E8EF;border-radius:10px;background:#fff;font-size:.72rem;font-weight:700;color:#374151}
+#tabPacker .psr-file input{font-size:.72rem;font-weight:500}
+#tabPacker .psr-hint{margin:8px 0 0;font-size:.7rem;line-height:1.45;color:#6B7280}
+#tabPacker .psr-hint code{font-size:.68rem;background:#EEF2FF;padding:1px 5px;border-radius:4px}
+#tabPacker .psr-body{flex:1;min-height:0;overflow:auto;padding:12px 16px 24px}
+#tabPacker .psr-status{font-size:.85rem;color:#4B5563;padding:8px 0}
+#tabPacker .psr-status.err{color:#B91C1C;white-space:pre-wrap}
+#tabPacker .psr-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+#tabPacker .psr-tabs button{border:1px solid #D1D5DB;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;color:#4B5563}
+#tabPacker .psr-tabs button.active{background:#1D4ED8;border-color:#1D4ED8;color:#fff}
+#tabPacker .psr-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #E5E8EF;border-radius:10px;overflow:hidden}
+#tabPacker .psr-table th{text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;padding:8px 10px;background:#F8FAFC;border-bottom:1px solid #E5E8EF}
+#tabPacker .psr-table td{padding:8px 10px;font-size:.82rem;border-bottom:1px solid #F1F5F9}
+#tabPacker .psr-table tr.flag-below{background:#FECACA}
+#tabPacker .psr-table tr.flag-dip{background:#FDE68A}
+#tabPacker .psr-table tr.flag-ok{background:#BBF7D0}
+#tabPacker .psr-table tr.flag-none{background:#E5E7EB}
+#tabPacker .psr-prose{font-size:.85rem;line-height:1.55;color:#374151;max-width:52rem}
+#tabPacker .psr-prose h2{font-size:.95rem;margin:1rem 0 .35rem}
+#tabPacker .psr-prose ul{margin:.25rem 0 .75rem 1.1rem}
+
 #tabPacker .pk-chrome{flex:0 0 auto;background:var(--tab-packer-soft);backdrop-filter:blur(10px);border-bottom:1px solid #E1E4EA;border-top:3px solid var(--tab-packer);padding:6px 10px;z-index:5}
 #tabPacker .pk-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
 #tabPacker .pk-title{margin:0;font-size:14px;font-weight:800;letter-spacing:-.02em;flex:0 0 auto;color:var(--tab-packer)}
@@ -2074,43 +2108,44 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 </div>
 
 <div id="tabPacker" style="display:none">
-  <div class="pk-shell">
-    <div class="pk-chrome">
-      <div class="pk-bar">
-        <h1 class="pk-title">Packer</h1>
-        <div class="pk-shift" id="pkShift" role="group" aria-label="Shift">
-          <button type="button" data-shift="morning" class="active">Day</button>
-          <button type="button" data-shift="afternoon">Afternoon</button>
-        </div>
-        <div class="pk-nav">
-          <button type="button" id="pkPrevWeek" aria-label="Previous week">‹</button>
-          <div class="pk-week-lbl" id="pkWeekLabel">This week<span>—</span></div>
-          <button type="button" id="pkNextWeek" aria-label="Next week">›</button>
-        </div>
-        <div class="pk-search"><input type="search" id="pkSearchInput" placeholder="Search…" aria-label="Search workers"></div>
-        <div class="pk-actions">
-          <button type="button" id="pkJumpToday">Today</button>
-          <button type="button" id="pkClearBtn">Clear day</button>
-          <button type="button" id="pkUploadBtn" class="pk-primary">Upload</button>
-          <input type="file" id="pkFileInput" accept=".csv,text/csv" multiple style="display:none">
+  <div class="psr-shell" id="psrRoot">
+    <div class="psr-chrome">
+      <div class="psr-bar">
+        <h1 class="psr-title">Packer</h1>
+        <p class="psr-sub">Dandenong South · performance vs SKU target · Morning &amp; Afternoon</p>
+        <div class="psr-actions">
+          <button type="button" id="psrRunBtn" class="psr-primary" disabled>Build report</button>
+          <button type="button" id="psrClearBtn">Clear</button>
         </div>
       </div>
-      <div class="pk-days" id="pkDays"></div>
-      <div class="pk-sumline">
-        <div class="pk-daily-lbl" id="pkLastUpdated">No data</div>
-        <div class="pk-stats" id="pkKpis"></div>
-        <div class="pk-views" id="pkViews" role="tablist" aria-label="Packer views">
-          <button type="button" data-view="people" class="active">People</button>
-          <button type="button" data-view="hours">Hours</button>
-        </div>
+      <div class="psr-uploads" aria-label="Shift export files">
+        <label class="psr-file">
+          <span>1. Boxes Packed by Worker</span>
+          <input type="file" id="psrBoxes" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        </label>
+        <label class="psr-file">
+          <span>2. Intra Hour Floor Performance</span>
+          <input type="file" id="psrIntra" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        </label>
+        <label class="psr-file">
+          <span>3. Overall Summary by Packer and Date</span>
+          <input type="file" id="psrSummary" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        </label>
       </div>
-      <div class="pk-chipbar" id="pkChipBar" hidden aria-label="Packer section filters"></div>
+      <p class="psr-hint">Validates columns before scoring — missing/renamed columns stop with a clear error (no guessing). Summary file is only used to keep Facility Name = Dandenong South; its blended BPH is not used for targets. Source files are never modified. For the auditable Excel with SUMIFS formulas you can also run <code>python -m packer_shift_report --dir ./exports</code>.</p>
     </div>
-    <div class="pk-body" id="pkPanels">
-      <div id="pkPreview" hidden></div>
-      <div id="pkStatus"></div>
-      <div id="pkTableWrap"></div>
-      <div id="pkDetail" hidden></div>
+    <div class="psr-body">
+      <div id="psrStatus" class="psr-status">Upload the three shift exports, then Build report.</div>
+      <div class="psr-views" id="psrViews" hidden>
+        <div class="psr-tabs" role="tablist">
+          <button type="button" data-psr-view="morning" class="active">Morning shift</button>
+          <button type="button" data-psr-view="afternoon">Afternoon shift</button>
+          <button type="button" data-psr-view="exclusions">Exclusions</button>
+          <button type="button" data-psr-view="targets">SKU targets</button>
+          <button type="button" data-psr-view="how">How this works</button>
+        </div>
+        <div id="psrPanel" class="psr-panel"></div>
+      </div>
     </div>
   </div>
   <div class="toast" id="packerToast"></div>
@@ -9715,6 +9750,20 @@ function toast(msg, err) {
 (function () {
   'use strict';
 
+  // Legacy CSV Packer dashboard — skipped when the shift-report UI is mounted.
+  if (document.getElementById('psrRoot')) {
+    window.__packerDashboard = {
+      refresh: function () {},
+      exportWeek: function () {},
+      exportShiftPackers: function () {},
+      buildWeeklySkuReview: function () { return null; },
+      downloadWeeklySkuReview: function () {},
+      getByDate: function () { return {}; },
+      getWeekStart: function () { return new Date(); }
+    };
+    return;
+  }
+
   var PA = window.PackerAnalytics;
   if (!PA) {
     console.error('PackerAnalytics module missing');
@@ -12297,5 +12346,8 @@ function toast(msg, err) {
   showTab('floor');
 })();
 </script>
+<script src="js/xlsx.mini.min.js"></script>
+<script src="js/packer-shift-report.js"></script>
+<script src="js/packer-shift-ui.js"></script>
 </body>
 </html>
