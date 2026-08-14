@@ -116,7 +116,14 @@ check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.i
   'Sizes column / detail present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
 check(html.indexOf('summarizePackerTotalAvg') !== -1, 'Total/avg uses shared Shift-h-aware summary');
-check(html.indexOf('Total BPH / % / flag use') !== -1, 'Total/avg explains Shift h vs Pack h');
+check(html.indexOf('Total BPH / % / strike colour use') !== -1 || html.indexOf('Total BPH / % / flag use') !== -1,
+  'Total/avg explains Shift h vs Pack h');
+check(html.indexOf('function strikeBadge') !== -1 && html.indexOf('psr-strike-banner') !== -1,
+  'Strike colour badge + banner for Total/avg');
+check(html.indexOf('Above target') !== -1 && html.indexOf('Above strike') !== -1,
+  'Strike labels: Above target / Above strike / Below strike');
+check(html.indexOf('tr.psr-detail > td') !== -1 || html.indexOf('tr.psr-detail>td') !== -1,
+  'Detail wrapper CSS does not wipe nested strike row colours');
 check(html.indexOf('id="psrExportBtn"') !== -1, 'Export report button exists');
 check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlined');
 check(html.indexOf('data-psr-view="mixed"') === -1, 'Separate Mixed SKUs Packer tab removed');
@@ -139,14 +146,18 @@ check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile, execFile
 check(html.indexOf('sizesCell') !== -1 || html.indexOf('function sizesCell') !== -1,
   'Combined sizes cell (Boxes + Raw Data) present');
 
-console.log('\nOps smoke — day-linked breaks (Intra shift length uses tea/meal)');
+console.log('\nOps smoke — auto breaks on Intra shift length');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
 check(html.indexOf('id="bpDays"') !== -1 && html.indexOf('function renderDayChrome') !== -1, 'Breaks day chips exist');
 check(html.indexOf('getGroupsFor') !== -1 || html.indexOf('ensureShiftData') !== -1, 'Breaks exposes day-keyed groups');
 check(html.indexOf('function buildBreakLookup') === -1, 'No legacy break lookup for BPH');
-check(html.indexOf('breakMinutesLookupFromStorage') !== -1 || html.indexOf('breakMinutesForGroup') !== -1,
-  'Packer subtracts Breaks tea/meal from Intra shift length');
-check(html.indexOf('loadBreakMinutesForReport') !== -1, 'Packer UI loads Breaks minutes on Build report');
+check(html.indexOf('function autoBreakMinutes') !== -1, 'Packer auto-break helper inlined');
+check(html.indexOf('15m >4h') !== -1 || html.indexOf('over 4 hours') !== -1,
+  'Auto break rule (15m over 4h) documented in UI');
+check(html.indexOf('+30m >6h') !== -1 || html.indexOf('over 6 hours') !== -1,
+  'Auto break rule (+30m over 6h) documented in UI');
+check(html.indexOf('loadBreakMinutesForReport') === -1,
+  'Packer UI no longer loads Breaks tea/meal for scoring');
 
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');

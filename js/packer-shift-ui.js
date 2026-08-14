@@ -80,16 +80,44 @@
 
   function flagClass(flag) {
     if (flag === 'Below strike') return 'flag-below'; // red
-    if (flag === 'Below target') return 'flag-dip';   // yellow
-    if (flag === 'On/above target') return 'flag-ok';
+    if (flag === 'Below target') return 'flag-dip';   // orange — cleared strike, under target
+    if (flag === 'On/above target') return 'flag-ok'; // green
     return 'flag-none';
+  }
+
+  /** Green / orange / red labels for strike check. */
+  function strikeLabel(flag) {
+    if (flag === 'On/above target') return 'Above target';
+    if (flag === 'Below target') return 'Above strike';
+    if (flag === 'Below strike') return 'Below strike';
+    return flag || '—';
+  }
+
+  function strikeBadge(flag) {
+    return '<span class="psr-strike-badge ' + flagClass(flag) + '">' +
+      escapeHtml(strikeLabel(flag)) + '</span>';
   }
 
   function verdictClass(v) {
     if (v === 'under strike') return 'flag-below'; // red
-    if (v === 'under target') return 'flag-dip';   // yellow
+    if (v === 'under target') return 'flag-dip';   // orange
     if (v === 'on/above target') return 'flag-ok';
     return 'flag-none';
+  }
+
+  function renderStrikeBanner(r, sum) {
+    var flag = (sum && sum.flag) || r.flag;
+    var bph = sum && sum.avgBph != null ? sum.avgBph.toFixed(1) : '—';
+    var target = sum && sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—';
+    var strike = sum && sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—';
+    var pct = sum && sum.pctOfTarget != null
+      ? sum.pctOfTarget.toFixed(0) + '%'
+      : (r.pctOfTarget != null ? r.pctOfTarget.toFixed(0) + '%' : '—');
+    return '<div class="psr-strike-banner ' + flagClass(flag) + '">' +
+      strikeBadge(flag) +
+      '<span>BPH <b>' + escapeHtml(bph) + '</b> · Target <b>' + escapeHtml(target) +
+      '</b> · Strike <b>' + escapeHtml(strike) + '</b> · ' + escapeHtml(pct) + ' of target</span>' +
+      '</div>';
   }
 
   function renderTotals(t) {
@@ -153,11 +181,14 @@
     var html = '<h3 class="psr-detail-h">By SKU</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
     html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU. '
-      + 'Total / avg matches the packer flag (Shift h when Intra is used).</p>';
+      + 'Strike colours: <b>green</b> above target · <b>orange</b> above strike · <b>red</b> below strike.</p>';
 
     if (!skuLines.length) {
       html += '<p class="psr-prose">No Boxes SKU lines for this packer/shift.</p>';
     } else {
+      var sumHead = PSR.summarizePackerTotalAvg(r);
+      html += renderStrikeBanner(r, sumHead);
+
       html += '<table class="psr-table"><thead><tr>' +
         '<th>SKU</th><th>Station</th><th>Hours</th><th>Boxes</th><th>BPH</th>' +
         '<th>Target</th><th>Strike</th><th>%</th><th>Verdict</th>' +
@@ -203,7 +234,7 @@
           '</tr>';
       });
 
-      var sum = PSR.summarizePackerTotalAvg(r);
+      var sum = sumHead;
       var hoursCell = sum.useShiftHours
         ? (sum.packHours.toFixed(2) + ' pack · ' + sum.shiftHours.toFixed(2) + ' shift')
         : sum.packHours.toFixed(2);
@@ -211,7 +242,7 @@
         ? (' (−' + Math.round(sum.breakMinutes) + 'm breaks)')
         : '';
 
-      html += '<tr class="psr-total-row">' +
+      html += '<tr class="psr-total-row ' + flagClass(sum.flag) + '">' +
         '<td colspan="2"><b>Total / avg</b></td>' +
         '<td><b>' + escapeHtml(hoursCell + breakNote) + '</b></td>' +
         '<td><b>' + Math.round(sum.boxes).toLocaleString() + '</b></td>' +
@@ -219,13 +250,13 @@
         '<td><b>' + (sum.avgTarget != null ? sum.avgTarget.toFixed(1) : '—') + '</b></td>' +
         '<td><b>' + (sum.avgStrike != null ? sum.avgStrike.toFixed(1) : '—') + '</b></td>' +
         '<td><b>' + (sum.pctOfTarget != null ? sum.pctOfTarget.toFixed(0) + '%' : '—') + '</b></td>' +
-        '<td><b>' + escapeHtml(sum.flag || '—') + '</b></td>' +
+        '<td><b>' + strikeBadge(sum.flag) + '</b></td>' +
         '<td colspan="2"></td>' +
         '</tr>';
       html += '</tbody></table>';
       if (sum.useShiftHours) {
-        html += '<p class="psr-prose psr-note">Total BPH / % / flag use <b>Shift h</b> (Intra'
-          + (sum.breakMinutes > 0 ? ' minus tea/meal' : '')
+        html += '<p class="psr-prose psr-note">Total BPH / % / strike colour use <b>Shift h</b> (Intra'
+          + (sum.breakMinutes > 0 ? ' minus auto breaks' : '')
           + '), not Pack h. SKU rows still show packing time.</p>';
       }
     }
@@ -303,7 +334,7 @@
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Boxes Packed by Worker + Intra Hour side by side. Click a packer for <b>By SKU</b> and hour breakdown. '
       + '<b>Pack h / Boxes (file)</b> from Boxes. <b>Intra h / Intra boxes</b> from Intra. '
-      + '<b>Shift h</b> = Intra − breaks (when Breaks matched).</p>';
+      + '<b>Shift h</b> = Intra − auto breaks (15m over 4h, +30m over 6h).</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Intra h</th><th>Shift h</th>' +
       '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
@@ -322,7 +353,7 @@
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
         '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
-        '<td>' + escapeHtml(r.flag) + '</td>' +
+        '<td>' + strikeBadge(r.flag) + '</td>' +
         '</tr>';
       if (open) {
         html += '<tr class="psr-detail"><td colspan="11">' + renderPackerDetail(r) + '</td></tr>';
@@ -409,7 +440,7 @@
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
-      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours for that shift, minus tea (~15m) and meal (~30m) from the Breaks tab when that packer is on a group; else Raw Data / Executive Summary.</p>' +
+      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus auto breaks for every packer: <b>15 min</b> when over 4 hours, plus <b>30 min</b> when over 6 hours (45 min total). Else Raw Data / Executive Summary (same auto-break rule).</p>' +
       '<h2>What each file is for</h2>' +
       '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +
@@ -432,29 +463,6 @@
     else if (view === 'exclusions') panelEl.innerHTML = renderExclusions();
     else if (view === 'targets') panelEl.innerHTML = renderTargets();
     else panelEl.innerHTML = renderHow();
-  }
-
-  function readJsonLocal(key) {
-    try {
-      var raw = localStorage.getItem(key);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /** Tea/meal minutes from Breaks for the linked ops day (names matched to export workers). */
-  function loadBreakMinutesForReport() {
-    if (!PSR || typeof PSR.breakMinutesLookupFromStorage !== 'function') return {};
-    var linked = window.__opsDayLink && typeof window.__opsDayLink.get === 'function'
-      ? window.__opsDayLink.get()
-      : null;
-    var dateKey = linked && linked.dateKey ? linked.dateKey : null;
-    var bp = readJsonLocal('breakPlanner');
-    var planner = readJsonLocal('planner');
-    if (!bp) return {};
-    return PSR.breakMinutesLookupFromStorage(bp, planner, dateKey) || {};
   }
 
   async function run() {
@@ -483,21 +491,18 @@
     try {
       var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
       var execFile = (execIn && execIn.files && execIn.files[0]) ? execIn.files[0] : null;
-      var breakMins = loadBreakMinutesForReport();
-      var breakN = Object.keys(breakMins).length;
       report = await PSR.buildReportFromFiles(
         boxesIn.files[0],
         intraIn.files[0],
         rawFile,
-        execFile,
-        breakMins
+        execFile
       );
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
-        'Boxes lines: ' + report.rawLines.length
+        'Boxes lines: ' + report.rawLines.length,
+        'Auto breaks: 15m >4h · +30m >6h'
       ];
-      if (breakN) bits.push('Breaks applied: ' + breakN);
       if (report.rawDataRows && report.rawDataRows.length) {
         bits.push('Raw Data: ' + report.rawDataRows.length + ' rows');
       }
@@ -510,7 +515,7 @@
       view = 'morning';
       render();
       refreshReadyState();
-      toast(breakN ? 'Report ready (breaks applied)' : 'Report ready');
+      toast('Report ready');
     } catch (e) {
       report = null;
       viewsEl.hidden = true;

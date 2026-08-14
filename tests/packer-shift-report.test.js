@@ -60,12 +60,12 @@ var dipReport = PSR.buildReport(dipBoxes, 0, []);
 check(dipReport.morning[0].flag === 'On/above target', 'Pat Dip averages out above strike → on/above');
 check(dipReport.morning[0].skuLines.some(function (L) { return L.verdict === 'under strike'; }), 'Pat Dip still has an under-strike SKU line');
 
-// Above strike but below target → yellow
+// Above strike but below target → orange (Below target flag)
 var midBoxes = [
   { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Mid Pack', 'Station Name': 'M1', 'Primary Sku': 250, 'Boxes Packed': 45, 'Packing Time Seconds': 10800 }
 ];
 var midReport = PSR.buildReport(midBoxes, 0, []);
-check(midReport.morning[0].flag === 'Below target', 'Mid Pack above strike but below target → yellow');
+check(midReport.morning[0].flag === 'Below target', 'Mid Pack above strike but below target → orange');
 check(report.afternoon.length === 1 && report.afternoon[0].workerDisplay === 'Alice Smith', 'Alice afternoon separate row');
 check(report.exclusions.under_15_min == null, 'no under-15-min exclusion');
 
@@ -170,13 +170,19 @@ var execAlice = [{
   packingHours: 6.5
 }];
 var fromRaw = PSR.buildReport(aliceBoxes, 0, [], rawShift, execAlice);
-check(fromRaw.morning[0].shiftHours === 7.25, 'Shift h prefers Raw Data Shift (Hours)');
-check(fromRaw.morning[0].shiftHoursSource === 'raw_data', 'shiftHoursSource is raw_data');
+check(Math.abs(fromRaw.morning[0].shiftHours - (7.25 - 0.75)) < 0.01,
+  'Shift h prefers Raw Data Shift (Hours) minus auto breaks');
+check(fromRaw.morning[0].shiftHoursSource === 'raw_data_less_breaks',
+  'shiftHoursSource is raw_data_less_breaks when over 6h');
+check(fromRaw.morning[0].breakMinutes === 45, 'Raw Shift h over 6h → 45m auto break');
 check(Math.abs(fromRaw.morning[0].hours - 4) < 0.01, 'Pack h still from Boxes packing time');
 
 var fromExec = PSR.buildReport(aliceBoxes, 0, [], [], execAlice);
-check(fromExec.morning[0].shiftHours === 6.5, 'Shift h falls back to Executive Summary');
-check(fromExec.morning[0].shiftHoursSource === 'executive_summary', 'shiftHoursSource is executive_summary');
+check(Math.abs(fromExec.morning[0].shiftHours - (6.5 - 0.75)) < 0.01,
+  'Shift h falls back to Executive Summary minus auto breaks');
+check(fromExec.morning[0].shiftHoursSource === 'executive_summary_less_breaks',
+  'shiftHoursSource is executive_summary_less_breaks when over 6h');
+check(fromExec.morning[0].breakMinutes === 45, 'Exec Shift h over 6h → 45m auto break');
 
 var noShift = PSR.buildReport(aliceBoxes, 0, [], [], []);
 check(noShift.morning[0].shiftHours == null, 'Shift h empty without Raw/Exec');
@@ -252,59 +258,64 @@ check(withIntra.morning[0].flag === 'Below strike',
   'With Intra, same boxes judged on 4h strike need → below strike');
 check(Math.abs(withIntra.morning[0].strikeBoxes - 4 * 14.6) < 0.01, 'Strike need = 4 × 14.6');
 
-console.log('\nPacker shift report JS — tea/meal breaks reduce Intra shift length');
+console.log('\nPacker shift report JS — auto breaks (15m >4h, +30m >6h)');
+check(PSR.autoBreakMinutes(4) === 0, 'exactly 4h → no auto break');
+check(PSR.autoBreakMinutes(4.01) === 15, 'just over 4h → 15m');
+check(PSR.autoBreakMinutes(5) === 15, '5h → 15m');
+check(PSR.autoBreakMinutes(6) === 15, 'exactly 6h → 15m only');
+check(PSR.autoBreakMinutes(6.01) === 45, 'just over 6h → 15+30 = 45m');
+check(PSR.autoBreakMinutes(8) === 45, '8h → 45m');
+
+// Legacy Breaks-group helpers still work if needed
 check(PSR.minutesBetweenHm('09:45', '10:00') === 15, '15m tea range = 15 minutes');
-check(PSR.minutesBetweenHm('12:00', '12:30') === 30, '30m meal range = 30 minutes');
 check(PSR.breakMinutesForGroup({
   teaStart: '09:45', teaEnd: '10:00', mealStart: '12:00', mealEnd: '12:30'
 }) === 45, 'tea+meal group = 45 minutes');
-check(PSR.breakMinutesForGroup({
-  teaStart: '09:45', teaEnd: '10:00', mealStart: '', mealEnd: ''
-}) === 15, 'tea-only group = 15 minutes');
 
-var breakMap = PSR.breakMinutesByWorkerShift({
-  morning: [{
-    teaStart: '09:45', teaEnd: '10:00', mealStart: '12:00', mealEnd: '12:30',
-    packer: ['p1'], runner: [], boxmaker: []
-  }]
-}, { morning: { p1: 'Fair Strike' } });
-check(breakMap['Fair Strike|morning_shift'] === 45, 'break map keys worker|shift');
-
-var needBreak = PSR.needBoxesFromHours(
+var needAuto5 = PSR.needBoxesFromHours(
   [{ hours: 1, targetBph: 16, strikeBph: 14.6 }],
   1,
-  4,
-  45
+  5
 );
-check(needBreak.hoursBasis === 'intra_less_breaks', 'hoursBasis notes breaks subtracted');
-check(Math.abs(needBreak.hoursForNeed - 3.25) < 0.01, '4h Intra − 45m = 3.25h');
-check(Math.abs(needBreak.strikeBoxes - 3.25 * 14.6) < 0.01, 'strike need uses net hours');
+check(needAuto5.hoursBasis === 'intra_less_breaks', '5h Intra auto-applies 15m');
+check(Math.abs(needAuto5.hoursForNeed - 4.75) < 0.01, '5h Intra − 15m = 4.75h');
+check(needAuto5.breakMinutes === 15, 'needBoxes stores 15m auto break');
 
-var withBreaks = PSR.buildReport(shortPack, 0, longIntra, [], [], {
+var needAuto7 = PSR.needBoxesFromHours(
+  [{ hours: 1, targetBph: 16, strikeBph: 14.6 }],
+  1,
+  7
+);
+check(needAuto7.breakMinutes === 45, '7h Intra → 45m auto break');
+check(Math.abs(needAuto7.hoursForNeed - 6.25) < 0.01, '7h Intra − 45m = 6.25h');
+
+var longIntra5 = [
+  { 'Report Date Hour': '2026-08-13 08:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 },
+  { 'Report Date Hour': '2026-08-13 09:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 },
+  { 'Report Date Hour': '2026-08-13 10:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 },
+  { 'Report Date Hour': '2026-08-13 11:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 },
+  { 'Report Date Hour': '2026-08-13 12:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 }
+];
+var withAuto5 = PSR.buildReport(shortPack, 0, longIntra5);
+check(withAuto5.morning[0].breakMinutes === 15, 'packer gets 15m auto break over 4h');
+check(withAuto5.morning[0].hoursBasis === 'intra_less_breaks', 'report uses intra_less_breaks');
+check(Math.abs(withAuto5.morning[0].shiftHours - 4.75) < 0.01, 'Shift h = 5 − 0.25');
+check(Math.abs(withAuto5.morning[0].strikeBoxes - 4.75 * 14.6) < 0.01, 'strike need uses net hours');
+
+var longIntra7 = longIntra5.concat([
+  { 'Report Date Hour': '2026-08-13 13:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 },
+  { 'Report Date Hour': '2026-08-13 07:00', 'Pnp Worker Name': 'Fair Strike', 'Boxes Packed': 8 }
+]);
+var withAuto7 = PSR.buildReport(shortPack, 0, longIntra7);
+check(withAuto7.morning[0].breakMinutes === 45, 'packer gets 45m auto break over 6h');
+check(Math.abs(withAuto7.morning[0].shiftHours - 6.25) < 0.01, 'Shift h = 7 − 0.75');
+
+// Explicit map can still raise break minutes above auto (compat)
+var withMap = PSR.buildReport(shortPack, 0, longIntra, [], [], {
   'Fair Strike|morning_shift': 45
 });
-check(withBreaks.morning[0].breakMinutes === 45, 'packer row stores break minutes');
-check(withBreaks.morning[0].hoursBasis === 'intra_less_breaks', 'report uses intra_less_breaks');
-check(Math.abs(withBreaks.morning[0].shiftHours - 3.25) < 0.01, 'Shift h is Intra minus breaks');
-check(withBreaks.morning[0].flag === 'Below strike', 'net 3.25h still below strike for 40 boxes');
-
-var lookup = PSR.breakMinutesLookupFromStorage({
-  byDate: {
-    '2026-08-13': {
-      morning: {
-        groups: [{
-          teaStart: '09:45', teaEnd: '10:00', mealStart: '12:00', mealEnd: '12:30',
-          packer: ['r1'], runner: [], boxmaker: []
-        }]
-      }
-    }
-  }
-}, {
-  shiftData: {
-    morning: { staffRoster: [{ id: 'r1', name: 'Fair Strike', role: 'packer' }] }
-  }
-}, '2026-08-13');
-check(lookup['Fair Strike|morning_shift'] === 45, 'storage lookup resolves roster name + day groups');
+check(withMap.morning[0].breakMinutes === 45, 'explicit map can exceed auto when Intra is only 4h');
+check(Math.abs(withMap.morning[0].shiftHours - 3.25) < 0.01, 'Shift h is Intra minus map breaks');
 
 console.log('\nPacker shift report JS — Total / avg uses Shift h when Intra scores');
 var totPackOnly = PSR.summarizePackerTotalAvg({
