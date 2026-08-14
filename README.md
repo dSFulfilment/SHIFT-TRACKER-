@@ -37,7 +37,7 @@ python3 strike_check.py \
   --csv-out strike_report.csv
 ```
 
-Optional `--strike-table strikes.csv` overrides the hardcoded SKU / Target BPH / Strike Line table.
+Default screen view is **strike candidates only** (below / short). Mixed is **one row per worker** (sizes touched), filtered to people on that list. Use `--all-rows` and `--mixed-all` to expand. Optional `--strike-table strikes.csv` overrides the hardcoded SKU / Target BPH / Strike Line table.
 
 ## Optional developer tests
 

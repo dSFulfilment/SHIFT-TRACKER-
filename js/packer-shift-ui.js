@@ -412,15 +412,10 @@
   }
 
   function renderMixedWorkerBlock(w) {
-    var html = '<div class="psr-hour-block">' +
-      '<div class="psr-hour-head"><span class="psr-mixed">Mixed</span> <b>' +
-      escapeHtml(w.workerDisplay) + '</b> · ' + escapeHtml(w.mixLabel || '') +
-      ' · ' + w.segmentCount + ' segment' + (w.segmentCount === 1 ? '' : 's') +
-      ' · ' + (w.hours != null ? w.hours.toFixed(2) + 'h' : '—') +
-      ' · ' + Math.round(w.boxes || 0).toLocaleString() + ' boxes</div>';
+    var html = '<p class="psr-why">Mixed segments for this packer (context only — not used to score a single SKU).</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Box Sku Sizes</th><th>Boxes</th><th>Packing sec</th><th>Hours</th><th>BPH</th>' +
-      '<th>First Scan</th><th>Last Scan</th><th>Shift guess</th>' +
+      '<th>First Scan</th><th>Last Scan</th>' +
       '</tr></thead><tbody>';
     (w.segments || []).forEach(function (seg) {
       html += '<tr class="psr-mix-row">' +
@@ -431,10 +426,9 @@
         '<td>' + (seg.actualBph != null ? seg.actualBph.toFixed(1) : '—') + '</td>' +
         '<td>' + escapeHtml(seg.firstScan == null ? '' : seg.firstScan) + '</td>' +
         '<td>' + escapeHtml(seg.lastScan == null ? '' : seg.lastScan) + '</td>' +
-        '<td>' + escapeHtml(seg.shiftLabel || '') + '</td>' +
         '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table>';
     return html;
   }
 
@@ -442,18 +436,33 @@
     var mixed = report.rawDataMixed || [];
     var rawRows = report.rawDataRows || [];
     if (!rawRows.length) {
-      return '<p class="psr-prose">Select the <b>Raw Data</b> export (CSV/xlsx with <b>Box Sku Sizes</b>) and Build report to see mixed SKUs here. Boxes Packed alone cannot show true mixed sizes.</p>';
+      return '<p class="psr-prose">Select the <b>Raw Data</b> export (CSV/xlsx with <b>Box Sku Sizes</b>) and Build report to see mixed sizes here.</p>';
     }
     if (!mixed.length) {
-      return '<p class="psr-prose">Raw Data loaded (' + rawRows.length + ' rows) — no mixed <b>Box Sku Sizes</b> (e.g. "250g, 600g") in this file.</p>';
+      return '<p class="psr-prose">Raw Data loaded (' + rawRows.length + ' rows) — no mixed sizes (2+ in Box Sku Sizes).</p>';
     }
     var totBoxes = mixed.reduce(function (s, w) { return s + (w.boxes || 0); }, 0);
-    var html = '<p class="psr-prose"><b>' + mixed.length + '</b> packer' + (mixed.length === 1 ? '' : 's') +
-      ' with mixed Box Sku Sizes · ' + Math.round(totBoxes).toLocaleString() +
-      ' boxes across mixed segments. Source: Raw Data export.</p>';
+    var html = '<p class="psr-prose"><b>Mixed = 2+ sizes</b> in one Raw Data segment (e.g. 250g, 600g). ' +
+      '<b>' + mixed.length + '</b> packers · ' + Math.round(totBoxes).toLocaleString() +
+      ' boxes across mixed segments. One row per packer — click to expand segments.</p>';
+    html += '<table class="psr-table"><thead><tr>' +
+      '<th>Packer</th><th>Sizes touched</th><th>Segs</th><th>Hours</th><th>Boxes</th>' +
+      '</tr></thead><tbody>';
     mixed.forEach(function (w) {
-      html += renderMixedWorkerBlock(w);
+      var open = openPacker === ('mixed:' + w.workerDisplay);
+      var sizes = (w.skus || []).map(function (s) { return s + 'g'; }).join(' · ') || (w.mixLabel || '');
+      html += '<tr class="psr-row psr-mix-row" data-packer="mixed:' + escapeHtml(w.workerDisplay) + '" style="cursor:pointer">' +
+        '<td><b>' + escapeHtml(w.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
+        '<td><span class="psr-mixed">Mixed</span> ' + escapeHtml(sizes) + '</td>' +
+        '<td>' + (w.segmentCount || (w.segments || []).length) + '</td>' +
+        '<td>' + (w.hours != null ? w.hours.toFixed(2) : '—') + '</td>' +
+        '<td>' + Math.round(w.boxes || 0).toLocaleString() + '</td>' +
+        '</tr>';
+      if (open) {
+        html += '<tr class="psr-detail"><td colspan="5">' + renderMixedWorkerBlock(w) + '</td></tr>';
+      }
     });
+    html += '</tbody></table>';
     return html;
   }
 
