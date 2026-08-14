@@ -13,14 +13,18 @@
   var panelEl = document.getElementById('psrPanel');
   var runBtn = document.getElementById('psrRunBtn');
   var clearBtn = document.getElementById('psrClearBtn');
-  var boxesIn = document.getElementById('psrBoxes');
-  var intraIn = document.getElementById('psrIntra');
-  var summaryIn = document.getElementById('psrSummary');
+  var uploadBtn = document.getElementById('psrUploadBtn');
+  var multiIn = document.getElementById('psrMulti');
+  var dropEl = document.getElementById('psrDrop');
+  var fileStatusEl = document.getElementById('psrFileStatus');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
   var view = 'morning';
   var openPacker = null;
+  var boxesFile = null;
+  var intraFile = null;
+  var summaryFile = null;
 
   function toast(msg) {
     if (!toastEl) return;
@@ -41,18 +45,35 @@
     return !!(PSR && typeof PSR.buildReportFromFiles === 'function' && typeof XLSX !== 'undefined');
   }
 
-  function fileLabel(inp) {
-    return inp && inp.files && inp.files[0] ? inp.files[0].name : '';
+  function classifyFile(file) {
+    var n = String(file && file.name || '').toLowerCase().replace(/\s+/g, '_');
+    if (n.indexOf('boxes_packed') !== -1 || n.indexOf('boxespacked') !== -1) return 'boxes';
+    if (n.indexOf('intra_hour') !== -1 || n.indexOf('intrahour') !== -1 || n.indexOf('intra-hour') !== -1) return 'intra';
+    if (n.indexOf('overall_summary') !== -1 || n.indexOf('overallsummary') !== -1 || n.indexOf('summary_by_packer') !== -1) return 'summary';
+    return null;
+  }
+
+  function setFileStatus() {
+    if (!fileStatusEl) return;
+    var map = {
+      boxes: boxesFile ? boxesFile.name : 'not loaded',
+      intra: intraFile ? intraFile.name : 'optional',
+      summary: summaryFile ? summaryFile.name : 'not loaded'
+    };
+    var nodes = fileStatusEl.querySelectorAll('[data-kind]');
+    for (var i = 0; i < nodes.length; i++) {
+      var kind = nodes[i].getAttribute('data-kind');
+      var span = nodes[i].querySelector('span');
+      if (span) span.textContent = map[kind] || '—';
+      nodes[i].classList.toggle('is-set', !!(kind === 'boxes' ? boxesFile : kind === 'intra' ? intraFile : summaryFile));
+    }
   }
 
   function refreshReadyState() {
-    var hasBoxes = !!(boxesIn.files && boxesIn.files[0]);
-    var hasSummary = !!(summaryIn.files && summaryIn.files[0]);
-    var hasIntra = !!(intraIn.files && intraIn.files[0]);
     var ok = scriptsOk();
-
-    // Always allow click — we explain what's missing instead of a dead button
     runBtn.disabled = !ok;
+    if (uploadBtn) uploadBtn.disabled = !ok;
+    setFileStatus();
 
     if (!ok) {
       statusEl.className = 'psr-status err';
@@ -61,16 +82,49 @@
       return;
     }
 
-    var parts = [];
-    parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
-    parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: optional — not selected');
-    parts.push(hasSummary ? ('Summary: ' + fileLabel(summaryIn)) : 'Summary: not selected');
     if (!report) {
       statusEl.className = 'psr-status';
-      statusEl.textContent = parts.join(' · ') +
-        (hasBoxes && hasSummary
-          ? ' → click Build report'
-          : ' → select Boxes + Summary (Intra optional), then Build report');
+      if (boxesFile && summaryFile) {
+        statusEl.textContent = 'Files ready → building report…';
+      } else {
+        statusEl.textContent = 'Click Upload (or drop files) — need Boxes + Summary. Intra optional.';
+      }
+    }
+  }
+
+  function ingestFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    var unknown = [];
+    files.forEach(function (f) {
+      var kind = classifyFile(f);
+      if (kind === 'boxes') boxesFile = f;
+      else if (kind === 'intra') intraFile = f;
+      else if (kind === 'summary') summaryFile = f;
+      else unknown.push(f.name);
+    });
+    report = null;
+    viewsEl.hidden = true;
+    panelEl.innerHTML = '';
+    refreshReadyState();
+
+    if (unknown.length) {
+      statusEl.className = 'psr-status err';
+      statusEl.textContent = 'Unrecognised file name(s): ' + unknown.join(', ') +
+        '. Expected names containing Boxes_Packed, Intra_Hour, or Overall_Summary.';
+      toast('Check file names');
+      return;
+    }
+    if (boxesFile && summaryFile) {
+      toast('Files loaded');
+      run();
+    } else {
+      var missing = [];
+      if (!boxesFile) missing.push('Boxes Packed by Worker');
+      if (!summaryFile) missing.push('Overall Summary');
+      statusEl.className = 'psr-status';
+      statusEl.textContent = 'Still need: ' + missing.join(' + ');
+      toast('Need more files');
     }
   }
 
@@ -186,16 +240,10 @@
 
   function renderHow() {
     return '<div class="psr-prose">' +
-      '<h2>Shift amount</h2>' +
-      '<p>At the top of Morning / Afternoon you get total hours, boxes packed, target boxes, and % of target for the whole shift.</p>' +
-      '<h2>Why it worked / didn’t</h2>' +
-      '<p>Click a packer to see each SKU: actual BPH vs target and strike.</p>' +
-      '<h2>If Build report will not run</h2>' +
-      '<ul>' +
-      '<li>Select <b>Boxes Packed by Worker</b> and <b>Overall Summary</b> (Intra is optional).</li>' +
-      '<li>Works in this single <code>index.html</code> — no extra files needed.</li>' +
-      '<li>Or use Excel: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code></li>' +
-      '</ul>' +
+      '<h2>Upload</h2>' +
+      '<p>Click <b>Upload</b> and select all three xlsx exports at once (or drop them on the dashed box). Files are matched by name.</p>' +
+      '<h2>Shift amount / why</h2>' +
+      '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';
   }
 
@@ -220,15 +268,15 @@
       toast('Scripts not loaded');
       return;
     }
-    if (!(boxesIn.files && boxesIn.files[0])) {
+    if (!boxesFile) {
       statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Select file 1: Boxes_Packed_by_Worker.xlsx';
+      statusEl.textContent = 'Upload Boxes_Packed_by_Worker.xlsx';
       toast('Need Boxes file');
       return;
     }
-    if (!(summaryIn.files && summaryIn.files[0])) {
+    if (!summaryFile) {
       statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Select file 3: Overall_Summary_by_Packer_and_Date.xlsx (used to keep Dandenong South only)';
+      statusEl.textContent = 'Upload Overall_Summary_by_Packer_and_Date.xlsx';
       toast('Need Summary file');
       return;
     }
@@ -236,8 +284,9 @@
     statusEl.className = 'psr-status';
     statusEl.textContent = 'Reading exports…';
     runBtn.disabled = true;
+    if (uploadBtn) uploadBtn.disabled = true;
     try {
-      report = await PSR.buildReportFromFiles(boxesIn.files[0], summaryIn.files[0], intraIn.files[0] || null);
+      report = await PSR.buildReportFromFiles(boxesFile, summaryFile, intraFile || null);
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
@@ -262,13 +311,15 @@
       console.error(e);
     } finally {
       runBtn.disabled = !scriptsOk();
+      if (uploadBtn) uploadBtn.disabled = !scriptsOk();
     }
   }
 
   function clearAll() {
-    boxesIn.value = '';
-    intraIn.value = '';
-    summaryIn.value = '';
+    boxesFile = null;
+    intraFile = null;
+    summaryFile = null;
+    if (multiIn) multiIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -276,14 +327,31 @@
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, summaryIn].forEach(function (inp) {
-    inp.addEventListener('change', function () {
-      report = null;
-      viewsEl.hidden = true;
-      panelEl.innerHTML = '';
-      refreshReadyState();
+  if (uploadBtn && multiIn) {
+    uploadBtn.addEventListener('click', function () { multiIn.click(); });
+    multiIn.addEventListener('change', function () {
+      ingestFiles(multiIn.files);
     });
-  });
+  }
+  if (dropEl) {
+    ;['dragenter', 'dragover'].forEach(function (ev) {
+      dropEl.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropEl.classList.add('drag');
+      });
+    });
+    ;['dragleave', 'drop'].forEach(function (ev) {
+      dropEl.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropEl.classList.remove('drag');
+      });
+    });
+    dropEl.addEventListener('drop', function (e) {
+      ingestFiles(e.dataTransfer && e.dataTransfer.files);
+    });
+  }
   runBtn.addEventListener('click', function () { run(); });
   clearBtn.addEventListener('click', clearAll);
   viewsEl.addEventListener('click', function (e) {

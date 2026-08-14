@@ -1289,8 +1289,12 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-actions button{border:1px solid #D1D5DB;background:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-weight:600;font-size:.8rem;cursor:pointer}
 #tabPacker .psr-actions button:disabled{opacity:.45;cursor:default}
 #tabPacker .psr-actions .psr-primary{background:#1C2430;color:#fff;border-color:#1C2430}
-#tabPacker .psr-uploads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-@media (max-width:900px){#tabPacker .psr-uploads{grid-template-columns:1fr}}
+#tabPacker .psr-uploads{display:block;margin-top:10px;padding:12px;border:1px dashed #C7D2FE;border-radius:12px;background:#fff}
+#tabPacker .psr-uploads.drag{border-color:#1D4ED8;background:#EEF2FF}
+#tabPacker .psr-drop-lbl{margin:0 0 8px;font-size:.78rem;color:#4B5563}
+#tabPacker .psr-file-status{display:grid;gap:4px;font-size:.74rem;color:#374151}
+#tabPacker .psr-file-status div span{color:#6B7280;font-weight:600}
+#tabPacker .psr-file-status div.is-set span{color:#047857}
 #tabPacker .psr-file{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid #E5E8EF;border-radius:10px;background:#fff;font-size:.72rem;font-weight:700;color:#374151}
 #tabPacker .psr-file em{font-weight:600;color:#6B7280;font-style:normal}
 #tabPacker .psr-file input{font-size:.72rem;font-weight:500}
@@ -2121,28 +2125,24 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         <h1 class="psr-title">Packer</h1>
         <p class="psr-sub">Dandenong South · performance vs SKU target · Morning &amp; Afternoon</p>
         <div class="psr-actions">
-          <button type="button" id="psrRunBtn" class="psr-primary">Build report</button>
+          <button type="button" id="psrUploadBtn" class="psr-primary">Upload</button>
+          <button type="button" id="psrRunBtn">Build report</button>
           <button type="button" id="psrClearBtn">Clear</button>
+          <input type="file" id="psrMulti" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
         </div>
       </div>
-      <div class="psr-uploads" aria-label="Shift export files">
-        <label class="psr-file">
-          <span>1. Boxes Packed by Worker <em>(required)</em></span>
-          <input type="file" id="psrBoxes" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        </label>
-        <label class="psr-file">
-          <span>2. Intra Hour Floor Performance <em>(optional)</em></span>
-          <input type="file" id="psrIntra" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        </label>
-        <label class="psr-file">
-          <span>3. Overall Summary by Packer and Date <em>(required)</em></span>
-          <input type="file" id="psrSummary" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        </label>
+      <div class="psr-uploads" id="psrDrop" aria-label="Shift export files">
+        <p class="psr-drop-lbl">Drop the three exports here, or click <b>Upload</b> and select them together</p>
+        <div class="psr-file-status" id="psrFileStatus">
+          <div data-kind="boxes">1. Boxes Packed by Worker — <span>not loaded</span></div>
+          <div data-kind="intra">2. Intra Hour — <span>optional</span></div>
+          <div data-kind="summary">3. Overall Summary — <span>not loaded</span></div>
+        </div>
       </div>
-      <p class="psr-hint">Need files <b>1</b> and <b>3</b>, then Build report. Works in this single <code>index.html</code> (no extra files). Optional Excel export: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code>. Source files are never modified.</p>
+      <p class="psr-hint">Upload sorts files by name. Need Boxes + Summary (Intra optional). Works in this single <code>index.html</code>. Source files are never modified.</p>
     </div>
     <div class="psr-body">
-      <div id="psrStatus" class="psr-status">Select Boxes + Summary, then Build report.</div>
+      <div id="psrStatus" class="psr-status">Click Upload and choose the three shift xlsx files.</div>
       <div class="psr-views" id="psrViews" hidden>
         <div class="psr-tabs" role="tablist">
           <button type="button" data-psr-view="morning" class="active">Morning shift</button>
@@ -12925,14 +12925,18 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   var panelEl = document.getElementById('psrPanel');
   var runBtn = document.getElementById('psrRunBtn');
   var clearBtn = document.getElementById('psrClearBtn');
-  var boxesIn = document.getElementById('psrBoxes');
-  var intraIn = document.getElementById('psrIntra');
-  var summaryIn = document.getElementById('psrSummary');
+  var uploadBtn = document.getElementById('psrUploadBtn');
+  var multiIn = document.getElementById('psrMulti');
+  var dropEl = document.getElementById('psrDrop');
+  var fileStatusEl = document.getElementById('psrFileStatus');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
   var view = 'morning';
   var openPacker = null;
+  var boxesFile = null;
+  var intraFile = null;
+  var summaryFile = null;
 
   function toast(msg) {
     if (!toastEl) return;
@@ -12953,18 +12957,35 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return !!(PSR && typeof PSR.buildReportFromFiles === 'function' && typeof XLSX !== 'undefined');
   }
 
-  function fileLabel(inp) {
-    return inp && inp.files && inp.files[0] ? inp.files[0].name : '';
+  function classifyFile(file) {
+    var n = String(file && file.name || '').toLowerCase().replace(/\s+/g, '_');
+    if (n.indexOf('boxes_packed') !== -1 || n.indexOf('boxespacked') !== -1) return 'boxes';
+    if (n.indexOf('intra_hour') !== -1 || n.indexOf('intrahour') !== -1 || n.indexOf('intra-hour') !== -1) return 'intra';
+    if (n.indexOf('overall_summary') !== -1 || n.indexOf('overallsummary') !== -1 || n.indexOf('summary_by_packer') !== -1) return 'summary';
+    return null;
+  }
+
+  function setFileStatus() {
+    if (!fileStatusEl) return;
+    var map = {
+      boxes: boxesFile ? boxesFile.name : 'not loaded',
+      intra: intraFile ? intraFile.name : 'optional',
+      summary: summaryFile ? summaryFile.name : 'not loaded'
+    };
+    var nodes = fileStatusEl.querySelectorAll('[data-kind]');
+    for (var i = 0; i < nodes.length; i++) {
+      var kind = nodes[i].getAttribute('data-kind');
+      var span = nodes[i].querySelector('span');
+      if (span) span.textContent = map[kind] || '—';
+      nodes[i].classList.toggle('is-set', !!(kind === 'boxes' ? boxesFile : kind === 'intra' ? intraFile : summaryFile));
+    }
   }
 
   function refreshReadyState() {
-    var hasBoxes = !!(boxesIn.files && boxesIn.files[0]);
-    var hasSummary = !!(summaryIn.files && summaryIn.files[0]);
-    var hasIntra = !!(intraIn.files && intraIn.files[0]);
     var ok = scriptsOk();
-
-    // Always allow click — we explain what's missing instead of a dead button
     runBtn.disabled = !ok;
+    if (uploadBtn) uploadBtn.disabled = !ok;
+    setFileStatus();
 
     if (!ok) {
       statusEl.className = 'psr-status err';
@@ -12973,16 +12994,49 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       return;
     }
 
-    var parts = [];
-    parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
-    parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: optional — not selected');
-    parts.push(hasSummary ? ('Summary: ' + fileLabel(summaryIn)) : 'Summary: not selected');
     if (!report) {
       statusEl.className = 'psr-status';
-      statusEl.textContent = parts.join(' · ') +
-        (hasBoxes && hasSummary
-          ? ' → click Build report'
-          : ' → select Boxes + Summary (Intra optional), then Build report');
+      if (boxesFile && summaryFile) {
+        statusEl.textContent = 'Files ready → building report…';
+      } else {
+        statusEl.textContent = 'Click Upload (or drop files) — need Boxes + Summary. Intra optional.';
+      }
+    }
+  }
+
+  function ingestFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    var unknown = [];
+    files.forEach(function (f) {
+      var kind = classifyFile(f);
+      if (kind === 'boxes') boxesFile = f;
+      else if (kind === 'intra') intraFile = f;
+      else if (kind === 'summary') summaryFile = f;
+      else unknown.push(f.name);
+    });
+    report = null;
+    viewsEl.hidden = true;
+    panelEl.innerHTML = '';
+    refreshReadyState();
+
+    if (unknown.length) {
+      statusEl.className = 'psr-status err';
+      statusEl.textContent = 'Unrecognised file name(s): ' + unknown.join(', ') +
+        '. Expected names containing Boxes_Packed, Intra_Hour, or Overall_Summary.';
+      toast('Check file names');
+      return;
+    }
+    if (boxesFile && summaryFile) {
+      toast('Files loaded');
+      run();
+    } else {
+      var missing = [];
+      if (!boxesFile) missing.push('Boxes Packed by Worker');
+      if (!summaryFile) missing.push('Overall Summary');
+      statusEl.className = 'psr-status';
+      statusEl.textContent = 'Still need: ' + missing.join(' + ');
+      toast('Need more files');
     }
   }
 
@@ -13098,16 +13152,10 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   function renderHow() {
     return '<div class="psr-prose">' +
-      '<h2>Shift amount</h2>' +
-      '<p>At the top of Morning / Afternoon you get total hours, boxes packed, target boxes, and % of target for the whole shift.</p>' +
-      '<h2>Why it worked / didn’t</h2>' +
-      '<p>Click a packer to see each SKU: actual BPH vs target and strike.</p>' +
-      '<h2>If Build report will not run</h2>' +
-      '<ul>' +
-      '<li>Select <b>Boxes Packed by Worker</b> and <b>Overall Summary</b> (Intra is optional).</li>' +
-      '<li>Works in this single <code>index.html</code> — no extra files needed.</li>' +
-      '<li>Or use Excel: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code></li>' +
-      '</ul>' +
+      '<h2>Upload</h2>' +
+      '<p>Click <b>Upload</b> and select all three xlsx exports at once (or drop them on the dashed box). Files are matched by name.</p>' +
+      '<h2>Shift amount / why</h2>' +
+      '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';
   }
 
@@ -13132,15 +13180,15 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       toast('Scripts not loaded');
       return;
     }
-    if (!(boxesIn.files && boxesIn.files[0])) {
+    if (!boxesFile) {
       statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Select file 1: Boxes_Packed_by_Worker.xlsx';
+      statusEl.textContent = 'Upload Boxes_Packed_by_Worker.xlsx';
       toast('Need Boxes file');
       return;
     }
-    if (!(summaryIn.files && summaryIn.files[0])) {
+    if (!summaryFile) {
       statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Select file 3: Overall_Summary_by_Packer_and_Date.xlsx (used to keep Dandenong South only)';
+      statusEl.textContent = 'Upload Overall_Summary_by_Packer_and_Date.xlsx';
       toast('Need Summary file');
       return;
     }
@@ -13148,8 +13196,9 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     statusEl.className = 'psr-status';
     statusEl.textContent = 'Reading exports…';
     runBtn.disabled = true;
+    if (uploadBtn) uploadBtn.disabled = true;
     try {
-      report = await PSR.buildReportFromFiles(boxesIn.files[0], summaryIn.files[0], intraIn.files[0] || null);
+      report = await PSR.buildReportFromFiles(boxesFile, summaryFile, intraFile || null);
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
@@ -13174,13 +13223,15 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       console.error(e);
     } finally {
       runBtn.disabled = !scriptsOk();
+      if (uploadBtn) uploadBtn.disabled = !scriptsOk();
     }
   }
 
   function clearAll() {
-    boxesIn.value = '';
-    intraIn.value = '';
-    summaryIn.value = '';
+    boxesFile = null;
+    intraFile = null;
+    summaryFile = null;
+    if (multiIn) multiIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -13188,14 +13239,31 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, summaryIn].forEach(function (inp) {
-    inp.addEventListener('change', function () {
-      report = null;
-      viewsEl.hidden = true;
-      panelEl.innerHTML = '';
-      refreshReadyState();
+  if (uploadBtn && multiIn) {
+    uploadBtn.addEventListener('click', function () { multiIn.click(); });
+    multiIn.addEventListener('change', function () {
+      ingestFiles(multiIn.files);
     });
-  });
+  }
+  if (dropEl) {
+    ;['dragenter', 'dragover'].forEach(function (ev) {
+      dropEl.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropEl.classList.add('drag');
+      });
+    });
+    ;['dragleave', 'drop'].forEach(function (ev) {
+      dropEl.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropEl.classList.remove('drag');
+      });
+    });
+    dropEl.addEventListener('drop', function (e) {
+      ingestFiles(e.dataTransfer && e.dataTransfer.files);
+    });
+  }
   runBtn.addEventListener('click', function () { run(); });
   clearBtn.addEventListener('click', clearAll);
   viewsEl.addEventListener('click', function (e) {
