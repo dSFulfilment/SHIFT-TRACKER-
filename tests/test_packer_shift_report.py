@@ -15,7 +15,7 @@ from openpyxl import Workbook, load_workbook
 
 from packer_shift_report.cli import main
 from packer_shift_report.compute import build_report
-from packer_shift_report.load import load_boxes_packed, load_facility_summary, load_intra_hour
+from packer_shift_report.load import load_boxes_packed, load_intra_hour
 from packer_shift_report.validate import ColumnValidationError, validate_headers
 from packer_shift_report.constants import BOXES_REQUIRED_COLUMNS
 
@@ -42,11 +42,8 @@ class FixtureReportTests(unittest.TestCase):
         cls.boxes, cls.boxes_dropped = load_boxes_packed(
             FIXTURES / "Boxes_Packed_by_Worker.xlsx"
         )
-        cls.summary = load_facility_summary(
-            FIXTURES / "Overall_Summary_by_Packer_and_Date.xlsx"
-        )
         cls.intra, _ = load_intra_hour(FIXTURES / "Intra_Hour_Floor_Performance.xlsx")
-        cls.report = build_report(cls.boxes, cls.summary, cls.boxes_dropped, cls.intra)
+        cls.report = build_report(cls.boxes, cls.boxes_dropped, cls.intra)
 
     def test_blank_rows_dropped(self):
         self.assertGreaterEqual(self.boxes_dropped["blank_worker_or_sku"], 2)
@@ -55,10 +52,6 @@ class FixtureReportTests(unittest.TestCase):
         self.assertGreaterEqual(self.report.exclusions.under_15_min, 1)
         names = {r.worker_display for r in self.report.morning}
         self.assertNotIn("Eve Short", names)
-
-    def test_other_facility_excluded(self):
-        self.assertGreaterEqual(self.report.exclusions.not_dandenong_south, 0)
-        # Zoe only appears in Other Facility summary — not in boxes fixture
 
     def test_morning_flags(self):
         by_name = {r.worker_display: r for r in self.report.morning}
@@ -94,8 +87,6 @@ class FixtureReportTests(unittest.TestCase):
                     str(FIXTURES / "Boxes_Packed_by_Worker.xlsx"),
                     "--intra",
                     str(FIXTURES / "Intra_Hour_Floor_Performance.xlsx"),
-                    "--summary",
-                    str(FIXTURES / "Overall_Summary_by_Packer_and_Date.xlsx"),
                     "--out",
                     str(out),
                 ]
@@ -149,24 +140,22 @@ class FixtureReportTests(unittest.TestCase):
             ws.append(["Report Date", "Shift", "Pnp Worker Name", "Boxes Packed"])
             ws.append(["2026-08-13", "morning_shift", "Ada", 10])
             wb.save(bad)
-            # Still need a summary file
-            summary = Path(td) / "Overall_Summary_by_Packer_and_Date.xlsx"
+            intra = Path(td) / "Intra_Hour_Floor_Performance.xlsx"
             wb2 = Workbook()
             ws2 = wb2.active
-            ws2.append(
+            ws2.append(["Report Date Hour", "Pnp Worker Name", "Boxes Packed"])
+            ws2.append(["2026-08-13 08:00", "Ada", 10])
+            wb2.save(intra)
+            code = main(
                 [
-                    "Report Date",
-                    "Facility Name",
-                    "Pnp Worker Name",
-                    "Idle Time %",
-                    "Total Boxes Packed",
-                    "Packing Time (Hours)",
-                    "Boxes per Hour",
+                    "--boxes",
+                    str(bad),
+                    "--intra",
+                    str(intra),
+                    "--out",
+                    str(Path(td) / "x.xlsx"),
                 ]
             )
-            ws2.append(["2026-08-13", "Dandenong South", "Ada", 0, 10, 1, 10])
-            wb2.save(summary)
-            code = main(["--boxes", str(bad), "--summary", str(summary), "--out", str(Path(td) / "x.xlsx")])
             self.assertEqual(code, 1)
 
 
@@ -193,18 +182,7 @@ class DipStrikeTests(unittest.TestCase):
                 "Packing Time Seconds": 3600,
             },
         ]
-        summary = [
-            {
-                "Report Date": "2026-08-13",
-                "Facility Name": "Dandenong South",
-                "Pnp Worker Name": "Pat Dip",
-                "Idle Time %": 0,
-                "Total Boxes Packed": 64,
-                "Packing Time (Hours)": 2,
-                "Boxes per Hour": 32,
-            }
-        ]
-        report = build_report(boxes, summary, {"blank_worker_or_sku": 0})
+        report = build_report(boxes, {"blank_worker_or_sku": 0})
         # boxes 64, target boxes = 16*1 + 23*1 = 39, pct >> 100
         # but 250 line under strike → Dipped below strike
         self.assertEqual(len(report.morning), 1)

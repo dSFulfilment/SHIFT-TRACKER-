@@ -1289,7 +1289,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
 #tabPacker .psr-actions button{border:1px solid #D1D5DB;background:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-weight:600;font-size:.8rem;cursor:pointer}
 #tabPacker .psr-actions button:disabled{opacity:.45;cursor:default}
 #tabPacker .psr-actions .psr-primary{background:#1C2430;color:#fff;border-color:#1C2430}
-#tabPacker .psr-uploads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+#tabPacker .psr-uploads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
 @media (max-width:900px){#tabPacker .psr-uploads{grid-template-columns:1fr}}
 #tabPacker .psr-file{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid #E5E8EF;border-radius:10px;background:#fff;font-size:.72rem;font-weight:700;color:#374151}
 #tabPacker .psr-file em{font-weight:600;color:#6B7280;font-style:normal}
@@ -2131,18 +2131,14 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
           <input type="file" id="psrBoxes" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </label>
         <label class="psr-file">
-          <span>2. Intra Hour Floor Performance <em>(optional)</em></span>
+          <span>2. Intra Hour Floor Performance <em>(required)</em></span>
           <input type="file" id="psrIntra" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </label>
-        <label class="psr-file">
-          <span>3. Overall Summary by Packer and Date <em>(required)</em></span>
-          <input type="file" id="psrSummary" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        </label>
       </div>
-      <p class="psr-hint">Need files <b>1</b> and <b>3</b>, then Build report. Works in this single <code>index.html</code>. Source files are never modified.</p>
+      <p class="psr-hint">Need <b>Boxes</b> and <b>Intra Hour</b>, then Build report. Works in this single <code>index.html</code>. Source files are never modified.</p>
     </div>
     <div class="psr-body">
-      <div id="psrStatus" class="psr-status">Select Boxes + Summary, then Build report.</div>
+      <div id="psrStatus" class="psr-status">Select Boxes + Intra Hour, then Build report.</div>
       <div class="psr-views" id="psrViews" hidden>
         <div class="psr-tabs" role="tablist">
           <button type="button" data-psr-view="morning" class="active">Morning shift</button>
@@ -12369,7 +12365,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 <script>
 /**
  * Dandenong South packer shift performance-vs-target (browser + Node).
- * Mirrors packer_shift_report/ Python rules. Facility summary BPH is never used for scoring.
+ * Mirrors packer_shift_report/ Python rules. Scores from Boxes Packed; Intra is reference only.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -12400,10 +12396,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     'Seconds per Item', 'Pouches per Hour'
   ];
   var INTRA_COLS = ['Report Date Hour', 'Pnp Worker Name', 'Boxes Packed'];
-  var SUMMARY_COLS = [
-    'Report Date', 'Facility Name', 'Pnp Worker Name', 'Idle Time %',
-    'Total Boxes Packed', 'Packing Time (Hours)', 'Boxes per Hour'
-  ];
 
   function normHeader(h) {
     return String(h == null ? '' : h).trim().replace(/\s+/g, ' ');
@@ -12432,14 +12424,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     'seconds per item': 'Seconds per Item',
     'pouches per hour': 'Pouches per Hour',
     'report date hour': 'Report Date Hour',
-    'facility name': 'Facility Name',
-    'facility': 'Facility Name',
-    'idle time %': 'Idle Time %',
-    'idle time%': 'Idle Time %',
-    'idle time': 'Idle Time %',
-    'total boxes packed': 'Total Boxes Packed',
-    'packing time (hours)': 'Packing Time (Hours)',
-    'packing time hours': 'Packing Time (Hours)',
     'boxes per hour': 'Boxes per Hour'
   };
   function canonicalizeHeader(h) {
@@ -12576,41 +12560,20 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return kept;
   }
 
-  function facilityWorkers(summaryRows) {
-    var map = {};
-    summaryRows.forEach(function (d) {
-      var fac = String(d['Facility Name'] == null ? '' : d['Facility Name']).trim().toLowerCase();
-      if (fac !== FACILITY_NAME.toLowerCase()) return;
-      var display = String(d['Pnp Worker Name']).trim();
-      var key = workerKey(display);
-      if (key && !map[key]) map[key] = display;
-    });
-    return map;
-  }
-
-  function buildReport(boxesRows, summaryRows, boxesDroppedBlank, intraRows) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
       missing_time: 0,
       under_15_min: 0,
-      not_dandenong_south: 0,
       unknown_sku_lines: 0
     };
-    var facility = facilityWorkers(summaryRows || []);
     var warnings = [];
-    if (!Object.keys(facility).length) {
-      warnings.push('No workers found with Facility Name == "' + FACILITY_NAME + '" in the summary file.');
-    }
 
     var raw = [];
     (boxesRows || []).forEach(function (r) {
       var display = String(r['Pnp Worker Name']).trim();
       var key = workerKey(display);
-      if (!facility[key]) {
-        exclusions.not_dandenong_south += 1;
-        return;
-      }
       var sku = parseSku(r['Primary Sku']);
       var boxes = num(r['Boxes Packed']);
       var seconds = num(r['Packing Time Seconds']);
@@ -12850,6 +12813,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
     var morning = aggregate('morning_shift');
     var afternoon = aggregate('afternoon_shift');
+    var workerSet = {};
+    raw.forEach(function (L) { workerSet[L.workerDisplay] = true; });
 
     return {
       rawLines: raw,
@@ -12858,7 +12823,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       morningTotals: totalsFor(morning, 'morning_shift', 'Morning'),
       afternoonTotals: totalsFor(afternoon, 'afternoon_shift', 'Afternoon'),
       exclusions: exclusions,
-      facilityWorkers: Object.keys(facility).map(function (k) { return facility[k]; }).sort(),
+      facilityWorkers: Object.keys(workerSet).sort(),
       intraRows: intraRows || [],
       warnings: warnings,
       skuTargets: SKU_TARGETS,
@@ -12877,20 +12842,15 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     return await file.arrayBuffer();
   }
 
-  async function buildReportFromFiles(boxesFile, summaryFile, intraFile) {
+  async function buildReportFromFiles(boxesFile, intraFile) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
-    var summaryAoA = await fileToArrayBuffer(summaryFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
-    var summarySheetRows = readWorkbookArrayBuffer(summaryAoA, summaryFile.name || 'Overall_Summary_by_Packer_and_Date.xlsx', SUMMARY_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
-    var intraRows = [];
-    if (intraFile) {
-      var intraBuf = await fileToArrayBuffer(intraFile);
-      intraRows = loadIntraRows(
-        readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
-      );
-    }
-    return buildReport(boxesParsed.rows, summarySheetRows, boxesParsed.droppedBlank, intraRows);
+    var intraBuf = await fileToArrayBuffer(intraFile);
+    var intraRows = loadIntraRows(
+      readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
+    );
+    return buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows);
   }
 
   return {
@@ -12899,7 +12859,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     MIN_HOURS: MIN_HOURS,
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
-    SUMMARY_COLS: SUMMARY_COLS,
     validateHeaders: validateHeaders,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
@@ -12911,7 +12870,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 </script>
 <script>
 /**
- * Packer tab UI — three separate xlsx pickers + Morning / Afternoon scores + why.
+ * Packer tab UI — Boxes + Intra Hour pickers + Morning / Afternoon scores + why.
  */
 (function () {
   'use strict';
@@ -12927,7 +12886,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   var clearBtn = document.getElementById('psrClearBtn');
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
-  var summaryIn = document.getElementById('psrSummary');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
@@ -12959,7 +12917,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   function refreshReadyState() {
     var hasBoxes = !!(boxesIn && boxesIn.files && boxesIn.files[0]);
-    var hasSummary = !!(summaryIn && summaryIn.files && summaryIn.files[0]);
     var hasIntra = !!(intraIn && intraIn.files && intraIn.files[0]);
     var ok = scriptsOk();
 
@@ -12975,13 +12932,12 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     if (!report) {
       var parts = [];
       parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
-      parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: optional');
-      parts.push(hasSummary ? ('Summary: ' + fileLabel(summaryIn)) : 'Summary: not selected');
+      parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: not selected');
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
-        (hasBoxes && hasSummary
+        (hasBoxes && hasIntra
           ? ' → click Build report'
-          : ' → select Boxes + Summary (Intra optional), then Build report');
+          : ' → select Boxes + Intra Hour, then Build report');
     }
   }
 
@@ -13041,7 +12997,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   function renderShiftTable(rows, totals) {
     if (!rows.length) {
-      return '<p class="psr-prose">No included packers for this shift (after facility filter and 15-minute rule).</p>';
+      return '<p class="psr-prose">No included packers for this shift (after the 15-minute rule).</p>';
     }
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Click a packer to see which SKUs made the shift work — or didn’t.</p>';
@@ -13074,7 +13030,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       ['Missing Boxes Packed', e.missing_boxes],
       ['Missing Packing Time Seconds', e.missing_time],
       ['Under 15-minute filter (changeover/setup noise)', e.under_15_min],
-      ['Not in Dandenong South facility summary', e.not_dandenong_south],
       ['Unknown SKU lines (kept & flagged, not dropped)', e.unknown_sku_lines]
     ];
     var html = '<table class="psr-table"><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody>';
@@ -13098,7 +13053,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick each export in its slot (Boxes + Summary required; Intra optional), then <b>Build report</b>.</p>' +
+      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Scoring uses Boxes only; Intra is kept for the hour reference view.</p>' +
       '<h2>Shift amount / why</h2>' +
       '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';
@@ -13131,10 +13086,10 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       toast('Need Boxes file');
       return;
     }
-    if (!(summaryIn.files && summaryIn.files[0])) {
+    if (!(intraIn.files && intraIn.files[0])) {
       statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Select file 3: Overall_Summary_by_Packer_and_Date.xlsx';
-      toast('Need Summary file');
+      statusEl.textContent = 'Select file 2: Intra_Hour_Floor_Performance.xlsx';
+      toast('Need Intra Hour file');
       return;
     }
 
@@ -13142,11 +13097,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     statusEl.textContent = 'Reading exports…';
     runBtn.disabled = true;
     try {
-      report = await PSR.buildReportFromFiles(
-        boxesIn.files[0],
-        summaryIn.files[0],
-        (intraIn.files && intraIn.files[0]) || null
-      );
+      report = await PSR.buildReportFromFiles(boxesIn.files[0], intraIn.files[0]);
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
@@ -13177,7 +13128,6 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   function clearAll() {
     if (boxesIn) boxesIn.value = '';
     if (intraIn) intraIn.value = '';
-    if (summaryIn) summaryIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -13185,7 +13135,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, summaryIn].forEach(function (inp) {
+  [boxesIn, intraIn].forEach(function (inp) {
     if (!inp) return;
     inp.addEventListener('change', function () {
       report = null;

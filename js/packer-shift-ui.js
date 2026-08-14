@@ -1,5 +1,5 @@
 /**
- * Packer tab UI — three separate xlsx pickers + Morning / Afternoon scores + why.
+ * Packer tab UI — Boxes + Intra Hour pickers + Morning / Afternoon scores + why.
  */
 (function () {
   'use strict';
@@ -15,7 +15,6 @@
   var clearBtn = document.getElementById('psrClearBtn');
   var boxesIn = document.getElementById('psrBoxes');
   var intraIn = document.getElementById('psrIntra');
-  var summaryIn = document.getElementById('psrSummary');
   var toastEl = document.getElementById('packerToast');
 
   var report = null;
@@ -47,7 +46,6 @@
 
   function refreshReadyState() {
     var hasBoxes = !!(boxesIn && boxesIn.files && boxesIn.files[0]);
-    var hasSummary = !!(summaryIn && summaryIn.files && summaryIn.files[0]);
     var hasIntra = !!(intraIn && intraIn.files && intraIn.files[0]);
     var ok = scriptsOk();
 
@@ -63,13 +61,12 @@
     if (!report) {
       var parts = [];
       parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
-      parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: optional');
-      parts.push(hasSummary ? ('Summary: ' + fileLabel(summaryIn)) : 'Summary: not selected');
+      parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: not selected');
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
-        (hasBoxes && hasSummary
+        (hasBoxes && hasIntra
           ? ' → click Build report'
-          : ' → select Boxes + Summary (Intra optional), then Build report');
+          : ' → select Boxes + Intra Hour, then Build report');
     }
   }
 
@@ -129,7 +126,7 @@
 
   function renderShiftTable(rows, totals) {
     if (!rows.length) {
-      return '<p class="psr-prose">No included packers for this shift (after facility filter and 15-minute rule).</p>';
+      return '<p class="psr-prose">No included packers for this shift (after the 15-minute rule).</p>';
     }
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Click a packer to see which SKUs made the shift work — or didn’t.</p>';
@@ -162,7 +159,6 @@
       ['Missing Boxes Packed', e.missing_boxes],
       ['Missing Packing Time Seconds', e.missing_time],
       ['Under 15-minute filter (changeover/setup noise)', e.under_15_min],
-      ['Not in Dandenong South facility summary', e.not_dandenong_south],
       ['Unknown SKU lines (kept & flagged, not dropped)', e.unknown_sku_lines]
     ];
     var html = '<table class="psr-table"><thead><tr><th>Reason</th><th>Count</th></tr></thead><tbody>';
@@ -186,7 +182,7 @@
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick each export in its slot (Boxes + Summary required; Intra optional), then <b>Build report</b>.</p>' +
+      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Scoring uses Boxes only; Intra is kept for the hour reference view.</p>' +
       '<h2>Shift amount / why</h2>' +
       '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';
@@ -219,10 +215,10 @@
       toast('Need Boxes file');
       return;
     }
-    if (!(summaryIn.files && summaryIn.files[0])) {
+    if (!(intraIn.files && intraIn.files[0])) {
       statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Select file 3: Overall_Summary_by_Packer_and_Date.xlsx';
-      toast('Need Summary file');
+      statusEl.textContent = 'Select file 2: Intra_Hour_Floor_Performance.xlsx';
+      toast('Need Intra Hour file');
       return;
     }
 
@@ -230,11 +226,7 @@
     statusEl.textContent = 'Reading exports…';
     runBtn.disabled = true;
     try {
-      report = await PSR.buildReportFromFiles(
-        boxesIn.files[0],
-        summaryIn.files[0],
-        (intraIn.files && intraIn.files[0]) || null
-      );
+      report = await PSR.buildReportFromFiles(boxesIn.files[0], intraIn.files[0]);
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
@@ -265,7 +257,6 @@
   function clearAll() {
     if (boxesIn) boxesIn.value = '';
     if (intraIn) intraIn.value = '';
-    if (summaryIn) summaryIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
@@ -273,7 +264,7 @@
     refreshReadyState();
   }
 
-  [boxesIn, intraIn, summaryIn].forEach(function (inp) {
+  [boxesIn, intraIn].forEach(function (inp) {
     if (!inp) return;
     inp.addEventListener('change', function () {
       report = null;

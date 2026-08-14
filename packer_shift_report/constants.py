@@ -39,12 +39,3 @@ INTRA_REQUIRED_COLUMNS = [
     "Boxes Packed",
 ]
 
-SUMMARY_REQUIRED_COLUMNS = [
-    "Report Date",
-    "Facility Name",
-    "Pnp Worker Name",
-    "Idle Time %",
-    "Total Boxes Packed",
-    "Packing Time (Hours)",
-    "Boxes per Hour",
-]

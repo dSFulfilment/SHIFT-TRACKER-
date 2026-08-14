@@ -2,7 +2,7 @@
 
 **Single-file offline app.** Download `index.html` and open it in your browser (double-click / File → Open). No server.
 
-Packer shift report (three xlsx → Morning / Afternoon vs SKU target) is **inlined in `index.html`** — no extra `js/` files needed to use it. For an auditable Excel workbook with formulas, also use the Python CLI.
+Packer shift report (two xlsx → Morning / Afternoon vs SKU target) is **inlined in `index.html`** — no extra `js/` files needed to use it. For an auditable Excel workbook with formulas, also use the Python CLI.
 
 ## Download
 
@@ -13,7 +13,7 @@ Save that file, then open it. Your data stays in the browser on that computer.
 ## Features
 
 - Floor, Breaks, Tracker, Packer (Dandenong South shift report), Roster, Settings
-- **Packer** — upload Boxes Packed by Worker + Intra Hour + Overall Summary xlsx; Morning / Afternoon performance vs SKU target
+- **Packer** — upload Boxes Packed by Worker + Intra Hour Floor Performance xlsx; Morning / Afternoon performance vs SKU target
 - **Settings** holds exports, restores, and wipes
 
 ## Packer shift report (Excel)

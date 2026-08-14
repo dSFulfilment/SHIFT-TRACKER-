@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .constants import FACILITY_NAME, MIN_HOURS_ON_SKU, SKU_TARGETS
+from .constants import MIN_HOURS_ON_SKU, SKU_TARGETS
 from .load import normalize_worker_key, parse_sku
 
 
@@ -15,7 +15,6 @@ class ExclusionStats:
     missing_boxes: int = 0
     missing_time: int = 0
     under_15_min: int = 0
-    not_dandenong_south: int = 0
     unknown_sku_lines: int = 0  # included but flagged — not an exclusion
 
     def as_rows(self) -> List[Tuple[str, int]]:
@@ -24,7 +23,6 @@ class ExclusionStats:
             ("Missing Boxes Packed", self.missing_boxes),
             ("Missing Packing Time Seconds", self.missing_time),
             ("Under 15-minute filter (Hours on SKU < 0.25 — changeover/setup noise)", self.under_15_min),
-            ("Worker not in Dandenong South facility summary (excluded from report)", self.not_dandenong_south),
             ("Lines with Primary Sku not in target table (kept, flagged — not dropped)", self.unknown_sku_lines),
         ]
 
@@ -132,32 +130,14 @@ def _num(value) -> Optional[float]:
         return None
 
 
-def dandenong_worker_keys(summary_rows: List[Dict[str, Any]]) -> Dict[str, str]:
-    """Map normalized name → first original spelling for facility-filtered workers."""
-    out: Dict[str, str] = {}
-    for r in summary_rows:
-        fac = r.get("Facility Name")
-        if fac is None or str(fac).strip().lower() != FACILITY_NAME.lower():
-            continue
-        display = str(r.get("Pnp Worker Name")).strip()
-        key = normalize_worker_key(display)
-        if key and key not in out:
-            out[key] = display
-    return out
-
-
 def build_raw_lines(
     boxes_rows: List[Dict[str, Any]],
-    facility_names: Dict[str, str],
     exclusions: ExclusionStats,
 ) -> List[RawLine]:
     lines: List[RawLine] = []
     for r in boxes_rows:
         display = str(r.get("Pnp Worker Name")).strip()
         key = normalize_worker_key(display)
-        if key not in facility_names:
-            exclusions.not_dandenong_south += 1
-            continue
 
         sku = parse_sku(r.get("Primary Sku"))
         boxes = _num(r.get("Boxes Packed"))
@@ -493,29 +473,23 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
 
 def build_report(
     boxes_rows: List[Dict[str, Any]],
-    summary_rows: List[Dict[str, Any]],
     boxes_dropped: Dict[str, int],
     intra_rows: Optional[List[Dict[str, Any]]] = None,
 ) -> ReportData:
+    """Score from Boxes Packed by Worker. Intra hour is reference only (not scoring)."""
     exclusions = ExclusionStats(blank_worker_or_sku=boxes_dropped.get("blank_worker_or_sku", 0))
-    facility = dandenong_worker_keys(summary_rows)
-    if not facility:
-        warnings = [
-            f"No workers found with Facility Name == \"{FACILITY_NAME}\" in the summary file. "
-            "Nothing to score."
-        ]
-    else:
-        warnings = []
+    warnings: List[str] = []
 
-    raw = build_raw_lines(boxes_rows, facility, exclusions)
+    raw = build_raw_lines(boxes_rows, exclusions)
     morning = aggregate_shift(raw, "morning_shift")
     afternoon = aggregate_shift(raw, "afternoon_shift")
+    workers = sorted({line.worker_display for line in raw}, key=lambda s: s.lower())
     return ReportData(
         raw_lines=raw,
         morning=morning,
         afternoon=afternoon,
         exclusions=exclusions,
-        facility_workers=sorted(facility.values(), key=lambda s: s.lower()),
+        facility_workers=workers,
         intra_rows=intra_rows or [],
         warnings=warnings,
         morning_totals=shift_totals(morning, "morning_shift", "Morning"),

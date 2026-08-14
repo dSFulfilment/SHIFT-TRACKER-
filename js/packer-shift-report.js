@@ -1,6 +1,6 @@
 /**
  * Dandenong South packer shift performance-vs-target (browser + Node).
- * Mirrors packer_shift_report/ Python rules. Facility summary BPH is never used for scoring.
+ * Mirrors packer_shift_report/ Python rules. Scores from Boxes Packed; Intra is reference only.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -31,10 +31,6 @@
     'Seconds per Item', 'Pouches per Hour'
   ];
   var INTRA_COLS = ['Report Date Hour', 'Pnp Worker Name', 'Boxes Packed'];
-  var SUMMARY_COLS = [
-    'Report Date', 'Facility Name', 'Pnp Worker Name', 'Idle Time %',
-    'Total Boxes Packed', 'Packing Time (Hours)', 'Boxes per Hour'
-  ];
 
   function normHeader(h) {
     return String(h == null ? '' : h).trim().replace(/\s+/g, ' ');
@@ -63,14 +59,6 @@
     'seconds per item': 'Seconds per Item',
     'pouches per hour': 'Pouches per Hour',
     'report date hour': 'Report Date Hour',
-    'facility name': 'Facility Name',
-    'facility': 'Facility Name',
-    'idle time %': 'Idle Time %',
-    'idle time%': 'Idle Time %',
-    'idle time': 'Idle Time %',
-    'total boxes packed': 'Total Boxes Packed',
-    'packing time (hours)': 'Packing Time (Hours)',
-    'packing time hours': 'Packing Time (Hours)',
     'boxes per hour': 'Boxes per Hour'
   };
   function canonicalizeHeader(h) {
@@ -207,41 +195,20 @@
     return kept;
   }
 
-  function facilityWorkers(summaryRows) {
-    var map = {};
-    summaryRows.forEach(function (d) {
-      var fac = String(d['Facility Name'] == null ? '' : d['Facility Name']).trim().toLowerCase();
-      if (fac !== FACILITY_NAME.toLowerCase()) return;
-      var display = String(d['Pnp Worker Name']).trim();
-      var key = workerKey(display);
-      if (key && !map[key]) map[key] = display;
-    });
-    return map;
-  }
-
-  function buildReport(boxesRows, summaryRows, boxesDroppedBlank, intraRows) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
       missing_time: 0,
       under_15_min: 0,
-      not_dandenong_south: 0,
       unknown_sku_lines: 0
     };
-    var facility = facilityWorkers(summaryRows || []);
     var warnings = [];
-    if (!Object.keys(facility).length) {
-      warnings.push('No workers found with Facility Name == "' + FACILITY_NAME + '" in the summary file.');
-    }
 
     var raw = [];
     (boxesRows || []).forEach(function (r) {
       var display = String(r['Pnp Worker Name']).trim();
       var key = workerKey(display);
-      if (!facility[key]) {
-        exclusions.not_dandenong_south += 1;
-        return;
-      }
       var sku = parseSku(r['Primary Sku']);
       var boxes = num(r['Boxes Packed']);
       var seconds = num(r['Packing Time Seconds']);
@@ -481,6 +448,8 @@
 
     var morning = aggregate('morning_shift');
     var afternoon = aggregate('afternoon_shift');
+    var workerSet = {};
+    raw.forEach(function (L) { workerSet[L.workerDisplay] = true; });
 
     return {
       rawLines: raw,
@@ -489,7 +458,7 @@
       morningTotals: totalsFor(morning, 'morning_shift', 'Morning'),
       afternoonTotals: totalsFor(afternoon, 'afternoon_shift', 'Afternoon'),
       exclusions: exclusions,
-      facilityWorkers: Object.keys(facility).map(function (k) { return facility[k]; }).sort(),
+      facilityWorkers: Object.keys(workerSet).sort(),
       intraRows: intraRows || [],
       warnings: warnings,
       skuTargets: SKU_TARGETS,
@@ -508,20 +477,15 @@
     return await file.arrayBuffer();
   }
 
-  async function buildReportFromFiles(boxesFile, summaryFile, intraFile) {
+  async function buildReportFromFiles(boxesFile, intraFile) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
-    var summaryAoA = await fileToArrayBuffer(summaryFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
-    var summarySheetRows = readWorkbookArrayBuffer(summaryAoA, summaryFile.name || 'Overall_Summary_by_Packer_and_Date.xlsx', SUMMARY_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
-    var intraRows = [];
-    if (intraFile) {
-      var intraBuf = await fileToArrayBuffer(intraFile);
-      intraRows = loadIntraRows(
-        readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
-      );
-    }
-    return buildReport(boxesParsed.rows, summarySheetRows, boxesParsed.droppedBlank, intraRows);
+    var intraBuf = await fileToArrayBuffer(intraFile);
+    var intraRows = loadIntraRows(
+      readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
+    );
+    return buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows);
   }
 
   return {
@@ -530,7 +494,6 @@
     MIN_HOURS: MIN_HOURS,
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
-    SUMMARY_COLS: SUMMARY_COLS,
     validateHeaders: validateHeaders,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
