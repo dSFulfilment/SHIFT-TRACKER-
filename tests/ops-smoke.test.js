@@ -105,6 +105,8 @@ check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended st
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
 check(html.indexOf('scoreHourVsSku') === -1 && html.indexOf('enrichHourLinesWithSkuTargets') === -1,
   'Hour-vs-SKU target scoring removed');
+check(html.indexOf('needBoxesFromHours') !== -1 || html.indexOf('intraHoursByWorkerShift') !== -1,
+  'Intra shift-length strike helper inlined');
 check(html.indexOf('Boxes each hour') !== -1, 'Intra boxes-each-hour detail present');
 check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.indexOf('Sizes (Boxes)') !== -1,
   'Sizes column / detail present');

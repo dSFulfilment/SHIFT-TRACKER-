@@ -538,6 +538,40 @@
     });
   }
 
+  /** Count Intra clock-hour rows per worker+shift (= shift length in hours). */
+  function intraHoursByWorkerShift(hourLines) {
+    var by = {};
+    (hourLines || []).forEach(function (h) {
+      var k = h.workerKey + '|' + h.shiftKey;
+      by[k] = (by[k] || 0) + 1;
+    });
+    return by;
+  }
+
+  /**
+   * Need boxes for target/strike using Intra shift length when available.
+   * Share Intra hours across SKUs by Boxes packing-time weight (fairer strike bar).
+   * Falls back to packing hours when Intra has no rows for that packer+shift.
+   */
+  function needBoxesFromHours(knownLines, packHours, intraHours) {
+    var useIntra = intraHours != null && isFinite(intraHours) && intraHours > 0
+      && packHours != null && isFinite(packHours) && packHours > 0;
+    var targetBoxes = 0;
+    var strikeBoxes = 0;
+    (knownLines || []).forEach(function (L) {
+      var skuHours = L.hours || 0;
+      var hoursForNeed = useIntra ? (intraHours * (skuHours / packHours)) : skuHours;
+      if (L.targetBph != null) targetBoxes += hoursForNeed * L.targetBph;
+      if (L.strikeBph != null) strikeBoxes += hoursForNeed * L.strikeBph;
+    });
+    return {
+      targetBoxes: targetBoxes,
+      strikeBoxes: strikeBoxes,
+      hoursBasis: useIntra ? 'intra' : 'packing',
+      hoursForNeed: useIntra ? intraHours : packHours
+    };
+  }
+
   function buildByHour(hourLines, morning, afternoon) {
     var skuByWorkerShift = {};
     function index(rows) {
@@ -598,11 +632,16 @@
       rawDataByWorker[r.workerKey].push(r);
     });
     var execAll = execSummaryRows || [];
-    // Prefer Raw Data Shift (Hours) for Dandenong South; else Executive Summary packing/direct hours.
+    var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
+    // Prefer Intra clock-hour count for shift length; else Raw Data; else Exec Summary.
     var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
     var shiftHoursExec = execHoursByWorker(execAll);
 
-    function resolveShiftHours(workerKey) {
+    function resolveShiftHours(workerKey, shiftKey) {
+      var ik = workerKey + '|' + shiftKey;
+      if (intraHoursMap[ik] != null && intraHoursMap[ik] > 0) {
+        return { shiftHours: intraHoursMap[ik], shiftHoursSource: 'intra' };
+      }
       if (shiftHoursRaw[workerKey] != null) {
         return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data' };
       }
@@ -820,7 +859,7 @@
           included.forEach(function (L) {
             if (L.unknownSku) skus.push(String(L.sku));
           });
-          var shNone = resolveShiftHours(key);
+          var shNone = resolveShiftHours(key, shiftKey);
           results.push({
             shiftKey: shiftKey,
             shiftLabel: included[0].shiftLabel,
@@ -838,6 +877,7 @@
             boxGap: null,
             strikeBoxes: 0,
             pctOfStrike: null,
+            hoursBasis: null,
             skuLines: skuRows,
             skuMix: skuMix,
             rawLines: wlines,
@@ -847,15 +887,16 @@
           });
           return;
         }
-        var targetBoxes = known.reduce(function (s, L) { return s + L.hours * L.targetBph; }, 0);
-        var strikeBoxes = known.reduce(function (s, L) {
-          return s + (L.strikeBph != null ? L.hours * L.strikeBph : 0);
-        }, 0);
+        var intraH = intraHoursMap[key + '|' + shiftKey] || 0;
+        var need = needBoxesFromHours(known, hours, intraH);
+        var targetBoxes = need.targetBoxes;
+        var strikeBoxes = need.strikeBoxes;
         var boxesKnown = known.reduce(function (s, L) { return s + L.boxes; }, 0);
         var pct = targetBoxes > 0 ? (boxesKnown / targetBoxes * 100) : null;
         var pctStrike = strikeBoxes > 0 ? (boxesKnown / strikeBoxes * 100) : null;
         // Packer flag uses overall average vs strike/target — a weak SKU line
         // does not force Below strike if hours×strike still clears.
+        // When Intra hours exist, need boxes use Intra shift length (fairer strike).
         var flag;
         if (pct == null) flag = 'No target defined';
         else if (strikeBoxes > 0 && boxesKnown < strikeBoxes) flag = 'Below strike';
@@ -867,7 +908,7 @@
           included.forEach(function (L) { if (L.unknownSku) u.push(String(L.sku)); });
           notes = 'no target defined for SKU ' + u.join(', ');
         }
-        var shInfo = resolveShiftHours(key);
+        var shInfo = resolveShiftHours(key, shiftKey);
         results.push({
           shiftKey: shiftKey,
           shiftLabel: included[0].shiftLabel,
@@ -885,6 +926,7 @@
           notes: notes,
           why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows, strikeBoxes),
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
+          hoursBasis: need.hoursBasis,
           skuLines: skuRows,
           skuMix: skuMix,
           rawLines: wlines,
@@ -1267,8 +1309,9 @@
       ['Raw Data mixed boxes', Math.round(mixedBoxes)],
       [],
       ['Notes'],
-      ['Scoring / flags from Boxes Packed by Worker (Pack h × SKU targets).'],
-      ['Intra Hour = boxes packed each clock hour (reference only — not used for target flags).'],
+      ['Boxes Packed by Worker supplies SKUs + boxes. Pack h = packing time.'],
+      ['Intra Hour = boxes each clock hour; those hours are summed as shift length for strike/target need when present.'],
+      ['Need boxes = Intra shift hours × SKU targets (shared by packing-time weight). Without Intra, Pack h is used.'],
       ['Sizes from Raw Data (Box Sku Sizes) appear on packer detail — not a separate score.']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
@@ -1311,6 +1354,8 @@
     loadRawDataRows: loadRawDataRows,
     loadExecutiveSummaryRows: loadExecutiveSummaryRows,
     csvTextToSheetRows: csvTextToSheetRows,
+    needBoxesFromHours: needBoxesFromHours,
+    intraHoursByWorkerShift: intraHoursByWorkerShift,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
     buildExportWorkbook: buildExportWorkbook,

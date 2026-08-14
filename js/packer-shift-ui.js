@@ -301,8 +301,8 @@
     }
     var html = renderTotals(totals);
     html += '<p class="psr-prose">Click a packer for <b>By SKU</b> (Boxes score + Raw Data context). '
-      + '<b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Dandenong South shift hours '
-      + '(Raw Data Shift Hours, else Executive Summary).</p>';
+      + '<b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours when present '
+      + '(else Raw / Exec). Strike &amp; target need use Intra shift length when Intra is loaded.</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Shift h</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
@@ -385,9 +385,9 @@
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes</b>, <b>Intra Hour</b>, optional <b>Raw Data</b> (Dandenong South) and <b>Executive Summary</b> (Dandenong South hours), then <b>Build report</b>.</p>' +
       '<h2>Hours</h2>' +
-      '<p><b>Pack h</b> = Boxes packing time (scoring). <b>Shift h</b> = Raw Data <b>Shift (Hours)</b> for Dandenong South, or Executive Summary packing/direct hours if Raw has no shift length.</p>' +
+      '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = count of Intra clock hours for that shift when Intra is loaded; else Raw Data <b>Shift (Hours)</b> or Executive Summary.</p>' +
       '<h2>What each file is for</h2>' +
-      '<p><b>Boxes Packed by Worker</b> = SKU targets, % of target, and flags. <b>Intra Hour</b> = boxes packed each clock hour only (see throughput; not used for target flags).</p>' +
+      '<p><b>Boxes Packed by Worker</b> = SKUs and boxes packed. <b>Intra Hour</b> = boxes each clock hour, and those hours are added up as shift length for strike/target need (shared across SKUs by packing-time weight). Without Intra, need uses Pack h.</p>' +
       '<h2>One packer view</h2>' +
       '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row, plus Intra boxes each hour.</p>' +
       '<h2>Export</h2>' +
