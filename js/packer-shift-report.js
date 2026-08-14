@@ -715,14 +715,23 @@
   }
 
   function buildByHour(hourLines, morning, afternoon) {
-    var skuByWorkerShift = {};
+    var packerByWorkerShift = {};
     function index(rows) {
       (rows || []).forEach(function (r) {
-        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = {
+        packerByWorkerShift[r.workerKey + '|' + r.shiftKey] = {
           mix: r.skuMix || null,
           skus: (r.skuLines || []).map(function (L) {
             return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
-          })
+          }),
+          packHours: r.hours,
+          boxesFile: r.boxes,
+          intraHours: r.intraHours != null ? r.intraHours : ((r.hourLines && r.hourLines.length) || null),
+          intraBoxes: r.intraBoxes != null ? r.intraBoxes : null,
+          shiftHours: r.shiftHours,
+          targetBoxes: r.targetBoxes,
+          pctOfTarget: r.pctOfTarget,
+          flag: r.flag,
+          boxGap: r.boxGap
         };
       });
     }
@@ -743,11 +752,15 @@
         };
       }
       byHour[k].boxes += h.boxes;
+      var boxesScore = packerByWorkerShift[h.workerKey + '|' + h.shiftKey] || null;
       byHour[k].packers.push({
         workerDisplay: h.workerDisplay,
         workerKey: h.workerKey,
         boxes: h.boxes,
-        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] }
+        skuInfo: boxesScore
+          ? { mix: boxesScore.mix, skus: boxesScore.skus }
+          : { mix: null, skus: [] },
+        boxesScore: boxesScore
       });
     });
     return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
@@ -1008,6 +1021,8 @@
         var skuRows = skuWhyRows(wlines);
         var skuMix = buildSkuMix(included);
         var shortN = wlines.filter(function (L) { return !L.included; }).length;
+        var hLines = hourLinesFor(key, shiftKey, hourLinesAll);
+        var intraBoxesSum = hLines.reduce(function (s, h) { return s + (h.boxes || 0); }, 0);
         if (!known.length) {
           var skus = [];
           included.forEach(function (L) {
@@ -1022,7 +1037,8 @@
             hours: hours,
             shiftHours: shNone.shiftHours,
             shiftHoursSource: shNone.shiftHoursSource,
-            intraHours: shNone.intraHours,
+            intraHours: shNone.intraHours != null ? shNone.intraHours : (hLines.length || null),
+            intraBoxes: hLines.length ? intraBoxesSum : null,
             breakMinutes: shNone.breakMinutes || 0,
             boxes: boxes,
             targetBoxes: 0,
@@ -1038,7 +1054,7 @@
             skuMix: skuMix,
             rawLines: wlines,
             rawDataSegments: rawDataByWorker[key] || [],
-            hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
+            hourLines: hLines,
             excludedShortLines: shortN
           });
           return;
@@ -1074,7 +1090,8 @@
           hours: hours,
           shiftHours: shInfo.shiftHours,
           shiftHoursSource: shInfo.shiftHoursSource,
-          intraHours: need.intraHours != null ? need.intraHours : shInfo.intraHours,
+          intraHours: need.intraHours != null ? need.intraHours : (shInfo.intraHours != null ? shInfo.intraHours : (hLines.length || null)),
+          intraBoxes: hLines.length ? intraBoxesSum : null,
           breakMinutes: need.breakMinutes || shInfo.breakMinutes || 0,
           boxes: boxes,
           targetBoxes: targetBoxes,
@@ -1090,7 +1107,7 @@
           skuMix: skuMix,
           rawLines: wlines,
           rawDataSegments: rawDataByWorker[key] || [],
-          hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
+          hourLines: hLines,
           excludedShortLines: shortN
         });
       });
@@ -1112,6 +1129,9 @@
         if (r.intraHours != null && isFinite(r.intraHours)) return s + r.intraHours;
         return s + ((r.hourLines && r.hourLines.length) || 0);
       }, 0);
+      var intraBoxes = results.reduce(function (s, r) {
+        return s + (r.intraBoxes != null ? r.intraBoxes : 0);
+      }, 0);
       var score = 0;
       results.forEach(function (r) {
         if (r.pctOfTarget != null && r.targetBoxes) score += r.targetBoxes * r.pctOfTarget / 100;
@@ -1122,6 +1142,7 @@
         packers: results.length,
         hours: hours,
         intraHours: intraHours,
+        intraBoxes: intraBoxes,
         boxes: boxes,
         targetBoxes: target,
         pctOfTarget: target > 0 ? score / target * 100 : null,
@@ -1259,7 +1280,8 @@
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Break mins', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Intra hours', 'Break mins',
+        'Boxes (file)', 'Intra boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
       aoa.push([
@@ -1268,8 +1290,10 @@
         r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
         r.hours != null ? Number(r.hours.toFixed(2)) : '',
         r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
+        r.intraHours != null ? Number(r.intraHours.toFixed(2)) : '',
         r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
+        r.intraBoxes != null ? Math.round(r.intraBoxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
         r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
         r.boxGap != null ? Math.round(r.boxGap) : '',
@@ -1347,15 +1371,26 @@
   }
 
   function byHourAoA(byHour) {
-    var aoa = [['Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU mix (shift)', 'Mixed?']];
+    var aoa = [[
+      'Hour', 'Shift', 'Packer', 'Intra boxes this hour',
+      'Boxes file (shift)', 'Pack h', 'Intra h', 'Target boxes', '% of target', 'Flag',
+      'SKU mix (Boxes)', 'Mixed?'
+    ]];
     (byHour || []).forEach(function (H) {
       (H.packers || []).forEach(function (p) {
         var mix = p.skuInfo && p.skuInfo.mix;
+        var bs = p.boxesScore || {};
         aoa.push([
           H.hourLabel,
           H.shiftLabel,
           p.workerDisplay,
           Math.round(p.boxes),
+          bs.boxesFile != null ? Math.round(bs.boxesFile) : '',
+          bs.packHours != null ? Number(bs.packHours.toFixed(2)) : '',
+          bs.intraHours != null ? Number(bs.intraHours.toFixed(2)) : '',
+          bs.targetBoxes != null ? Number(bs.targetBoxes.toFixed(1)) : '',
+          bs.pctOfTarget != null ? Number(bs.pctOfTarget.toFixed(1)) : '',
+          bs.flag || '',
           mix ? mix.label : '',
           mix && mix.isMixed ? 'Yes' : 'No'
         ]);
