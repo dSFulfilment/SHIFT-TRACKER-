@@ -512,9 +512,6 @@
       if (boxes == null) return;
       var parsed = parseReportDateHour(d['Report Date Hour']);
       if (!parsed) return;
-      // Optional: some Intra exports include Primary Sku per hour.
-      var intraSku = null;
-      if (!blank(d['Primary Sku'])) intraSku = parseSku(d['Primary Sku']);
       out.push({
         reportDateHour: d['Report Date Hour'],
         hourLabel: parsed.label,
@@ -524,8 +521,7 @@
         shiftLabel: parsed.hour >= 14 ? 'Afternoon' : 'Morning',
         workerDisplay: display,
         workerKey: workerKey(display),
-        boxes: boxes,
-        intraSku: intraSku
+        boxes: boxes
       });
     });
     out.sort(function (a, b) {
@@ -534,131 +530,6 @@
       return a.workerDisplay.localeCompare(b.workerDisplay);
     });
     return out;
-  }
-
-  /**
-   * Score one Intra clock-hour against SKU target(s).
-   * Prefer Intra Primary Sku when present; else Boxes shift mix (hours-weighted blend).
-   * One Intra row = 1.0 hour of target (target BPH × 1).
-   */
-  function scoreHourVsSku(hourBoxes, ctx) {
-    var empty = {
-      skuLabel: null,
-      skus: [],
-      isMixed: false,
-      skuSource: null,
-      targetBph: null,
-      strikeBph: null,
-      targetBoxes: null,
-      strikeBoxes: null,
-      pctOfTarget: null,
-      pctOfStrike: null,
-      boxGap: null,
-      flag: 'No target defined'
-    };
-    if (hourBoxes == null || !isFinite(hourBoxes)) return empty;
-    if (!ctx || ctx.targetBph == null || !isFinite(ctx.targetBph)) {
-      return Object.assign({}, empty, {
-        skuLabel: ctx && ctx.skuLabel ? ctx.skuLabel : null,
-        skus: ctx && ctx.skus ? ctx.skus.slice() : [],
-        isMixed: !!(ctx && ctx.isMixed),
-        skuSource: ctx && ctx.skuSource ? ctx.skuSource : null
-      });
-    }
-    var targetBoxes = ctx.targetBph; // × 1 hour
-    var strikeBoxes = ctx.strikeBph != null && isFinite(ctx.strikeBph) ? ctx.strikeBph : null;
-    var pct = targetBoxes > 0 ? (hourBoxes / targetBoxes * 100) : null;
-    var pctStrike = strikeBoxes > 0 ? (hourBoxes / strikeBoxes * 100) : null;
-    var flag;
-    if (pct == null) flag = 'No target defined';
-    else if (strikeBoxes != null && hourBoxes < strikeBoxes) flag = 'Below strike';
-    else if (pct < 100) flag = 'Below target';
-    else flag = 'On/above target';
-    return {
-      skuLabel: ctx.skuLabel || null,
-      skus: ctx.skus ? ctx.skus.slice() : [],
-      isMixed: !!ctx.isMixed,
-      skuSource: ctx.skuSource || null,
-      targetBph: ctx.targetBph,
-      strikeBph: ctx.strikeBph != null ? ctx.strikeBph : null,
-      targetBoxes: targetBoxes,
-      strikeBoxes: strikeBoxes,
-      pctOfTarget: pct,
-      pctOfStrike: pctStrike,
-      boxGap: targetBoxes != null ? hourBoxes - targetBoxes : null,
-      flag: flag
-    };
-  }
-
-  /** Build SKU target context for a packer+shift from Boxes lines (and optional Intra SKU). */
-  function hourSkuContextFromPacker(packer, intraSku) {
-    if (intraSku != null && isFinite(intraSku)) {
-      var t = SKU_TARGETS[intraSku];
-      if (!t) {
-        return {
-          skuLabel: String(intraSku) + 'g',
-          skus: [intraSku],
-          isMixed: false,
-          skuSource: 'intra',
-          targetBph: null,
-          strikeBph: null
-        };
-      }
-      return {
-        skuLabel: String(intraSku) + 'g',
-        skus: [intraSku],
-        isMixed: false,
-        skuSource: 'intra',
-        targetBph: t.target,
-        strikeBph: t.strike
-      };
-    }
-    if (!packer) {
-      return { skuLabel: null, skus: [], isMixed: false, skuSource: null, targetBph: null, strikeBph: null };
-    }
-    var mix = packer.skuMix;
-    var skus = mix && mix.parts ? mix.parts.map(function (p) { return p.sku; }).filter(function (s) {
-      return s != null && isFinite(s);
-    }) : [];
-    var isMixed = !!(mix && mix.isMixed);
-    var label = mix && mix.label
-      ? (isMixed ? mix.label + ' (blend)' : (mix.label.indexOf('g') !== -1 ? mix.label : mix.label + 'g'))
-      : null;
-    if (packer.targetBoxes != null && packer.hours > 0 && packer.pctOfTarget != null) {
-      return {
-        skuLabel: label,
-        skus: skus,
-        isMixed: isMixed,
-        skuSource: 'boxes_shift',
-        targetBph: packer.targetBoxes / packer.hours,
-        strikeBph: packer.strikeBoxes > 0 ? packer.strikeBoxes / packer.hours : null
-      };
-    }
-    return {
-      skuLabel: label,
-      skus: skus,
-      isMixed: isMixed,
-      skuSource: mix ? 'boxes_shift' : null,
-      targetBph: null,
-      strikeBph: null
-    };
-  }
-
-  function enrichHourLinesWithSkuTargets(hourLines, morning, afternoon) {
-    var by = {};
-    function index(rows) {
-      (rows || []).forEach(function (r) {
-        by[r.workerKey + '|' + r.shiftKey] = r;
-      });
-    }
-    index(morning);
-    index(afternoon);
-    return (hourLines || []).map(function (h) {
-      var packer = by[h.workerKey + '|' + h.shiftKey] || null;
-      var ctx = hourSkuContextFromPacker(packer, h.intraSku);
-      var scored = scoreHourVsSku(h.boxes, ctx);
-      return Object.assign({}, h, scored);
-    });
   }
 
   function hourLinesFor(workerKeyName, shiftKey, hourLines) {
@@ -700,18 +571,7 @@
         workerDisplay: h.workerDisplay,
         workerKey: h.workerKey,
         boxes: h.boxes,
-        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] },
-        skuLabel: h.skuLabel,
-        skus: h.skus || [],
-        isMixed: !!h.isMixed,
-        skuSource: h.skuSource,
-        targetBph: h.targetBph,
-        strikeBph: h.strikeBph,
-        targetBoxes: h.targetBoxes,
-        strikeBoxes: h.strikeBoxes,
-        pctOfTarget: h.pctOfTarget,
-        boxGap: h.boxGap,
-        flag: h.flag
+        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] }
       });
     });
     return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
@@ -1072,15 +932,6 @@
     var workerSet = {};
     raw.forEach(function (L) { workerSet[L.workerDisplay] = true; });
 
-    // Score each Intra hour vs Boxes SKU (or Intra Primary Sku when present).
-    var hourLinesScored = enrichHourLinesWithSkuTargets(hourLinesAll, morning, afternoon);
-    morning.forEach(function (r) {
-      r.hourLines = hourLinesFor(r.workerKey, r.shiftKey, hourLinesScored);
-    });
-    afternoon.forEach(function (r) {
-      r.hourLines = hourLinesFor(r.workerKey, r.shiftKey, hourLinesScored);
-    });
-
     return {
       rawLines: raw,
       morning: morning,
@@ -1090,8 +941,8 @@
       exclusions: exclusions,
       facilityWorkers: Object.keys(workerSet).sort(),
       intraRows: intraRows || [],
-      hourLines: hourLinesScored,
-      byHour: buildByHour(hourLinesScored, morning, afternoon),
+      hourLines: hourLinesAll,
+      byHour: buildByHour(hourLinesAll, morning, afternoon),
       rawDataRows: rawDataAll,
       rawDataMixed: rawDataMixed,
       execSummaryRows: execAll,
@@ -1286,11 +1137,7 @@
   }
 
   function byHourAoA(byHour) {
-    var aoa = [[
-      'Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU (for target)', 'SKU source',
-      'Target BPH', 'Strike BPH', 'Target boxes (1h)', '% of target', 'Gap', 'Flag',
-      'SKU mix (shift)', 'Mixed?'
-    ]];
+    var aoa = [['Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU mix (shift)', 'Mixed?']];
     (byHour || []).forEach(function (H) {
       (H.packers || []).forEach(function (p) {
         var mix = p.skuInfo && p.skuInfo.mix;
@@ -1299,14 +1146,6 @@
           H.shiftLabel,
           p.workerDisplay,
           Math.round(p.boxes),
-          p.skuLabel || '',
-          p.skuSource || '',
-          p.targetBph != null ? Number(p.targetBph.toFixed(2)) : '',
-          p.strikeBph != null ? Number(p.strikeBph.toFixed(2)) : '',
-          p.targetBoxes != null ? Number(p.targetBoxes.toFixed(2)) : '',
-          p.pctOfTarget != null ? Number(p.pctOfTarget.toFixed(1)) : '',
-          p.boxGap != null ? Number(p.boxGap.toFixed(1)) : '',
-          p.flag || '',
           mix ? mix.label : '',
           mix && mix.isMixed ? 'Yes' : 'No'
         ]);
@@ -1428,9 +1267,8 @@
       ['Raw Data mixed boxes', Math.round(mixedBoxes)],
       [],
       ['Notes'],
-      ['Scoring from Boxes Packed by Worker. Intra Hour boxes scored vs SKU target for that hour.'],
-      ['SKU for each Intra hour: Intra Primary Sku when present, else Boxes shift SKU mix (hours-weighted blend).'],
-      ['One Intra row = 1 clock hour of target (target BPH × 1). Packer overall flag still uses Boxes Pack h.'],
+      ['Scoring / flags from Boxes Packed by Worker (Pack h × SKU targets).'],
+      ['Intra Hour = boxes packed each clock hour (reference only — not used for target flags).'],
       ['Sizes from Raw Data (Box Sku Sizes) appear on packer detail — not a separate score.']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
@@ -1473,8 +1311,6 @@
     loadRawDataRows: loadRawDataRows,
     loadExecutiveSummaryRows: loadExecutiveSummaryRows,
     csvTextToSheetRows: csvTextToSheetRows,
-    scoreHourVsSku: scoreHourVsSku,
-    hourSkuContextFromPacker: hourSkuContextFromPacker,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
     buildExportWorkbook: buildExportWorkbook,
