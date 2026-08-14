@@ -103,6 +103,10 @@ check(html.indexOf('script src="js/packer-shift-report.js"') === -1, 'No externa
 check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
+check(html.indexOf('Intra + Boxes') !== -1, 'Intra + Boxes combined view label present');
+check(html.indexOf('Intra boxes') !== -1 && html.indexOf('Boxes (file)') !== -1,
+  'Boxes file and Intra boxes shown together');
+check(html.indexOf('boxesScore') !== -1, 'By hour rows carry Boxes score');
 check(html.indexOf('scoreHourVsSku') === -1 && html.indexOf('enrichHourLinesWithSkuTargets') === -1,
   'Hour-vs-SKU target scoring removed');
 check(html.indexOf('needBoxesFromHours') !== -1 || html.indexOf('intraHoursByWorkerShift') !== -1,

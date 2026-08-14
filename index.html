@@ -2158,7 +2158,7 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
         <div class="psr-tabs" role="tablist">
           <button type="button" data-psr-view="morning" class="active">Morning shift</button>
           <button type="button" data-psr-view="afternoon">Afternoon shift</button>
-          <button type="button" data-psr-view="byhour">By hour</button>
+          <button type="button" data-psr-view="byhour">Intra + Boxes</button>
           <button type="button" data-psr-view="exclusions">Exclusions</button>
           <button type="button" data-psr-view="targets">SKU targets</button>
           <button type="button" data-psr-view="how">How this works</button>
@@ -13096,14 +13096,23 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   }
 
   function buildByHour(hourLines, morning, afternoon) {
-    var skuByWorkerShift = {};
+    var packerByWorkerShift = {};
     function index(rows) {
       (rows || []).forEach(function (r) {
-        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = {
+        packerByWorkerShift[r.workerKey + '|' + r.shiftKey] = {
           mix: r.skuMix || null,
           skus: (r.skuLines || []).map(function (L) {
             return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
-          })
+          }),
+          packHours: r.hours,
+          boxesFile: r.boxes,
+          intraHours: r.intraHours != null ? r.intraHours : ((r.hourLines && r.hourLines.length) || null),
+          intraBoxes: r.intraBoxes != null ? r.intraBoxes : null,
+          shiftHours: r.shiftHours,
+          targetBoxes: r.targetBoxes,
+          pctOfTarget: r.pctOfTarget,
+          flag: r.flag,
+          boxGap: r.boxGap
         };
       });
     }
@@ -13124,11 +13133,15 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         };
       }
       byHour[k].boxes += h.boxes;
+      var boxesScore = packerByWorkerShift[h.workerKey + '|' + h.shiftKey] || null;
       byHour[k].packers.push({
         workerDisplay: h.workerDisplay,
         workerKey: h.workerKey,
         boxes: h.boxes,
-        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] }
+        skuInfo: boxesScore
+          ? { mix: boxesScore.mix, skus: boxesScore.skus }
+          : { mix: null, skus: [] },
+        boxesScore: boxesScore
       });
     });
     return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
@@ -13389,6 +13402,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         var skuRows = skuWhyRows(wlines);
         var skuMix = buildSkuMix(included);
         var shortN = wlines.filter(function (L) { return !L.included; }).length;
+        var hLines = hourLinesFor(key, shiftKey, hourLinesAll);
+        var intraBoxesSum = hLines.reduce(function (s, h) { return s + (h.boxes || 0); }, 0);
         if (!known.length) {
           var skus = [];
           included.forEach(function (L) {
@@ -13403,7 +13418,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
             hours: hours,
             shiftHours: shNone.shiftHours,
             shiftHoursSource: shNone.shiftHoursSource,
-            intraHours: shNone.intraHours,
+            intraHours: shNone.intraHours != null ? shNone.intraHours : (hLines.length || null),
+            intraBoxes: hLines.length ? intraBoxesSum : null,
             breakMinutes: shNone.breakMinutes || 0,
             boxes: boxes,
             targetBoxes: 0,
@@ -13419,7 +13435,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
             skuMix: skuMix,
             rawLines: wlines,
             rawDataSegments: rawDataByWorker[key] || [],
-            hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
+            hourLines: hLines,
             excludedShortLines: shortN
           });
           return;
@@ -13455,7 +13471,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           hours: hours,
           shiftHours: shInfo.shiftHours,
           shiftHoursSource: shInfo.shiftHoursSource,
-          intraHours: need.intraHours != null ? need.intraHours : shInfo.intraHours,
+          intraHours: need.intraHours != null ? need.intraHours : (shInfo.intraHours != null ? shInfo.intraHours : (hLines.length || null)),
+          intraBoxes: hLines.length ? intraBoxesSum : null,
           breakMinutes: need.breakMinutes || shInfo.breakMinutes || 0,
           boxes: boxes,
           targetBoxes: targetBoxes,
@@ -13471,7 +13488,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
           skuMix: skuMix,
           rawLines: wlines,
           rawDataSegments: rawDataByWorker[key] || [],
-          hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
+          hourLines: hLines,
           excludedShortLines: shortN
         });
       });
@@ -13493,6 +13510,9 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         if (r.intraHours != null && isFinite(r.intraHours)) return s + r.intraHours;
         return s + ((r.hourLines && r.hourLines.length) || 0);
       }, 0);
+      var intraBoxes = results.reduce(function (s, r) {
+        return s + (r.intraBoxes != null ? r.intraBoxes : 0);
+      }, 0);
       var score = 0;
       results.forEach(function (r) {
         if (r.pctOfTarget != null && r.targetBoxes) score += r.targetBoxes * r.pctOfTarget / 100;
@@ -13503,6 +13523,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         packers: results.length,
         hours: hours,
         intraHours: intraHours,
+        intraBoxes: intraBoxes,
         boxes: boxes,
         targetBoxes: target,
         pctOfTarget: target > 0 ? score / target * 100 : null,
@@ -13640,7 +13661,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Break mins', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Intra hours', 'Break mins',
+        'Boxes (file)', 'Intra boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
       aoa.push([
@@ -13649,8 +13671,10 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
         r.hours != null ? Number(r.hours.toFixed(2)) : '',
         r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
+        r.intraHours != null ? Number(r.intraHours.toFixed(2)) : '',
         r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
+        r.intraBoxes != null ? Math.round(r.intraBoxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
         r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
         r.boxGap != null ? Math.round(r.boxGap) : '',
@@ -13728,15 +13752,26 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   }
 
   function byHourAoA(byHour) {
-    var aoa = [['Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU mix (shift)', 'Mixed?']];
+    var aoa = [[
+      'Hour', 'Shift', 'Packer', 'Intra boxes this hour',
+      'Boxes file (shift)', 'Pack h', 'Intra h', 'Target boxes', '% of target', 'Flag',
+      'SKU mix (Boxes)', 'Mixed?'
+    ]];
     (byHour || []).forEach(function (H) {
       (H.packers || []).forEach(function (p) {
         var mix = p.skuInfo && p.skuInfo.mix;
+        var bs = p.boxesScore || {};
         aoa.push([
           H.hourLabel,
           H.shiftLabel,
           p.workerDisplay,
           Math.round(p.boxes),
+          bs.boxesFile != null ? Math.round(bs.boxesFile) : '',
+          bs.packHours != null ? Number(bs.packHours.toFixed(2)) : '',
+          bs.intraHours != null ? Number(bs.intraHours.toFixed(2)) : '',
+          bs.targetBoxes != null ? Number(bs.targetBoxes.toFixed(1)) : '',
+          bs.pctOfTarget != null ? Number(bs.pctOfTarget.toFixed(1)) : '',
+          bs.flag || '',
           mix ? mix.label : '',
           mix && mix.isMixed ? 'Yes' : 'No'
         ]);
@@ -14022,12 +14057,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       ? ((t.boxGap >= 0 ? '+' : '') + Math.round(t.boxGap).toLocaleString() + ' boxes vs target')
       : '—';
     var intraH = t.intraHours != null ? t.intraHours : 0;
+    var intraB = t.intraBoxes != null ? t.intraBoxes : 0;
     return '<div class="psr-totals">' +
       '<div><b>Shift amount</b><span>' + escapeHtml(t.shiftLabel) + '</span></div>' +
       '<div><b>Packers</b><span>' + t.packers + '</span></div>' +
       '<div><b>Pack h</b><span>' + t.hours.toFixed(1) + '</span></div>' +
       '<div><b>Intra h</b><span>' + Number(intraH).toFixed(1) + '</span></div>' +
-      '<div><b>Boxes packed</b><span>' + Math.round(t.boxes).toLocaleString() + '</span></div>' +
+      '<div><b>Boxes (file)</b><span>' + Math.round(t.boxes).toLocaleString() + '</span></div>' +
+      '<div><b>Intra boxes</b><span>' + Math.round(intraB).toLocaleString() + '</span></div>' +
       '<div><b>Target boxes</b><span>' + Math.round(t.targetBoxes).toLocaleString() + '</span></div>' +
       '<div><b>% of target</b><span>' + pct + '</span></div>' +
       '<div><b>Gap</b><span>' + gap + '</span></div>' +
@@ -14222,27 +14259,31 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer for <b>By SKU</b> (Boxes score + Raw Data context). '
-      + '<b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours minus tea/meal from Breaks '
-      + '(else Raw / Exec). Strike &amp; target need use that net shift length when Intra is loaded.</p>';
+    html += '<p class="psr-prose">Boxes Packed by Worker + Intra Hour side by side. Click a packer for <b>By SKU</b> and hour breakdown. '
+      + '<b>Pack h / Boxes (file)</b> from Boxes. <b>Intra h / Intra boxes</b> from Intra. '
+      + '<b>Shift h</b> = Intra − breaks (when Breaks matched).</p>';
     html += '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Shift h</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Packer</th><th>Sizes</th><th>Pack h</th><th>Intra h</th><th>Shift h</th>' +
+      '<th>Boxes (file)</th><th>Intra boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
+      var intraH = r.intraHours != null ? r.intraHours : ((r.hourLines && r.hourLines.length) || null);
       html += '<tr class="' + flagClass(r.flag) + ' psr-row" data-packer="' + escapeHtml(r.workerDisplay) + '" data-idx="' + idx + '" style="cursor:pointer">' +
         '<td><b>' + escapeHtml(r.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
         '<td>' + sizesCell(r) + '</td>' +
         '<td>' + (r.hours != null ? r.hours.toFixed(2) : '—') + '</td>' +
+        '<td>' + (intraH != null ? Number(intraH).toFixed(0) : '—') + '</td>' +
         '<td>' + (r.shiftHours != null ? r.shiftHours.toFixed(2) : '—') + '</td>' +
         '<td>' + (r.boxes != null ? Math.round(r.boxes).toLocaleString() : '—') + '</td>' +
+        '<td>' + (r.intraBoxes != null ? Math.round(r.intraBoxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
         '<td>' + (r.pctOfTarget != null ? r.pctOfTarget.toFixed(1) + '%' : '—') + '</td>' +
         '<td>' + (r.boxGap != null ? ((r.boxGap >= 0 ? '+' : '') + Math.round(r.boxGap)) : '—') + '</td>' +
         '<td>' + escapeHtml(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="9">' + renderPackerDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="11">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
@@ -14261,23 +14302,32 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       packerHours += (H.packers || []).length;
       totalBoxes += H.boxes || 0;
     });
-    var html = '<p class="psr-prose"><b>Intra h total: ' + packerHours + '</b> packer-hours across <b>' +
+    var html = '<p class="psr-prose"><b>Intra + Boxes</b> · <b>Intra h total: ' + packerHours + '</b> packer-hours across <b>' +
       clockSlots + '</b> clock hour' + (clockSlots === 1 ? '' : 's') +
-      ' · ' + Math.round(totalBoxes).toLocaleString() + ' boxes. '
-      + 'Target / flags use Shift h (Intra − breaks) on Morning / Afternoon — not these hourly counts alone.</p>';
+      ' · ' + Math.round(totalBoxes).toLocaleString() + ' Intra boxes. '
+      + 'Each row shows Intra boxes that hour next to Boxes Packed by Worker score for the shift.</p>';
     rows.forEach(function (H) {
       html += '<div class="psr-hour-block">' +
         '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +
-        escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' boxes · ' +
+        escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' Intra boxes · ' +
         H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') + '</div>';
-      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>Sizes (shift)</th></tr></thead><tbody>';
+      html += '<table class="psr-table"><thead><tr>' +
+        '<th>Packer</th><th>Intra boxes</th><th>Boxes (file)</th><th>Pack h</th><th>Intra h</th>' +
+        '<th>%</th><th>Flag</th><th>Sizes</th>' +
+        '</tr></thead><tbody>';
       H.packers.forEach(function (p) {
+        var bs = p.boxesScore || {};
         var info = p.skuInfo || {};
         var mix = info.mix;
         var mixTxt = mix && mix.label ? mix.label : '—';
-        html += '<tr>' +
+        html += '<tr class="' + flagClass(bs.flag) + '">' +
           '<td><b>' + escapeHtml(p.workerDisplay) + '</b></td>' +
           '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
+          '<td>' + (bs.boxesFile != null ? Math.round(bs.boxesFile).toLocaleString() : '—') + '</td>' +
+          '<td>' + (bs.packHours != null ? Number(bs.packHours).toFixed(2) : '—') + '</td>' +
+          '<td>' + (bs.intraHours != null ? Number(bs.intraHours).toFixed(0) : '—') + '</td>' +
+          '<td>' + (bs.pctOfTarget != null ? Number(bs.pctOfTarget).toFixed(0) + '%' : '—') + '</td>' +
+          '<td>' + escapeHtml(bs.flag || '—') + '</td>' +
           '<td>' + escapeHtml(mixTxt) + '</td>' +
           '</tr>';
       });
@@ -14319,7 +14369,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       '<h2>Hours</h2>' +
       '<p><b>Pack h</b> = Boxes packing time. <b>Shift h</b> = Intra clock hours for that shift, minus tea (~15m) and meal (~30m) from the Breaks tab when that packer is on a group; else Raw Data / Executive Summary.</p>' +
       '<h2>What each file is for</h2>' +
-      '<p><b>Boxes Packed by Worker</b> = SKUs and boxes packed. <b>Intra Hour</b> = boxes each clock hour + shift length for strike/target need. <b>Breaks</b> tea/meal times reduce that Intra length so strikes stay fair.</p>' +
+      '<p><b>Boxes Packed by Worker</b> = SKUs, Pack h, Boxes (file), target/flag. <b>Intra Hour</b> = Intra h + Intra boxes (and hour rows). Morning/Afternoon and <b>Intra + Boxes</b> show both together.</p>' +
       '<h2>One packer view</h2>' +
       '<p>Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row, plus Intra boxes each hour.</p>' +
       '<h2>Export</h2>' +

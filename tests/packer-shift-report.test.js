@@ -37,6 +37,11 @@ check(morning['Alice Smith'].hoursBasis === 'intra', 'Alice need uses Intra shif
 check(morning['Alice Smith'].shiftHours === 2 && morning['Alice Smith'].shiftHoursSource === 'intra',
   'Alice Shift h = Intra clock-hour count');
 check(report.morningTotals.intraHours === 2, 'Morning Intra h total = Alice 2 (Bob/Eve have no Intra)');
+check(morning['Alice Smith'].intraBoxes === 70, 'Alice Intra boxes = 30+40 from Intra hours');
+check(report.morningTotals.intraBoxes === 70, 'Morning Intra boxes total');
+check(report.byHour[0].packers.some(function (p) {
+  return p.workerDisplay === 'Alice Smith' && p.boxesScore && p.boxesScore.boxesFile === 130;
+}), 'By hour carries Boxes file score beside Intra boxes');
 check(Math.abs(morning['Alice Smith'].pctOfTarget - (130 / (110 * 2 / 6) * 100)) < 0.01,
   'Alice % of target scales need by Intra hours');
 check(morning['Bob Jones'] && morning['Bob Jones'].flag === 'Below strike', 'Bob below strike (red)');
@@ -207,8 +212,10 @@ check(bobRep.morning[0].flag === 'Below strike',
 var wbHour = PSR.buildExportWorkbook(bobRep);
 check(JSON.stringify(wbHour.Sheets['By hour']).indexOf('Target boxes (1h)') === -1,
   'Export By hour has no hour-target columns');
-check(JSON.stringify(wbHour.Sheets['By hour']).indexOf('Boxes this hour') !== -1,
-  'Export By hour still lists boxes this hour');
+check(JSON.stringify(wbHour.Sheets['By hour']).indexOf('Intra boxes this hour') !== -1,
+  'Export By hour lists Intra boxes this hour');
+check(JSON.stringify(wbHour.Sheets['By hour']).indexOf('Boxes file (shift)') !== -1,
+  'Export By hour includes Boxes file columns');
 
 console.log('\nPacker shift report JS — Intra shift length for fair strikes');
 var needPack = PSR.needBoxesFromHours(
