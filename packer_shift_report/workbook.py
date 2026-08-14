@@ -79,10 +79,9 @@ def _write_how(ws, data: ReportData):
         "How the shift score is calculated (per packer, per shift)",
         "• % of target = (total Boxes Packed on included lines) ÷ (total of Hours×SKU Target BPH",
         "  on included lines that have a known target) × 100",
-        "• Below target — % of target < 100",
-        "• Dipped below strike — % of target ≥ 100, but at least one included line had Actual BPH",
-        "  below that SKU’s strike line",
-        "• On/above target — everything else",
+        "• Below strike (red) — overall boxes < hours × strike lines (average under strike)",
+        "• Below target (yellow) — above strike overall, but % of target < 100",
+        "• On/above target (green) — overall clears target (a weak SKU line is OK if the average clears)",
         "A packer on both shifts appears twice (once on Morning, once on Afternoon) — shifts are never merged.",
         "",
         "Unknown SKUs",
@@ -181,6 +180,7 @@ def _write_raw(ws, data: ReportData):
         "Below strike flag",
         "Score boxes",
         "Exclude / note",
+        "Strike boxes",
     ]
     ws.append(headers)
     sku_sheet = f"'{SHEET_SKU}'"
@@ -230,17 +230,23 @@ def _write_raw(ws, data: ReportData):
         if line.unknown_sku:
             note = (("" if not note else note + "; ") + f"no target defined for SKU {line.sku}").strip("; ")
         ws.cell(i, 17, note)
+        # Strike boxes: hours × strike (overall average vs strike uses this sum)
+        ws.cell(
+            i,
+            18,
+            f'=IF(OR(N{i}<>1,I{i}="",L{i}="",L{i}="no target defined"),0,I{i}*L{i})',
+        )
 
     _style_header(ws, len(headers))
     _autosize(ws)
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:Q{max(1, ws.max_row)}"
+    ws.auto_filter.ref = f"A1:R{max(1, ws.max_row)}"
 
 
 def _flag_fill(flag: str):
-    if flag == "Below target":
+    if flag == "Below strike":
         return FILL_RED
-    if flag == "Dipped below strike":
+    if flag == "Below target":
         return FILL_AMBER
     if flag == "On/above target":
         return FILL_GREEN
@@ -316,13 +322,16 @@ def _write_shift_sheet(ws, results: List[PackerShiftResult], shift_key: str, tot
             f'=IF(D{i}=0,"",SUMIFS({raw}!$P:$P,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)/D{i}*100)',
         )
         ws.cell(i, 6, f'=IF(OR(D{i}="",E{i}=""),"",SUMIFS({raw}!$P:$P,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)-D{i})')
-        strike_sum = (
-            f'SUMIFS({raw}!$O:$O,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)'
+        strike_boxes = (
+            f'SUMIFS({raw}!$R:$R,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)'
+        )
+        score_boxes = (
+            f'SUMIFS({raw}!$P:$P,{raw}!$D:$D,A{i},{raw}!$B:$B,"{shift_key}",{raw}!$N:$N,1)'
         )
         ws.cell(
             i,
             7,
-            f'=IF(D{i}=0,"No target defined",IF(E{i}<100,"Below target",IF({strike_sum}>0,"Dipped below strike","On/above target")))',
+            f'=IF(D{i}=0,"No target defined",IF({score_boxes}<{strike_boxes},"Below strike",IF(E{i}<100,"Below target","On/above target")))',
         )
         ws.cell(i, 8, r.why)
         ws.cell(i, 9, r.notes)
@@ -344,8 +353,8 @@ def _write_shift_sheet(ws, results: List[PackerShiftResult], shift_key: str, tot
         cell.font = FONT_HEADER
     legend_row = first_data + len(results) + 2
     ws.cell(legend_row, 1, "Colour key").font = Font(bold=True)
-    ws.cell(legend_row + 1, 1, "Below target").fill = FILL_RED
-    ws.cell(legend_row + 2, 1, "Dipped below strike").fill = FILL_AMBER
+    ws.cell(legend_row + 1, 1, "Below strike").fill = FILL_RED
+    ws.cell(legend_row + 2, 1, "Below target").fill = FILL_AMBER
     ws.cell(legend_row + 3, 1, "On/above target").fill = FILL_GREEN
     ws.cell(
         legend_row + 5,

@@ -69,7 +69,7 @@ class PackerShiftResult:
     boxes: float
     target_boxes: float
     pct_of_target: Optional[float]
-    flag: str  # Below target | Dipped below strike | On/above target | No target defined
+    flag: str  # Below strike | Below target | On/above target | No target defined
     has_unknown_sku: bool
     notes: str = ""
     why: str = ""
@@ -281,27 +281,35 @@ def explain_why(
     score_boxes: float,
     target_boxes: float,
     sku_rows: List[SkuLineWhy],
+    strike_boxes: float = 0.0,
 ) -> str:
     """Plain-English reason a packer's shift worked or didn't."""
     gap = score_boxes - target_boxes if target_boxes is not None else None
+    strike_gap = score_boxes - strike_boxes if strike_boxes else None
     bits: List[str] = []
 
     if flag == "No target defined":
         bits.append("Cannot score % of target — no SKU on this shift has a target in the table.")
+    elif flag == "Below strike" and pct is not None and strike_gap is not None:
+        bits.append(
+            f"Overall below strike — short by {abs(strike_gap):.0f} boxes vs hours × strike lines "
+            f"({pct:.0f}% of target)."
+        )
     elif flag == "Below target" and pct is not None and gap is not None:
         bits.append(
-            f"Finished at {pct:.0f}% of target — short by {abs(gap):.0f} boxes for the hours worked."
-        )
-    elif flag == "Dipped below strike" and pct is not None and gap is not None:
-        weak = [r for r in sku_rows if r.verdict == "under strike"]
-        sku_list = ", ".join(str(r.sku) for r in weak) or "?"
-        bits.append(
-            f"Beat overall target ({pct:.0f}%, +{gap:.0f} boxes) but dipped under the strike line on SKU {sku_list}."
+            f"Above strike overall, but finished at {pct:.0f}% of target — short by {abs(gap):.0f} "
+            f"boxes for the hours worked."
         )
     elif flag == "On/above target" and pct is not None and gap is not None:
         bits.append(
             f"Hit target at {pct:.0f}% — {gap:.0f} boxes above what hours × SKU targets required."
         )
+        weak = [r for r in sku_rows if r.verdict == "under strike"]
+        if weak:
+            sku_list = ", ".join(str(r.sku) for r in weak)
+            bits.append(
+                f"Some SKU lines under strike ({sku_list}) but the average still clears strike and target."
+            )
 
     under = [r for r in sku_rows if r.verdict in ("under strike", "under target")]
     strong = [r for r in sku_rows if r.verdict == "on/above target"]
@@ -315,7 +323,7 @@ def explain_why(
                 if r.actual_bph is not None and r.target_bph is not None
             )
         )
-    if strong and flag != "Below target":
+    if strong and flag != "Below strike":
         bits.append(
             "Held up by: "
             + "; ".join(
@@ -349,8 +357,8 @@ def shift_totals(results: List[PackerShiftResult], shift_key: str, shift_label: 
         target_boxes=target,
         pct_of_target=pct,
         box_gap=gap,
-        below=sum(1 for r in results if r.flag == "Below target"),
-        dipped=sum(1 for r in results if r.flag == "Dipped below strike"),
+        below=sum(1 for r in results if r.flag == "Below strike"),
+        dipped=sum(1 for r in results if r.flag == "Below target"),
         on_target=sum(1 for r in results if r.flag == "On/above target"),
         no_target=sum(1 for r in results if r.flag == "No target defined"),
     )
@@ -408,21 +416,20 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
             continue
 
         target_boxes = sum(L.hours * L.target_bph for L in known)
+        strike_boxes = sum(
+            L.hours * L.strike_bph for L in known if L.strike_bph is not None
+        )
         boxes_known = sum(L.boxes for L in known)
         pct = (boxes_known / target_boxes * 100.0) if target_boxes > 0 else None
 
-        dipped = False
-        for L in known:
-            if L.actual_bph is not None and L.strike_bph is not None and L.actual_bph < L.strike_bph:
-                dipped = True
-                break
-
+        # Overall average vs strike/target — a weak SKU line does not force
+        # Below strike if hours×strike still clears.
         if pct is None:
             flag = "No target defined"
+        elif strike_boxes > 0 and boxes_known < strike_boxes:
+            flag = "Below strike"
         elif pct < 100:
             flag = "Below target"
-        elif dipped:
-            flag = "Dipped below strike"
         else:
             flag = "On/above target"
 
@@ -432,7 +439,7 @@ def aggregate_shift(lines: List[RawLine], shift_key: str) -> List[PackerShiftRes
             notes = "no target defined for SKU " + ", ".join(skus)
 
         gap = boxes_known - target_boxes if target_boxes else None
-        why = explain_why(flag, pct, boxes_known, target_boxes, sku_rows)
+        why = explain_why(flag, pct, boxes_known, target_boxes, sku_rows, strike_boxes)
 
         results.append(
             PackerShiftResult(

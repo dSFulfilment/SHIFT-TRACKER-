@@ -52,13 +52,13 @@ class FixtureReportTests(unittest.TestCase):
         names = {r.worker_display for r in self.report.morning}
         self.assertIn("Eve Short", names)
         by_name = {r.worker_display: r for r in self.report.morning}
-        self.assertEqual(by_name["Eve Short"].flag, "Below target")
+        self.assertEqual(by_name["Eve Short"].flag, "Below strike")
         self.assertFalse(hasattr(self.report.exclusions, "under_15_min") and self.report.exclusions.under_15_min)
 
     def test_morning_flags(self):
         by_name = {r.worker_display: r for r in self.report.morning}
         self.assertIn("Bob Jones", by_name)
-        self.assertEqual(by_name["Bob Jones"].flag, "Below target")
+        self.assertEqual(by_name["Bob Jones"].flag, "Below strike")
         self.assertIn("short by", by_name["Bob Jones"].why.lower())
         self.assertTrue(by_name["Bob Jones"].sku_lines)
         self.assertIsNotNone(self.report.morning_totals)
@@ -185,10 +185,10 @@ class DipStrikeTests(unittest.TestCase):
             },
         ]
         report = build_report(boxes, {"blank_worker_or_sku": 0})
-        # boxes 64, target boxes = 16*1 + 23*1 = 39, pct >> 100
-        # but 250 line under strike → Dipped below strike
+        # boxes 64, strike = 14.6+20.6=35.2, target = 39 → averages above strike+target
+        # even though 250 line is under strike
         self.assertEqual(len(report.morning), 1)
-        self.assertEqual(report.morning[0].flag, "Dipped below strike")
+        self.assertEqual(report.morning[0].flag, "On/above target")
         self.assertGreaterEqual(report.morning[0].pct_of_target, 100)
 
 

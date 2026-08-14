@@ -36,6 +36,10 @@
     'Packing Time Seconds', 'Total Boxes Packed', 'Packing Time (Hours)',
     'Boxes per Hour', 'Box Sku Sizes'
   ];
+  // Optional on Raw Data — used for shift length when present (Dandenong South only).
+  var RAW_SHIFT_HOURS_COL = 'Shift (Hours)';
+  var EXEC_SUMMARY_COLS = ['Pnp Worker Name', 'Packing Time (Hours)'];
+  var EXEC_SUMMARY_OPTIONAL = ['Facility Name', 'Average Direct Hours Per Day', 'Total Boxes Packed', 'Boxes per Hour'];
 
   function normHeader(h) {
     return String(h == null ? '' : h).trim().replace(/\s+/g, ' ');
@@ -64,6 +68,9 @@
     'seconds per item': 'Seconds per Item',
     'pouches per hour': 'Pouches per Hour',
     'report date hour': 'Report Date Hour',
+    'idle time %': 'Idle Time %',
+    'idle time': 'Idle Time %',
+    'box dynamic efficiency %': 'Box Dynamic Efficiency %',
     'boxes per hour': 'Boxes per Hour',
     'first scan': 'First Scan',
     'last scan': 'Last Scan',
@@ -77,6 +84,10 @@
     'sku sizes': 'Box Sku Sizes',
     'facility name': 'Facility Name',
     'facility': 'Facility Name',
+    'average direct hours per day': 'Average Direct Hours Per Day',
+    'days worked': 'Days Worked',
+    'quartile (vs. own facility)': 'Quartile (vs. own facility)',
+    'quartile (vs. company wide)': 'Quartile (vs. company wide)',
     'seconds per box': 'Seconds per Box'
   };
   function canonicalizeHeader(h) {
@@ -328,6 +339,7 @@
       var bph = num(d['Boxes per Hour']);
       if (bph == null && hours && hours > 0 && boxes != null) bph = boxes / hours;
       var idlePct = num(d['Idle Time %'] != null ? d['Idle Time %'] : d['Idle Time']);
+      var shiftHours = num(d['Shift (Hours)'] != null ? d['Shift (Hours)'] : d['Shift Hours']);
       var first = d['First Scan'];
       var shiftGuess = 'unknown_shift';
       var parsedFirst = parseReportDateHour(first);
@@ -341,6 +353,7 @@
         lastScan: d['Last Scan'],
         packingSeconds: seconds,
         hours: hours,
+        shiftHours: shiftHours,
         boxes: boxes,
         actualBph: bph,
         idlePct: idlePct,
@@ -355,6 +368,79 @@
       });
     });
     return { rows: kept, droppedFacility: droppedFacility, droppedBlank: droppedBlank };
+  }
+
+  /**
+   * Executive Summary — one row per worker. Prefer Dandenong South only:
+   * if Facility Name is present, drop other sites; if absent, treat as already DS-only.
+   */
+  function loadExecutiveSummaryRows(rows) {
+    var kept = [];
+    var droppedFacility = 0;
+    var droppedBlank = 0;
+    var hasFacilityCol = false;
+    (rows || []).forEach(function (d) {
+      if (Object.prototype.hasOwnProperty.call(d, 'Facility Name')) hasFacilityCol = true;
+    });
+    (rows || []).forEach(function (d) {
+      var display = String(d['Pnp Worker Name'] == null ? '' : d['Pnp Worker Name']).trim();
+      if (!display) {
+        droppedBlank += 1;
+        return;
+      }
+      if (hasFacilityCol) {
+        var fac = String(d['Facility Name'] == null ? '' : d['Facility Name']).trim().toLowerCase();
+        if (fac && fac !== FACILITY_NAME.toLowerCase()) {
+          droppedFacility += 1;
+          return;
+        }
+        if (!fac) {
+          droppedFacility += 1;
+          return;
+        }
+      }
+      var hours = num(d['Packing Time (Hours)']);
+      if (hours == null) hours = num(d['Average Direct Hours Per Day']);
+      var seconds = num(d['Packing Time (Seconds)'] != null ? d['Packing Time (Seconds)'] : d['Packing Time Seconds']);
+      if (hours == null && seconds != null) hours = seconds / 3600;
+      kept.push({
+        workerDisplay: display,
+        workerKey: workerKey(display),
+        facilityName: hasFacilityCol ? d['Facility Name'] : FACILITY_NAME,
+        packingHours: hours,
+        shiftHours: hours, // Exec Summary packing/direct hours = day hours for this export
+        boxes: num(d['Total Boxes Packed']),
+        actualBph: num(d['Boxes per Hour']),
+        packingSeconds: seconds
+      });
+    });
+    return {
+      rows: kept,
+      droppedFacility: droppedFacility,
+      droppedBlank: droppedBlank,
+      facilityFiltered: hasFacilityCol
+    };
+  }
+
+  /** Max Shift (Hours) per worker from Dandenong South Raw Data rows. */
+  function shiftHoursByWorker(rawDataRows) {
+    var by = {};
+    (rawDataRows || []).forEach(function (r) {
+      if (r.shiftHours == null || !isFinite(r.shiftHours)) return;
+      if (!by[r.workerKey] || r.shiftHours > by[r.workerKey]) {
+        by[r.workerKey] = r.shiftHours;
+      }
+    });
+    return by;
+  }
+
+  function execHoursByWorker(execRows) {
+    var by = {};
+    (execRows || []).forEach(function (r) {
+      if (r.shiftHours == null || !isFinite(r.shiftHours)) return;
+      by[r.workerKey] = r.shiftHours;
+    });
+    return by;
   }
 
   function rawDataMixedSummary(rawDataRows) {
@@ -426,6 +512,9 @@
       if (boxes == null) return;
       var parsed = parseReportDateHour(d['Report Date Hour']);
       if (!parsed) return;
+      // Optional: some Intra exports include Primary Sku per hour.
+      var intraSku = null;
+      if (!blank(d['Primary Sku'])) intraSku = parseSku(d['Primary Sku']);
       out.push({
         reportDateHour: d['Report Date Hour'],
         hourLabel: parsed.label,
@@ -435,7 +524,8 @@
         shiftLabel: parsed.hour >= 14 ? 'Afternoon' : 'Morning',
         workerDisplay: display,
         workerKey: workerKey(display),
-        boxes: boxes
+        boxes: boxes,
+        intraSku: intraSku
       });
     });
     out.sort(function (a, b) {
@@ -444,6 +534,131 @@
       return a.workerDisplay.localeCompare(b.workerDisplay);
     });
     return out;
+  }
+
+  /**
+   * Score one Intra clock-hour against SKU target(s).
+   * Prefer Intra Primary Sku when present; else Boxes shift mix (hours-weighted blend).
+   * One Intra row = 1.0 hour of target (target BPH × 1).
+   */
+  function scoreHourVsSku(hourBoxes, ctx) {
+    var empty = {
+      skuLabel: null,
+      skus: [],
+      isMixed: false,
+      skuSource: null,
+      targetBph: null,
+      strikeBph: null,
+      targetBoxes: null,
+      strikeBoxes: null,
+      pctOfTarget: null,
+      pctOfStrike: null,
+      boxGap: null,
+      flag: 'No target defined'
+    };
+    if (hourBoxes == null || !isFinite(hourBoxes)) return empty;
+    if (!ctx || ctx.targetBph == null || !isFinite(ctx.targetBph)) {
+      return Object.assign({}, empty, {
+        skuLabel: ctx && ctx.skuLabel ? ctx.skuLabel : null,
+        skus: ctx && ctx.skus ? ctx.skus.slice() : [],
+        isMixed: !!(ctx && ctx.isMixed),
+        skuSource: ctx && ctx.skuSource ? ctx.skuSource : null
+      });
+    }
+    var targetBoxes = ctx.targetBph; // × 1 hour
+    var strikeBoxes = ctx.strikeBph != null && isFinite(ctx.strikeBph) ? ctx.strikeBph : null;
+    var pct = targetBoxes > 0 ? (hourBoxes / targetBoxes * 100) : null;
+    var pctStrike = strikeBoxes > 0 ? (hourBoxes / strikeBoxes * 100) : null;
+    var flag;
+    if (pct == null) flag = 'No target defined';
+    else if (strikeBoxes != null && hourBoxes < strikeBoxes) flag = 'Below strike';
+    else if (pct < 100) flag = 'Below target';
+    else flag = 'On/above target';
+    return {
+      skuLabel: ctx.skuLabel || null,
+      skus: ctx.skus ? ctx.skus.slice() : [],
+      isMixed: !!ctx.isMixed,
+      skuSource: ctx.skuSource || null,
+      targetBph: ctx.targetBph,
+      strikeBph: ctx.strikeBph != null ? ctx.strikeBph : null,
+      targetBoxes: targetBoxes,
+      strikeBoxes: strikeBoxes,
+      pctOfTarget: pct,
+      pctOfStrike: pctStrike,
+      boxGap: targetBoxes != null ? hourBoxes - targetBoxes : null,
+      flag: flag
+    };
+  }
+
+  /** Build SKU target context for a packer+shift from Boxes lines (and optional Intra SKU). */
+  function hourSkuContextFromPacker(packer, intraSku) {
+    if (intraSku != null && isFinite(intraSku)) {
+      var t = SKU_TARGETS[intraSku];
+      if (!t) {
+        return {
+          skuLabel: String(intraSku) + 'g',
+          skus: [intraSku],
+          isMixed: false,
+          skuSource: 'intra',
+          targetBph: null,
+          strikeBph: null
+        };
+      }
+      return {
+        skuLabel: String(intraSku) + 'g',
+        skus: [intraSku],
+        isMixed: false,
+        skuSource: 'intra',
+        targetBph: t.target,
+        strikeBph: t.strike
+      };
+    }
+    if (!packer) {
+      return { skuLabel: null, skus: [], isMixed: false, skuSource: null, targetBph: null, strikeBph: null };
+    }
+    var mix = packer.skuMix;
+    var skus = mix && mix.parts ? mix.parts.map(function (p) { return p.sku; }).filter(function (s) {
+      return s != null && isFinite(s);
+    }) : [];
+    var isMixed = !!(mix && mix.isMixed);
+    var label = mix && mix.label
+      ? (isMixed ? mix.label + ' (blend)' : (mix.label.indexOf('g') !== -1 ? mix.label : mix.label + 'g'))
+      : null;
+    if (packer.targetBoxes != null && packer.hours > 0 && packer.pctOfTarget != null) {
+      return {
+        skuLabel: label,
+        skus: skus,
+        isMixed: isMixed,
+        skuSource: 'boxes_shift',
+        targetBph: packer.targetBoxes / packer.hours,
+        strikeBph: packer.strikeBoxes > 0 ? packer.strikeBoxes / packer.hours : null
+      };
+    }
+    return {
+      skuLabel: label,
+      skus: skus,
+      isMixed: isMixed,
+      skuSource: mix ? 'boxes_shift' : null,
+      targetBph: null,
+      strikeBph: null
+    };
+  }
+
+  function enrichHourLinesWithSkuTargets(hourLines, morning, afternoon) {
+    var by = {};
+    function index(rows) {
+      (rows || []).forEach(function (r) {
+        by[r.workerKey + '|' + r.shiftKey] = r;
+      });
+    }
+    index(morning);
+    index(afternoon);
+    return (hourLines || []).map(function (h) {
+      var packer = by[h.workerKey + '|' + h.shiftKey] || null;
+      var ctx = hourSkuContextFromPacker(packer, h.intraSku);
+      var scored = scoreHourVsSku(h.boxes, ctx);
+      return Object.assign({}, h, scored);
+    });
   }
 
   function hourLinesFor(workerKeyName, shiftKey, hourLines) {
@@ -485,7 +700,18 @@
         workerDisplay: h.workerDisplay,
         workerKey: h.workerKey,
         boxes: h.boxes,
-        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] }
+        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] },
+        skuLabel: h.skuLabel,
+        skus: h.skus || [],
+        isMixed: !!h.isMixed,
+        skuSource: h.skuSource,
+        targetBph: h.targetBph,
+        strikeBph: h.strikeBph,
+        targetBoxes: h.targetBoxes,
+        strikeBoxes: h.strikeBoxes,
+        pctOfTarget: h.pctOfTarget,
+        boxGap: h.boxGap,
+        flag: h.flag
       });
     });
     return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
@@ -495,7 +721,7 @@
     });
   }
 
-  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
@@ -511,6 +737,20 @@
       if (!rawDataByWorker[r.workerKey]) rawDataByWorker[r.workerKey] = [];
       rawDataByWorker[r.workerKey].push(r);
     });
+    var execAll = execSummaryRows || [];
+    // Prefer Raw Data Shift (Hours) for Dandenong South; else Executive Summary packing/direct hours.
+    var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
+    var shiftHoursExec = execHoursByWorker(execAll);
+
+    function resolveShiftHours(workerKey) {
+      if (shiftHoursRaw[workerKey] != null) {
+        return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data' };
+      }
+      if (shiftHoursExec[workerKey] != null) {
+        return { shiftHours: shiftHoursExec[workerKey], shiftHoursSource: 'executive_summary' };
+      }
+      return { shiftHours: null, shiftHoursSource: null };
+    }
 
     var raw = [];
     (boxesRows || []).forEach(function (r) {
@@ -609,18 +849,31 @@
       return rows;
     }
 
-    function explainWhy(flag, pct, scoreBoxes, targetBoxes, skuRows) {
+    function explainWhy(flag, pct, scoreBoxes, targetBoxes, skuRows, strikeBoxes) {
       var gap = targetBoxes != null ? scoreBoxes - targetBoxes : null;
+      var strikeGap = strikeBoxes != null ? scoreBoxes - strikeBoxes : null;
       var bits = [];
       if (flag === 'No target defined') {
         bits.push('Cannot score % of target — no SKU on this shift has a target in the table.');
+      } else if (flag === 'Below strike' && pct != null && strikeGap != null) {
+        bits.push(
+          'Overall below strike — short by ' + Math.abs(strikeGap).toFixed(0) +
+          ' boxes vs hours × strike lines (' + pct.toFixed(0) + '% of target).'
+        );
       } else if (flag === 'Below target' && pct != null && gap != null) {
-        bits.push('Finished at ' + pct.toFixed(0) + '% of target — short by ' + Math.abs(gap).toFixed(0) + ' boxes for the hours worked.');
-      } else if (flag === 'Dipped below strike' && pct != null && gap != null) {
-        var weak = skuRows.filter(function (r) { return r.verdict === 'under strike'; }).map(function (r) { return r.sku; });
-        bits.push('Beat overall target (' + pct.toFixed(0) + '%, +' + gap.toFixed(0) + ' boxes) but dipped under the strike line on SKU ' + (weak.join(', ') || '?') + '.');
+        bits.push(
+          'Above strike overall, but finished at ' + pct.toFixed(0) +
+          '% of target — short by ' + Math.abs(gap).toFixed(0) + ' boxes for the hours worked.'
+        );
       } else if (flag === 'On/above target' && pct != null && gap != null) {
         bits.push('Hit target at ' + pct.toFixed(0) + '% — ' + gap.toFixed(0) + ' boxes above what hours × SKU targets required.');
+        var weak = skuRows.filter(function (r) { return r.verdict === 'under strike'; }).map(function (r) { return r.sku; });
+        if (weak.length) {
+          bits.push(
+            'Some SKU lines under strike (' + weak.join(', ') +
+            ') but the average still clears strike and target.'
+          );
+        }
       }
       var under = skuRows.filter(function (r) { return r.verdict === 'under strike' || r.verdict === 'under target'; });
       var strong = skuRows.filter(function (r) { return r.verdict === 'on/above target'; });
@@ -630,7 +883,7 @@
             (r.verdict === 'under strike' ? ' / strike ' + r.strikeBph : '');
         }).join('; '));
       }
-      if (strong.length && flag !== 'Below target') {
+      if (strong.length && flag !== 'Below strike') {
         bits.push('Held up by: ' + strong.filter(function (r) { return r.actualBph != null && r.targetBph != null; }).map(function (r) {
           return 'SKU ' + r.sku + ' ' + r.actualBph.toFixed(1) + ' BPH (target ' + r.targetBph + ')';
         }).join('; '));
@@ -707,19 +960,24 @@
           included.forEach(function (L) {
             if (L.unknownSku) skus.push(String(L.sku));
           });
+          var shNone = resolveShiftHours(key);
           results.push({
             shiftKey: shiftKey,
             shiftLabel: included[0].shiftLabel,
             workerDisplay: display,
             workerKey: key,
             hours: hours,
+            shiftHours: shNone.shiftHours,
+            shiftHoursSource: shNone.shiftHoursSource,
             boxes: boxes,
             targetBoxes: 0,
             pctOfTarget: null,
             flag: 'No target defined',
             notes: skus.length ? ('no target defined for SKU ' + skus.join(', ')) : '',
-            why: explainWhy('No target defined', null, 0, 0, skuRows),
+            why: explainWhy('No target defined', null, 0, 0, skuRows, 0),
             boxGap: null,
+            strikeBoxes: 0,
+            pctOfStrike: null,
             skuLines: skuRows,
             skuMix: skuMix,
             rawLines: wlines,
@@ -730,15 +988,18 @@
           return;
         }
         var targetBoxes = known.reduce(function (s, L) { return s + L.hours * L.targetBph; }, 0);
+        var strikeBoxes = known.reduce(function (s, L) {
+          return s + (L.strikeBph != null ? L.hours * L.strikeBph : 0);
+        }, 0);
         var boxesKnown = known.reduce(function (s, L) { return s + L.boxes; }, 0);
         var pct = targetBoxes > 0 ? (boxesKnown / targetBoxes * 100) : null;
-        var dipped = known.some(function (L) {
-          return L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph;
-        });
+        var pctStrike = strikeBoxes > 0 ? (boxesKnown / strikeBoxes * 100) : null;
+        // Packer flag uses overall average vs strike/target — a weak SKU line
+        // does not force Below strike if hours×strike still clears.
         var flag;
         if (pct == null) flag = 'No target defined';
+        else if (strikeBoxes > 0 && boxesKnown < strikeBoxes) flag = 'Below strike';
         else if (pct < 100) flag = 'Below target';
-        else if (dipped) flag = 'Dipped below strike';
         else flag = 'On/above target';
         var notes = '';
         if (hasUnknown) {
@@ -746,18 +1007,23 @@
           included.forEach(function (L) { if (L.unknownSku) u.push(String(L.sku)); });
           notes = 'no target defined for SKU ' + u.join(', ');
         }
+        var shInfo = resolveShiftHours(key);
         results.push({
           shiftKey: shiftKey,
           shiftLabel: included[0].shiftLabel,
           workerDisplay: display,
           workerKey: key,
           hours: hours,
+          shiftHours: shInfo.shiftHours,
+          shiftHoursSource: shInfo.shiftHoursSource,
           boxes: boxes,
           targetBoxes: targetBoxes,
+          strikeBoxes: strikeBoxes,
           pctOfTarget: pct,
+          pctOfStrike: pctStrike,
           flag: flag,
           notes: notes,
-          why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows),
+          why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows, strikeBoxes),
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
           skuMix: skuMix,
@@ -794,8 +1060,8 @@
         targetBoxes: target,
         pctOfTarget: target > 0 ? score / target * 100 : null,
         boxGap: target > 0 ? score - target : null,
-        below: results.filter(function (r) { return r.flag === 'Below target'; }).length,
-        dipped: results.filter(function (r) { return r.flag === 'Dipped below strike'; }).length,
+        below: results.filter(function (r) { return r.flag === 'Below strike'; }).length,
+        dipped: results.filter(function (r) { return r.flag === 'Below target'; }).length,
         onTarget: results.filter(function (r) { return r.flag === 'On/above target'; }).length,
         noTarget: results.filter(function (r) { return r.flag === 'No target defined'; }).length
       };
@@ -806,6 +1072,15 @@
     var workerSet = {};
     raw.forEach(function (L) { workerSet[L.workerDisplay] = true; });
 
+    // Score each Intra hour vs Boxes SKU (or Intra Primary Sku when present).
+    var hourLinesScored = enrichHourLinesWithSkuTargets(hourLinesAll, morning, afternoon);
+    morning.forEach(function (r) {
+      r.hourLines = hourLinesFor(r.workerKey, r.shiftKey, hourLinesScored);
+    });
+    afternoon.forEach(function (r) {
+      r.hourLines = hourLinesFor(r.workerKey, r.shiftKey, hourLinesScored);
+    });
+
     return {
       rawLines: raw,
       morning: morning,
@@ -815,10 +1090,11 @@
       exclusions: exclusions,
       facilityWorkers: Object.keys(workerSet).sort(),
       intraRows: intraRows || [],
-      hourLines: hourLinesAll,
-      byHour: buildByHour(hourLinesAll, morning, afternoon),
+      hourLines: hourLinesScored,
+      byHour: buildByHour(hourLinesScored, morning, afternoon),
       rawDataRows: rawDataAll,
       rawDataMixed: rawDataMixed,
+      execSummaryRows: execAll,
       warnings: warnings,
       skuTargets: SKU_TARGETS,
       facilityName: FACILITY_NAME
@@ -854,7 +1130,24 @@
     return loadRawDataRows(sheetRows);
   }
 
-  async function buildReportFromFiles(boxesFile, intraFile, rawFile) {
+  async function loadExecutiveSummaryFile(execFile) {
+    if (!execFile) {
+      return { rows: [], droppedFacility: 0, droppedBlank: 0, facilityFiltered: false };
+    }
+    var name = execFile.name || 'Executive_Summary.csv';
+    var lower = name.toLowerCase();
+    var sheetRows;
+    if (lower.indexOf('.csv') !== -1) {
+      var text = await fileToText(execFile);
+      sheetRows = csvTextToSheetRows(text, name, EXEC_SUMMARY_COLS);
+    } else {
+      var buf = await fileToArrayBuffer(execFile);
+      sheetRows = readWorkbookArrayBuffer(buf, name, EXEC_SUMMARY_COLS);
+    }
+    return loadExecutiveSummaryRows(sheetRows);
+  }
+
+  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
@@ -863,11 +1156,25 @@
       readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
     );
     var rawParsed = await loadRawDataFile(rawFile || null);
-    var report = buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows, rawParsed.rows);
+    var execParsed = await loadExecutiveSummaryFile(execFile || null);
+    var report = buildReport(
+      boxesParsed.rows,
+      boxesParsed.droppedBlank,
+      intraRows,
+      rawParsed.rows,
+      execParsed.rows
+    );
     report.rawDataMeta = {
       droppedFacility: rawParsed.droppedFacility,
       droppedBlank: rawParsed.droppedBlank,
       fileName: rawFile ? (rawFile.name || '') : ''
+    };
+    report.execSummaryMeta = {
+      droppedFacility: execParsed.droppedFacility,
+      droppedBlank: execParsed.droppedBlank,
+      facilityFiltered: execParsed.facilityFiltered,
+      fileName: execFile ? (execFile.name || '') : '',
+      workers: (execParsed.rows || []).length
     };
     return report;
   }
@@ -892,7 +1199,7 @@
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
       aoa.push([
@@ -900,6 +1207,7 @@
         r.skuMix ? r.skuMix.label : '',
         r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
         r.hours != null ? Number(r.hours.toFixed(2)) : '',
+        r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
         r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
@@ -978,7 +1286,11 @@
   }
 
   function byHourAoA(byHour) {
-    var aoa = [['Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU mix (shift)', 'Mixed?']];
+    var aoa = [[
+      'Hour', 'Shift', 'Packer', 'Boxes this hour', 'SKU (for target)', 'SKU source',
+      'Target BPH', 'Strike BPH', 'Target boxes (1h)', '% of target', 'Gap', 'Flag',
+      'SKU mix (shift)', 'Mixed?'
+    ]];
     (byHour || []).forEach(function (H) {
       (H.packers || []).forEach(function (p) {
         var mix = p.skuInfo && p.skuInfo.mix;
@@ -987,6 +1299,14 @@
           H.shiftLabel,
           p.workerDisplay,
           Math.round(p.boxes),
+          p.skuLabel || '',
+          p.skuSource || '',
+          p.targetBph != null ? Number(p.targetBph.toFixed(2)) : '',
+          p.strikeBph != null ? Number(p.strikeBph.toFixed(2)) : '',
+          p.targetBoxes != null ? Number(p.targetBoxes.toFixed(2)) : '',
+          p.pctOfTarget != null ? Number(p.pctOfTarget.toFixed(1)) : '',
+          p.boxGap != null ? Number(p.boxGap.toFixed(1)) : '',
+          p.flag || '',
           mix ? mix.label : '',
           mix && mix.isMixed ? 'Yes' : 'No'
         ]);
@@ -1108,7 +1428,9 @@
       ['Raw Data mixed boxes', Math.round(mixedBoxes)],
       [],
       ['Notes'],
-      ['Scoring from Boxes Packed by Worker. Intra Hour = hourly boxes (no SKU).'],
+      ['Scoring from Boxes Packed by Worker. Intra Hour boxes scored vs SKU target for that hour.'],
+      ['SKU for each Intra hour: Intra Primary Sku when present, else Boxes shift SKU mix (hours-weighted blend).'],
+      ['One Intra row = 1 clock hour of target (target BPH × 1). Packer overall flag still uses Boxes Pack h.'],
       ['Sizes from Raw Data (Box Sku Sizes) appear on packer detail — not a separate score.']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
@@ -1145,10 +1467,14 @@
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
     RAW_DATA_COLS: RAW_DATA_COLS,
+    EXEC_SUMMARY_COLS: EXEC_SUMMARY_COLS,
     validateHeaders: validateHeaders,
     parseBoxSkuSizes: parseBoxSkuSizes,
     loadRawDataRows: loadRawDataRows,
+    loadExecutiveSummaryRows: loadExecutiveSummaryRows,
     csvTextToSheetRows: csvTextToSheetRows,
+    scoreHourVsSku: scoreHourVsSku,
+    hourSkuContextFromPacker: hourSkuContextFromPacker,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
     buildExportWorkbook: buildExportWorkbook,

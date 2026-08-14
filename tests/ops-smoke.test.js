@@ -87,11 +87,12 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
-console.log('\nOps smoke — Packer shift report (Boxes + Intra + Raw Data, inlined)');
+console.log('\nOps smoke — Packer shift report (Boxes + Intra + Raw Data + Exec, inlined)');
 check(html.indexOf('id="psrRoot"') !== -1, 'Packer shift report root exists');
 check(html.indexOf('id="psrBoxes"') !== -1 && html.indexOf('id="psrIntra"') !== -1,
   'Packer has Boxes + Intra file inputs');
 check(html.indexOf('id="psrRaw"') !== -1, 'Packer has Raw Data file input');
+check(html.indexOf('id="psrExec"') !== -1, 'Packer has Executive Summary file input');
 check(html.indexOf('id="psrSummary"') === -1, 'Overall Summary picker removed');
 check(html.indexOf('window.PackerShiftReport') !== -1 || html.indexOf('root.PackerShiftReport') !== -1,
   'PackerShiftReport inlined into index.html');
@@ -102,6 +103,10 @@ check(html.indexOf('script src="js/packer-shift-report.js"') === -1, 'No externa
 check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
+check(html.indexOf('Boxes each hour vs target') !== -1 || html.indexOf('Intra hour vs target') !== -1,
+  'Intra hour vs SKU target UI present');
+check(html.indexOf('enrichHourLinesWithSkuTargets') !== -1 || html.indexOf('scoreHourVsSku') !== -1,
+  'Hour-vs-SKU scoring inlined');
 check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.indexOf('Sizes (Boxes)') !== -1,
   'Sizes column / detail present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
@@ -116,9 +121,12 @@ check(html.indexOf('By SKU') !== -1 && html.indexOf('renderCombinedBySku') !== -
   'Combined By SKU (Boxes + Raw Data) detail present');
 check(html.indexOf('Raw idle') !== -1 && html.indexOf('Raw BPH') !== -1,
   'By SKU shows Raw idle / Raw BPH columns');
-check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile)') !== -1 ||
-  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile)') !== -1,
-  'Packer builds from Boxes + Intra + optional Raw Data');
+check(html.indexOf('loadExecutiveSummaryRows') !== -1, 'Executive Summary loader inlined');
+check(html.indexOf('Shift h') !== -1 && html.indexOf('Shift (Hours)') !== -1,
+  'Shift h column / Raw Shift (Hours) documented');
+check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile, execFile)') !== -1 ||
+  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile, execFile)') !== -1,
+  'Packer builds from Boxes + Intra + optional Raw + Exec');
 check(html.indexOf('sizesCell') !== -1 || html.indexOf('function sizesCell') !== -1,
   'Combined sizes cell (Boxes + Raw Data) present');
 
