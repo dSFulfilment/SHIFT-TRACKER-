@@ -30,6 +30,12 @@
     'Seconds per Item', 'Pouches per Hour'
   ];
   var INTRA_COLS = ['Report Date Hour', 'Pnp Worker Name', 'Boxes Packed'];
+  // Canonical names after HEADER_ALIASES (Raw Data CSV uses "Packing Time (Seconds)" → Packing Time Seconds).
+  var RAW_DATA_COLS = [
+    'Report Date', 'Facility Name', 'Pnp Worker Name', 'First Scan', 'Last Scan',
+    'Packing Time Seconds', 'Total Boxes Packed', 'Packing Time (Hours)',
+    'Boxes per Hour', 'Box Sku Sizes'
+  ];
 
   function normHeader(h) {
     return String(h == null ? '' : h).trim().replace(/\s+/g, ' ');
@@ -58,7 +64,20 @@
     'seconds per item': 'Seconds per Item',
     'pouches per hour': 'Pouches per Hour',
     'report date hour': 'Report Date Hour',
-    'boxes per hour': 'Boxes per Hour'
+    'boxes per hour': 'Boxes per Hour',
+    'first scan': 'First Scan',
+    'last scan': 'Last Scan',
+    'shift (hours)': 'Shift (Hours)',
+    'shift hours': 'Shift (Hours)',
+    'packing time (hours)': 'Packing Time (Hours)',
+    'packing time hours': 'Packing Time (Hours)',
+    'total boxes packed': 'Total Boxes Packed',
+    'box sku sizes': 'Box Sku Sizes',
+    'box sku size': 'Box Sku Sizes',
+    'sku sizes': 'Box Sku Sizes',
+    'facility name': 'Facility Name',
+    'facility': 'Facility Name',
+    'seconds per box': 'Seconds per Box'
   };
   function canonicalizeHeader(h) {
     var n = normHeader(h);
@@ -201,6 +220,176 @@
     return kept;
   }
 
+  /** "250g, 600g" / "700g" → numeric SKU list; mixed when >1. */
+  function parseBoxSkuSizes(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return { label: '', skus: [], isMixed: false };
+    var nums = s.match(/\d+/g) || [];
+    var skus = [];
+    var seen = {};
+    nums.forEach(function (n) {
+      var v = parseInt(n, 10);
+      if (!isFinite(v) || seen[v]) return;
+      // Prefer weight-like SKUs in our table (125–700); keep others too
+      seen[v] = true;
+      skus.push(v);
+    });
+    return {
+      label: s,
+      skus: skus,
+      isMixed: skus.length > 1 || /[,\/]| and /i.test(s)
+    };
+  }
+
+  function stripBOM(text) {
+    text = String(text == null ? '' : text);
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  }
+
+  function parseCSV(text) {
+    text = stripBOM(text);
+    var rows = [];
+    var field = '';
+    var row = [];
+    var inQuotes = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else inQuotes = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') {
+          row.push(field);
+          field = '';
+        } else if (c === '\n') {
+          row.push(field);
+          rows.push(row);
+          row = [];
+          field = '';
+        } else if (c === '\r') {
+          /* skip */
+        } else field += c;
+      }
+    }
+    if (field.length || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+    return rows.filter(function (r) {
+      return r.length > 1 || (r.length === 1 && String(r[0]).trim() !== '');
+    });
+  }
+
+  function csvTextToSheetRows(text, fileLabel, required) {
+    var aoa = parseCSV(text);
+    if (!aoa.length) throw new Error(fileLabel + ': empty file.');
+    var headers = aoa[0].map(canonicalizeHeader);
+    validateHeaders(fileLabel, headers, required);
+    var rows = [];
+    for (var r = 1; r < aoa.length; r++) {
+      var line = aoa[r];
+      var obj = {};
+      var any = false;
+      headers.forEach(function (h, i) {
+        if (!h) return;
+        obj[h] = line[i] != null ? line[i] : null;
+        if (!blank(obj[h])) any = true;
+      });
+      if (any) rows.push(obj);
+    }
+    return rows;
+  }
+
+  function loadRawDataRows(rows) {
+    var kept = [];
+    var droppedFacility = 0;
+    var droppedBlank = 0;
+    (rows || []).forEach(function (d) {
+      var display = String(d['Pnp Worker Name'] == null ? '' : d['Pnp Worker Name']).trim();
+      if (!display) {
+        droppedBlank += 1;
+        return;
+      }
+      var fac = String(d['Facility Name'] == null ? '' : d['Facility Name']).trim().toLowerCase();
+      if (fac && fac !== FACILITY_NAME.toLowerCase()) {
+        droppedFacility += 1;
+        return;
+      }
+      var sizes = parseBoxSkuSizes(d['Box Sku Sizes']);
+      var boxes = num(d['Total Boxes Packed']);
+      var seconds = num(d['Packing Time Seconds'] != null ? d['Packing Time Seconds'] : d['Packing Time (Seconds)']);
+      var hours = num(d['Packing Time (Hours)'] != null ? d['Packing Time (Hours)'] : d['Packing Time Hours']);
+      if (hours == null && seconds != null) hours = seconds / 3600;
+      var bph = num(d['Boxes per Hour']);
+      if (bph == null && hours && hours > 0 && boxes != null) bph = boxes / hours;
+      var first = d['First Scan'];
+      var shiftGuess = 'unknown_shift';
+      var parsedFirst = parseReportDateHour(first);
+      if (parsedFirst) shiftGuess = shiftKeyFromClockHour(parsedFirst.hour);
+      kept.push({
+        reportDate: d['Report Date'],
+        facilityName: d['Facility Name'],
+        workerDisplay: display,
+        workerKey: workerKey(display),
+        firstScan: first,
+        lastScan: d['Last Scan'],
+        packingSeconds: seconds,
+        hours: hours,
+        boxes: boxes,
+        actualBph: bph,
+        boxSkuSizes: sizes.label,
+        skus: sizes.skus,
+        isMixed: sizes.isMixed,
+        shiftKey: shiftGuess,
+        shiftLabel: shiftGuess === 'afternoon_shift' ? 'Afternoon' : (shiftGuess === 'morning_shift' ? 'Morning' : 'Unknown'),
+        skuTargets: sizes.skus.map(function (sku) {
+          return SKU_TARGETS[sku] ? { sku: sku, target: SKU_TARGETS[sku].target, strike: SKU_TARGETS[sku].strike } : { sku: sku, target: null, strike: null };
+        })
+      });
+    });
+    return { rows: kept, droppedFacility: droppedFacility, droppedBlank: droppedBlank };
+  }
+
+  function rawDataMixedSummary(rawDataRows) {
+    var mixed = (rawDataRows || []).filter(function (r) { return r.isMixed; });
+    var byWorker = {};
+    mixed.forEach(function (r) {
+      if (!byWorker[r.workerKey]) {
+        byWorker[r.workerKey] = {
+          workerDisplay: r.workerDisplay,
+          workerKey: r.workerKey,
+          segments: [],
+          boxes: 0,
+          hours: 0,
+          skuSet: {}
+        };
+      }
+      byWorker[r.workerKey].segments.push(r);
+      byWorker[r.workerKey].boxes += r.boxes || 0;
+      byWorker[r.workerKey].hours += r.hours || 0;
+      (r.skus || []).forEach(function (s) { byWorker[r.workerKey].skuSet[s] = true; });
+    });
+    return Object.keys(byWorker).map(function (k) {
+      var w = byWorker[k];
+      var skus = Object.keys(w.skuSet).map(Number).sort(function (a, b) { return a - b; });
+      return {
+        workerDisplay: w.workerDisplay,
+        workerKey: w.workerKey,
+        segments: w.segments,
+        segmentCount: w.segments.length,
+        boxes: w.boxes,
+        hours: w.hours,
+        skus: skus,
+        mixLabel: skus.join(' · ')
+      };
+    }).sort(function (a, b) { return a.workerDisplay.localeCompare(b.workerDisplay); });
+  }
+
   /** Intra has no SKU — clock hour ≥ 14 → Afternoon (same rule as analytics). */
   function shiftKeyFromClockHour(h) {
     return h >= 14 ? 'afternoon_shift' : 'morning_shift';
@@ -304,7 +493,7 @@
     });
   }
 
-  function buildReport(boxesRows, boxesDroppedBlank, intraRows) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
@@ -313,6 +502,13 @@
     };
     var warnings = [];
     var hourLinesAll = normalizeIntraHours(intraRows);
+    var rawDataAll = rawDataRows || [];
+    var rawDataMixed = rawDataMixedSummary(rawDataAll);
+    var rawDataByWorker = {};
+    rawDataAll.forEach(function (r) {
+      if (!rawDataByWorker[r.workerKey]) rawDataByWorker[r.workerKey] = [];
+      rawDataByWorker[r.workerKey].push(r);
+    });
 
     var raw = [];
     (boxesRows || []).forEach(function (r) {
@@ -329,9 +525,14 @@
         workerDisplay: display,
         workerKey: key,
         station: r['Station Name'],
+        skuRaw: r['Primary Sku'],
         sku: sku,
         boxes: boxes,
+        itemsPacked: num(r['Items Packed']),
+        pouchesPacked: num(r['Pouches Packed']),
         packingSeconds: seconds,
+        secondsPerItem: num(r['Seconds per Item']),
+        pouchesPerHour: num(r['Pouches per Hour']),
         hours: null,
         actualBph: null,
         targetBph: null,
@@ -519,6 +720,8 @@
             boxGap: null,
             skuLines: skuRows,
             skuMix: skuMix,
+            rawLines: wlines,
+            rawDataSegments: rawDataByWorker[key] || [],
             hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
             excludedShortLines: shortN
           });
@@ -556,6 +759,8 @@
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
           skuMix: skuMix,
+          rawLines: wlines,
+          rawDataSegments: rawDataByWorker[key] || [],
           hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
           excludedShortLines: shortN
         });
@@ -610,6 +815,8 @@
       intraRows: intraRows || [],
       hourLines: hourLinesAll,
       byHour: buildByHour(hourLinesAll, morning, afternoon),
+      rawDataRows: rawDataAll,
+      rawDataMixed: rawDataMixed,
       warnings: warnings,
       skuTargets: SKU_TARGETS,
       facilityName: FACILITY_NAME
@@ -626,7 +833,26 @@
     return await file.arrayBuffer();
   }
 
-  async function buildReportFromFiles(boxesFile, intraFile) {
+  async function fileToText(file) {
+    return await file.text();
+  }
+
+  async function loadRawDataFile(rawFile) {
+    if (!rawFile) return { rows: [], droppedFacility: 0, droppedBlank: 0 };
+    var name = rawFile.name || 'Raw_Data.csv';
+    var lower = name.toLowerCase();
+    var sheetRows;
+    if (lower.indexOf('.csv') !== -1) {
+      var text = await fileToText(rawFile);
+      sheetRows = csvTextToSheetRows(text, name, RAW_DATA_COLS);
+    } else {
+      var buf = await fileToArrayBuffer(rawFile);
+      sheetRows = readWorkbookArrayBuffer(buf, name, RAW_DATA_COLS);
+    }
+    return loadRawDataRows(sheetRows);
+  }
+
+  async function buildReportFromFiles(boxesFile, intraFile, rawFile) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
@@ -634,7 +860,14 @@
     var intraRows = loadIntraRows(
       readWorkbookArrayBuffer(intraBuf, intraFile.name || 'Intra_Hour_Floor_Performance.xlsx', INTRA_COLS)
     );
-    return buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows);
+    var rawParsed = await loadRawDataFile(rawFile || null);
+    var report = buildReport(boxesParsed.rows, boxesParsed.droppedBlank, intraRows, rawParsed.rows);
+    report.rawDataMeta = {
+      droppedFacility: rawParsed.droppedFacility,
+      droppedBlank: rawParsed.droppedBlank,
+      fileName: rawFile ? (rawFile.name || '') : ''
+    };
+    return report;
   }
 
   function sheetFromAoA(aoa) {
@@ -760,6 +993,92 @@
     return aoa;
   }
 
+  function rawDataAoA(rawLines) {
+    var aoa = [[
+      'Report Date', 'Shift', 'Worker Name', 'Station', 'Primary Sku (raw)', 'Primary Sku',
+      'Boxes Packed', 'Items Packed', 'Pouches Packed', 'Packing Time Seconds',
+      'Seconds per Item', 'Pouches per Hour', 'Hours on SKU', 'Actual BPH',
+      'Target BPH', 'Strike BPH', 'Target boxes', 'Included', 'Unknown SKU', 'Note'
+    ]];
+    (rawLines || []).forEach(function (L) {
+      aoa.push([
+        L.reportDate,
+        L.shiftLabel,
+        L.workerDisplay,
+        L.station,
+        L.skuRaw != null ? L.skuRaw : '',
+        L.sku,
+        L.boxes != null ? L.boxes : '',
+        L.itemsPacked != null ? L.itemsPacked : '',
+        L.pouchesPacked != null ? L.pouchesPacked : '',
+        L.packingSeconds != null ? L.packingSeconds : '',
+        L.secondsPerItem != null ? L.secondsPerItem : '',
+        L.pouchesPerHour != null ? L.pouchesPerHour : '',
+        L.hours != null ? Number(L.hours.toFixed(4)) : '',
+        L.actualBph != null ? Number(L.actualBph.toFixed(2)) : '',
+        L.targetBph != null ? L.targetBph : '',
+        L.strikeBph != null ? L.strikeBph : '',
+        L.targetBoxes != null ? Number(L.targetBoxes.toFixed(2)) : '',
+        L.included ? 1 : 0,
+        L.unknownSku ? 1 : 0,
+        L.excludeReason || (L.unknownSku ? ('no target for SKU ' + L.sku) : '')
+      ]);
+    });
+    return aoa;
+  }
+
+  function facilityRawMixedAoA(rawDataMixed) {
+    var aoa = [[
+      'Packer', 'Mixed segments', 'Hours (raw segments)', 'Boxes (raw segments)',
+      'SKU mix (from Box Sku Sizes)', 'Segment Box Sku Sizes', 'Segment boxes',
+      'Segment packing sec', 'Segment hours', 'Segment BPH', 'First Scan', 'Last Scan'
+    ]];
+    (rawDataMixed || []).forEach(function (w) {
+      (w.segments || []).forEach(function (seg, i) {
+        aoa.push([
+          i === 0 ? w.workerDisplay : '',
+          i === 0 ? w.segmentCount : '',
+          i === 0 ? Number(w.hours.toFixed(2)) : '',
+          i === 0 ? Math.round(w.boxes) : '',
+          i === 0 ? w.mixLabel : '',
+          seg.boxSkuSizes,
+          seg.boxes != null ? seg.boxes : '',
+          seg.packingSeconds != null ? seg.packingSeconds : '',
+          seg.hours != null ? Number(seg.hours.toFixed(3)) : '',
+          seg.actualBph != null ? Number(seg.actualBph.toFixed(2)) : '',
+          seg.firstScan,
+          seg.lastScan
+        ]);
+      });
+    });
+    return aoa;
+  }
+
+  function rawDataAllAoA(rawDataRows) {
+    var aoa = [[
+      'Report Date', 'Facility', 'Packer', 'Mixed?', 'Box Sku Sizes', 'SKUs',
+      'Boxes', 'Packing Seconds', 'Hours', 'BPH', 'First Scan', 'Last Scan', 'Shift guess'
+    ]];
+    (rawDataRows || []).forEach(function (r) {
+      aoa.push([
+        r.reportDate,
+        r.facilityName,
+        r.workerDisplay,
+        r.isMixed ? 'Yes' : 'No',
+        r.boxSkuSizes,
+        (r.skus || []).join(' · '),
+        r.boxes != null ? r.boxes : '',
+        r.packingSeconds != null ? r.packingSeconds : '',
+        r.hours != null ? Number(r.hours.toFixed(4)) : '',
+        r.actualBph != null ? Number(r.actualBph.toFixed(2)) : '',
+        r.firstScan,
+        r.lastScan,
+        r.shiftLabel
+      ]);
+    });
+    return aoa;
+  }
+
   /** Build a downloadable xlsx workbook object from a built report. */
   function buildExportWorkbook(report) {
     var X = rootXLSX();
@@ -767,6 +1086,8 @@
     var wb = X.utils.book_new();
     var mt = report.morningTotals || {};
     var at = report.afternoonTotals || {};
+    var mixedList = Array.isArray(report.rawDataMixed) ? report.rawDataMixed : [];
+    var mixedBoxes = mixedList.reduce(function (s, w) { return s + (w.boxes || 0); }, 0);
     appendSheet(wb, 'Summary', [
       ['Packer shift report', FACILITY_NAME],
       ['Generated', new Date().toISOString()],
@@ -781,13 +1102,19 @@
       ['Afternoon boxes', at.boxes != null ? Math.round(at.boxes) : 0],
       ['Afternoon % of target', at.pctOfTarget != null ? Number(at.pctOfTarget.toFixed(1)) : ''],
       [],
+      ['Raw Data mixed workers', mixedList.length],
+      ['Raw Data mixed boxes', Math.round(mixedBoxes)],
+      [],
       ['Notes'],
-      ['Scoring from Boxes Packed by Worker. Intra Hour is for hourly boxes only (no SKU).'],
-      ['Every timed Boxes line is scored. Mixed = more than one SKU on the shift.']
+      ['Scoring from Boxes Packed by Worker. Intra Hour = hourly boxes (no SKU).'],
+      ['Mixed SKUs from Raw Data export (Box Sku Sizes).']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
     appendSheet(wb, 'Afternoon shift', shiftSheetAoA(report.afternoon, report.afternoonTotals));
     appendSheet(wb, 'SKU detail', skuDetailAoA(report.morning, report.afternoon));
+    appendSheet(wb, 'Mixed SKUs', facilityRawMixedAoA(report.rawDataMixed));
+    appendSheet(wb, 'Raw Data export', rawDataAllAoA(report.rawDataRows));
+    appendSheet(wb, 'Boxes raw lines', rawDataAoA(report.rawLines));
     appendSheet(wb, 'By hour', byHourAoA(report.byHour));
     var ex = report.exclusions || {};
     appendSheet(wb, 'Exclusions', [
@@ -815,7 +1142,11 @@
     FACILITY_NAME: FACILITY_NAME,
     BOXES_COLS: BOXES_COLS,
     INTRA_COLS: INTRA_COLS,
+    RAW_DATA_COLS: RAW_DATA_COLS,
     validateHeaders: validateHeaders,
+    parseBoxSkuSizes: parseBoxSkuSizes,
+    loadRawDataRows: loadRawDataRows,
+    csvTextToSheetRows: csvTextToSheetRows,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
     buildExportWorkbook: buildExportWorkbook,

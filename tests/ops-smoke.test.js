@@ -87,10 +87,11 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
-console.log('\nOps smoke — Packer shift report (2× xlsx, inlined)');
+console.log('\nOps smoke — Packer shift report (Boxes + Intra + Raw Data, inlined)');
 check(html.indexOf('id="psrRoot"') !== -1, 'Packer shift report root exists');
 check(html.indexOf('id="psrBoxes"') !== -1 && html.indexOf('id="psrIntra"') !== -1,
   'Packer has Boxes + Intra file inputs');
+check(html.indexOf('id="psrRaw"') !== -1, 'Packer has Raw Data file input');
 check(html.indexOf('id="psrSummary"') === -1, 'Overall Summary picker removed');
 check(html.indexOf('window.PackerShiftReport') !== -1 || html.indexOf('root.PackerShiftReport') !== -1,
   'PackerShiftReport inlined into index.html');
@@ -105,9 +106,13 @@ check(html.indexOf('SKU mix') !== -1 && html.indexOf('psr-mixed') !== -1, 'Mixed
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
 check(html.indexOf('id="psrExportBtn"') !== -1, 'Export report button exists');
 check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlined');
-check(html.indexOf('buildReportFromFiles(boxesFile, intraFile)') !== -1 ||
-  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0])') !== -1,
-  'Packer builds from Boxes + Intra only');
+check(html.indexOf('data-psr-view="mixed"') !== -1, 'Mixed SKUs Packer view exists');
+check(html.indexOf('Box Sku Sizes') !== -1, 'Raw Data Box Sku Sizes referenced');
+check(html.indexOf('parseBoxSkuSizes') !== -1, 'parseBoxSkuSizes inlined');
+check(html.indexOf('Raw Boxes lines') !== -1, 'Raw Boxes lines detail present');
+check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile)') !== -1 ||
+  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile)') !== -1,
+  'Packer builds from Boxes + Intra + optional Raw Data');
 
 console.log('\nOps smoke — day-linked breaks (BPH ignores breaks)');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
