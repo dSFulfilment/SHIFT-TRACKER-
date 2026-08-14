@@ -57,9 +57,7 @@
     if (!ok) {
       statusEl.className = 'psr-status err';
       statusEl.textContent =
-        'Report scripts did not load (js/xlsx.mini.min.js + js/packer-shift-report.js). ' +
-        'Open the app from the project folder with a local server, e.g. npm start → http://localhost:8080 — ' +
-        'not a lone downloaded index.html.';
+        'Report scripts did not load. If you still see this, refresh — Packer code is inlined in this HTML file.';
       return;
     }
 
@@ -195,7 +193,7 @@
       '<h2>If Build report will not run</h2>' +
       '<ul>' +
       '<li>Select <b>Boxes Packed by Worker</b> and <b>Overall Summary</b> (Intra is optional).</li>' +
-      '<li>Open the app from this project folder (<code>npm start</code>), not a lone index.html download.</li>' +
+      '<li>Works in this single <code>index.html</code> — no extra files needed.</li>' +
       '<li>Or use Excel: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code></li>' +
       '</ul>' +
       '</div>';
