@@ -1,5 +1,5 @@
 /**
- * Packer tab UI — Boxes + Intra Hour + Raw Data pickers + Morning / Afternoon / Mixed.
+ * Packer tab UI — Boxes + Intra + Raw Data; packer detail combines by SKU.
  */
 (function () {
   'use strict';
@@ -70,7 +70,7 @@
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
         (hasBoxes && hasIntra
-          ? ' → click Build report' + (hasRaw ? '' : ' (Raw Data optional — adds sizes on packer open)')
+          ? ' → click Build report' + (hasRaw ? '' : ' (Raw Data optional — fills Raw idle/BPH by SKU)')
           : ' → select Boxes + Intra Hour (+ Raw Data optional), then Build report');
     }
   }
@@ -107,34 +107,144 @@
       '</div>';
   }
 
-  function renderSkuMixDetail(r) {
-    var mix = r.skuMix;
-    if (!mix || !mix.parts || !mix.parts.length) {
-      return '<h3 class="psr-detail-h">Sizes (Boxes)</h3><p class="psr-prose">No SKUs.</p>';
-    }
-    var html = '<h3 class="psr-detail-h">Sizes (Boxes)</h3>';
-    html += '<p class="psr-why">' + escapeHtml(mix.label) +
-      (mix.parts.length > 1 ? ' · ' + mix.parts.length + ' sizes this shift' : '') + '.</p>';
-    html += '<table class="psr-table"><thead><tr>' +
-      '<th>SKU</th><th>Hours</th><th>% of hours</th><th>Boxes</th><th>% of boxes</th>' +
-      '</tr></thead><tbody>';
-    mix.parts.forEach(function (p) {
-      html += '<tr>' +
-        '<td>' + escapeHtml(p.sku) + (p.unknownSku ? ' <em>(no target)</em>' : '') + '</td>' +
-        '<td>' + p.hours.toFixed(2) + '</td>' +
-        '<td>' + (p.hoursShare != null ? p.hoursShare.toFixed(0) + '%' : '—') + '</td>' +
-        '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
-        '<td>' + (p.boxesShare != null ? p.boxesShare.toFixed(0) + '%' : '—') + '</td>' +
-        '</tr>';
+  function idlePctDisplay(idle) {
+    if (idle == null || !isFinite(idle)) return null;
+    return idle <= 1.5 ? idle * 100 : idle;
+  }
+
+  /**
+   * One table by SKU: Boxes Packed (score) + matching single-size Raw Data (context).
+   * Multi-size Raw Data rows are listed under the table — never split onto a SKU.
+   */
+  function renderCombinedBySku(r) {
+    var skuLines = (r.skuLines || []).filter(function (L) {
+      return !(L.verdict && String(L.verdict).indexOf('excluded') === 0);
     });
-    html += '<tr class="psr-total-row">' +
-      '<td><b>Total</b></td>' +
-      '<td><b>' + mix.totalHours.toFixed(2) + '</b></td>' +
-      '<td><b>100%</b></td>' +
-      '<td><b>' + Math.round(mix.totalBoxes).toLocaleString() + '</b></td>' +
-      '<td><b>100%</b></td>' +
-      '</tr>';
-    html += '</tbody></table>';
+    var segs = r.rawDataSegments || [];
+    var singleBySku = {};
+    var multiSegs = [];
+    segs.forEach(function (s) {
+      if (s.isMixed) {
+        multiSegs.push(s);
+        return;
+      }
+      var sku = (s.skus && s.skus.length === 1) ? s.skus[0] : null;
+      if (sku == null) return;
+      if (!singleBySku[sku]) singleBySku[sku] = [];
+      singleBySku[sku].push(s);
+    });
+
+    var stationsBySku = {};
+    (r.rawLines || []).forEach(function (L) {
+      if (L.sku == null) return;
+      if (!stationsBySku[L.sku]) stationsBySku[L.sku] = {};
+      if (L.station != null && String(L.station).trim() !== '') {
+        stationsBySku[L.sku][String(L.station).trim()] = true;
+      }
+    });
+
+    var html = '<h3 class="psr-detail-h">By SKU</h3>';
+    if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
+    html += '<p class="psr-prose">Boxes Packed = score. Raw Data (single size) = idle / session BPH for that SKU.</p>';
+
+    if (!skuLines.length) {
+      html += '<p class="psr-prose">No Boxes SKU lines for this packer/shift.</p>';
+    } else {
+      var totHours = 0;
+      var totBoxes = 0;
+      var knownHours = 0;
+      var knownTargetBoxes = 0;
+      var knownStrikeHours = 0;
+      var knownStrikeWeight = 0;
+
+      html += '<table class="psr-table"><thead><tr>' +
+        '<th>SKU</th><th>Station</th><th>Hours</th><th>Boxes</th><th>BPH</th>' +
+        '<th>Target</th><th>Strike</th><th>%</th><th>Verdict</th>' +
+        '<th>Raw idle</th><th>Raw BPH</th>' +
+        '</tr></thead><tbody>';
+
+      skuLines.forEach(function (L) {
+        totHours += L.hours || 0;
+        totBoxes += L.boxes || 0;
+        if (L.targetBph != null && L.hours != null) {
+          knownHours += L.hours;
+          knownTargetBoxes += L.hours * L.targetBph;
+        }
+        if (L.strikeBph != null && L.hours != null) {
+          knownStrikeHours += L.hours;
+          knownStrikeWeight += L.hours * L.strikeBph;
+        }
+
+        var stMap = stationsBySku[L.sku] || {};
+        var stations = Object.keys(stMap).sort().join(', ') || '—';
+
+        var rawMatches = singleBySku[L.sku] || [];
+        var idleTxt = '—';
+        var rawBphTxt = '—';
+        if (rawMatches.length) {
+          var idles = [];
+          var bphs = [];
+          rawMatches.forEach(function (s) {
+            var id = idlePctDisplay(s.idlePct);
+            if (id != null) idles.push(id);
+            if (s.actualBph != null) bphs.push(s.actualBph);
+          });
+          if (idles.length) {
+            idleTxt = (idles.reduce(function (a, b) { return a + b; }, 0) / idles.length).toFixed(0) + '%';
+            if (rawMatches.length > 1) idleTxt += ' ×' + rawMatches.length;
+          }
+          if (bphs.length) {
+            rawBphTxt = (bphs.reduce(function (a, b) { return a + b; }, 0) / bphs.length).toFixed(1);
+          }
+        }
+
+        html += '<tr class="' + verdictClass(L.verdict) + '">' +
+          '<td><b>' + escapeHtml(L.sku) + '</b></td>' +
+          '<td>' + escapeHtml(stations) + '</td>' +
+          '<td>' + (L.hours != null ? L.hours.toFixed(2) : '—') + '</td>' +
+          '<td>' + Math.round(L.boxes).toLocaleString() + '</td>' +
+          '<td>' + (L.actualBph != null ? L.actualBph.toFixed(1) : '—') + '</td>' +
+          '<td>' + (L.targetBph != null ? L.targetBph : '—') + '</td>' +
+          '<td>' + (L.strikeBph != null ? L.strikeBph : '—') + '</td>' +
+          '<td>' + (L.linePct != null ? L.linePct.toFixed(0) + '%' : '—') + '</td>' +
+          '<td>' + escapeHtml(L.verdict) + '</td>' +
+          '<td>' + escapeHtml(idleTxt) + '</td>' +
+          '<td>' + escapeHtml(rawBphTxt) + '</td>' +
+          '</tr>';
+      });
+
+      var avgBph = totHours > 0 ? totBoxes / totHours : null;
+      var avgTarget = knownHours > 0 ? knownTargetBoxes / knownHours : null;
+      var avgStrike = knownStrikeHours > 0 ? knownStrikeWeight / knownStrikeHours : null;
+      var overallPct = r.pctOfTarget != null
+        ? r.pctOfTarget
+        : (knownTargetBoxes > 0 ? (totBoxes / knownTargetBoxes * 100) : null);
+
+      html += '<tr class="psr-total-row">' +
+        '<td colspan="2"><b>Total / avg</b></td>' +
+        '<td><b>' + totHours.toFixed(2) + '</b></td>' +
+        '<td><b>' + Math.round(totBoxes).toLocaleString() + '</b></td>' +
+        '<td><b>' + (avgBph != null ? avgBph.toFixed(1) : '—') + '</b></td>' +
+        '<td><b>' + (avgTarget != null ? avgTarget.toFixed(1) : '—') + '</b></td>' +
+        '<td><b>' + (avgStrike != null ? avgStrike.toFixed(1) : '—') + '</b></td>' +
+        '<td><b>' + (overallPct != null ? overallPct.toFixed(0) + '%' : '—') + '</b></td>' +
+        '<td><b>' + escapeHtml(r.flag || '—') + '</b></td>' +
+        '<td colspan="2"></td>' +
+        '</tr>';
+      html += '</tbody></table>';
+    }
+
+    if (multiSegs.length) {
+      html += '<p class="psr-prose psr-note"><b>Multi-size Raw Data</b> (not scored onto one SKU): ';
+      html += multiSegs.map(function (s) {
+        return escapeHtml(s.boxSkuSizes || '') +
+          (s.boxes != null ? ' · ' + Math.round(s.boxes) + ' boxes' : '');
+      }).join('; ');
+      html += '.</p>';
+    } else if (!segs.length) {
+      html += '<p class="psr-prose psr-note">No Raw Data for this packer — Raw idle / Raw BPH stay blank.</p>';
+    }
+
     return html;
   }
 
@@ -155,150 +265,14 @@
     return html;
   }
 
-  function renderSkuDetail(r) {
-    var html = '<h3 class="psr-detail-h">SKU performance</h3>';
-    if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
-    if (!r.skuLines || !r.skuLines.length) {
-      return html + '<p class="psr-prose">No SKU lines.</p>';
-    }
-
-    var totHours = 0;
-    var totBoxes = 0;
-    var knownHours = 0;
-    var knownTargetBoxes = 0;
-    var knownStrikeHours = 0;
-    var knownStrikeWeight = 0;
-    r.skuLines.forEach(function (L) {
-      if (L.verdict && String(L.verdict).indexOf('excluded') === 0) return;
-      totHours += L.hours || 0;
-      totBoxes += L.boxes || 0;
-      if (L.targetBph != null && L.hours != null) {
-        knownHours += L.hours;
-        knownTargetBoxes += L.hours * L.targetBph;
-      }
-      if (L.strikeBph != null && L.hours != null) {
-        knownStrikeHours += L.hours;
-        knownStrikeWeight += L.hours * L.strikeBph;
-      }
-    });
-    var avgBph = totHours > 0 ? totBoxes / totHours : null;
-    var avgTarget = knownHours > 0 ? knownTargetBoxes / knownHours : null;
-    var avgStrike = knownStrikeHours > 0 ? knownStrikeWeight / knownStrikeHours : null;
-    var overallPct = r.pctOfTarget != null
-      ? r.pctOfTarget
-      : (knownTargetBoxes > 0 ? (totBoxes / knownTargetBoxes * 100) : null);
-
-    html += '<table class="psr-table"><thead><tr>' +
-      '<th>SKU</th><th>Hours</th><th>Boxes</th><th>Actual BPH</th><th>Target</th><th>Strike</th><th>Line %</th><th>Verdict</th>' +
-      '</tr></thead><tbody>';
-    r.skuLines.forEach(function (L) {
-      html += '<tr class="' + verdictClass(L.verdict) + '">' +
-        '<td>' + escapeHtml(L.sku) + '</td>' +
-        '<td>' + (L.hours != null ? L.hours.toFixed(2) : '—') + '</td>' +
-        '<td>' + Math.round(L.boxes).toLocaleString() + '</td>' +
-        '<td>' + (L.actualBph != null ? L.actualBph.toFixed(1) : '—') + '</td>' +
-        '<td>' + (L.targetBph != null ? L.targetBph : '—') + '</td>' +
-        '<td>' + (L.strikeBph != null ? L.strikeBph : '—') + '</td>' +
-        '<td>' + (L.linePct != null ? L.linePct.toFixed(0) + '%' : '—') + '</td>' +
-        '<td>' + escapeHtml(L.verdict) + '</td>' +
-        '</tr>';
-    });
-    html += '<tr class="psr-total-row">' +
-      '<td><b>Total / avg</b></td>' +
-      '<td><b>' + totHours.toFixed(2) + '</b></td>' +
-      '<td><b>' + Math.round(totBoxes).toLocaleString() + '</b></td>' +
-      '<td><b>' + (avgBph != null ? avgBph.toFixed(1) : '—') + '</b></td>' +
-      '<td><b>' + (avgTarget != null ? avgTarget.toFixed(1) : '—') + '</b></td>' +
-      '<td><b>' + (avgStrike != null ? avgStrike.toFixed(1) : '—') + '</b></td>' +
-      '<td><b>' + (overallPct != null ? overallPct.toFixed(0) + '%' : '—') + '</b></td>' +
-      '<td><b>' + escapeHtml(r.flag || '—') + '</b></td>' +
-      '</tr>';
-    html += '</tbody></table>';
-    html += '<p class="psr-prose psr-note">Total hours = all SKU hours this shift. Avg BPH = total boxes ÷ total hours. Avg target/strike are hours-weighted. Line % on the total row is overall % of target.</p>';
-    return html;
-  }
-
-  function renderRawLines(r) {
-    var lines = r.rawLines || [];
-    var html = '<h3 class="psr-detail-h">Boxes Packed lines</h3>';
-    if (!lines.length) {
-      return html + '<p class="psr-prose">No Boxes lines.</p>';
-    }
-    html += '<table class="psr-table"><thead><tr>' +
-      '<th>Station</th><th>SKU</th><th>Boxes</th><th>Packing sec</th><th>Hours</th>' +
-      '<th>Actual BPH</th><th>Target</th><th>Strike</th><th>SPI</th><th>Note</th>' +
-      '</tr></thead><tbody>';
-    var totH = 0;
-    var totB = 0;
-    lines.forEach(function (L) {
-      if (L.included) {
-        totH += L.hours || 0;
-        totB += L.boxes || 0;
-      }
-      html += '<tr class="' + verdictClass(
-        !L.included ? 'excluded' :
-          (L.unknownSku ? 'no target' :
-            (L.actualBph != null && L.strikeBph != null && L.actualBph < L.strikeBph ? 'under strike' :
-              (L.actualBph != null && L.targetBph != null && L.actualBph < L.targetBph ? 'under target' : 'on/above target')))
-      ) + '">' +
-        '<td>' + escapeHtml(L.station == null ? '' : L.station) + '</td>' +
-        '<td>' + escapeHtml(L.sku) + '</td>' +
-        '<td>' + (L.boxes != null ? Math.round(L.boxes).toLocaleString() : '—') + '</td>' +
-        '<td>' + (L.packingSeconds != null ? Math.round(L.packingSeconds).toLocaleString() : '—') + '</td>' +
-        '<td>' + (L.hours != null ? L.hours.toFixed(2) : '—') + '</td>' +
-        '<td>' + (L.actualBph != null ? L.actualBph.toFixed(1) : '—') + '</td>' +
-        '<td>' + (L.targetBph != null ? L.targetBph : '—') + '</td>' +
-        '<td>' + (L.strikeBph != null ? L.strikeBph : '—') + '</td>' +
-        '<td>' + (L.secondsPerItem != null ? L.secondsPerItem : '—') + '</td>' +
-        '<td>' + escapeHtml(L.excludeReason || (L.unknownSku ? 'no target' : '')) + '</td>' +
-        '</tr>';
-    });
-    html += '<tr class="psr-total-row">' +
-      '<td colspan="2"><b>Total / avg</b></td>' +
-      '<td><b>' + Math.round(totB).toLocaleString() + '</b></td>' +
-      '<td></td>' +
-      '<td><b>' + totH.toFixed(2) + '</b></td>' +
-      '<td><b>' + (totH > 0 ? (totB / totH).toFixed(1) : '—') + '</b></td>' +
-      '<td colspan="4"></td>' +
-      '</tr>';
-    html += '</tbody></table>';
-    return html;
-  }
-
-  function renderRawDataSegments(r) {
-    var segs = r.rawDataSegments || [];
-    if (!segs.length) return '';
-    var html = '<h3 class="psr-detail-h">Raw Data sizes</h3>';
-    html += '<p class="psr-why">Box Sku Sizes from Raw Data (same packer) — shown with Boxes lines, not as a separate report.</p>';
-    html += '<table class="psr-table"><thead><tr>' +
-      '<th>Box Sku Sizes</th><th>Boxes</th><th>Packing sec</th><th>Hours</th><th>BPH</th><th>First Scan</th><th>Last Scan</th>' +
-      '</tr></thead><tbody>';
-    segs.forEach(function (s) {
-      html += '<tr>' +
-        '<td>' + escapeHtml(s.boxSkuSizes || '') + '</td>' +
-        '<td>' + (s.boxes != null ? Math.round(s.boxes).toLocaleString() : '—') + '</td>' +
-        '<td>' + (s.packingSeconds != null ? Math.round(s.packingSeconds).toLocaleString() : '—') + '</td>' +
-        '<td>' + (s.hours != null ? s.hours.toFixed(3) : '—') + '</td>' +
-        '<td>' + (s.actualBph != null ? s.actualBph.toFixed(1) : '—') + '</td>' +
-        '<td>' + escapeHtml(s.firstScan == null ? '' : s.firstScan) + '</td>' +
-        '<td>' + escapeHtml(s.lastScan == null ? '' : s.lastScan) + '</td>' +
-        '</tr>';
-    });
-    html += '</tbody></table>';
-    return html;
-  }
-
   function renderPackerDetail(r) {
     return '<div class="psr-packer-detail">' +
-      renderSkuMixDetail(r) +
-      renderRawDataSegments(r) +
-      renderRawLines(r) +
+      renderCombinedBySku(r) +
       renderHourDetail(r) +
-      renderSkuDetail(r) +
       '</div>';
   }
 
-  /** Prefer Raw Data size list when present; else Boxes Primary Sku sizes. No Mixed badge. */
+  /** Prefer Raw Data size list when present; else Boxes Primary Sku sizes. */
   function sizesCell(r) {
     var segs = r.rawDataSegments || [];
     if (segs.length) {
@@ -322,7 +296,7 @@
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer for sizes, Boxes lines, Raw Data sizes, hours, and performance.</p>';
+    html += '<p class="psr-prose">Click a packer for <b>By SKU</b> (Boxes score + Raw Data context) and boxes each hour.</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Sizes</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
@@ -404,7 +378,7 @@
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes Packed by Worker</b>, <b>Intra Hour</b>, and optionally <b>Raw Data</b>, then <b>Build report</b>.</p>' +
       '<h2>One packer view</h2>' +
-      '<p>Morning / Afternoon use Boxes for scoring. Open a packer to see sizes, Boxes lines, and Raw Data Box Sku Sizes together — no separate Mixed tab.</p>' +
+      '<p>Morning / Afternoon score from Boxes. Open a packer for one <b>By SKU</b> table: Boxes score + Raw Data idle/BPH on the same SKU row.</p>' +
       '<h2>Export</h2>' +
       '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour, etc.).</p>' +
       '</div>';

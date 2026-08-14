@@ -112,8 +112,10 @@ check(html.indexOf('class="psr-mixed"') === -1 && html.indexOf("psr-mixed\">Mixe
   'No Mixed badge chips in Packer UI');
 check(html.indexOf('Box Sku Sizes') !== -1, 'Raw Data Box Sku Sizes referenced');
 check(html.indexOf('parseBoxSkuSizes') !== -1, 'parseBoxSkuSizes inlined');
-check(html.indexOf('Boxes Packed lines') !== -1 || html.indexOf('Raw Boxes lines') !== -1,
-  'Boxes Packed lines detail present');
+check(html.indexOf('By SKU') !== -1 && html.indexOf('renderCombinedBySku') !== -1,
+  'Combined By SKU (Boxes + Raw Data) detail present');
+check(html.indexOf('Raw idle') !== -1 && html.indexOf('Raw BPH') !== -1,
+  'By SKU shows Raw idle / Raw BPH columns');
 check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile)') !== -1 ||
   html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile)') !== -1,
   'Packer builds from Boxes + Intra + optional Raw Data');

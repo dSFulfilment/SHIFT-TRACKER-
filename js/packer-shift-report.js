@@ -327,6 +327,7 @@
       if (hours == null && seconds != null) hours = seconds / 3600;
       var bph = num(d['Boxes per Hour']);
       if (bph == null && hours && hours > 0 && boxes != null) bph = boxes / hours;
+      var idlePct = num(d['Idle Time %'] != null ? d['Idle Time %'] : d['Idle Time']);
       var first = d['First Scan'];
       var shiftGuess = 'unknown_shift';
       var parsedFirst = parseReportDateHour(first);
@@ -342,6 +343,7 @@
         hours: hours,
         boxes: boxes,
         actualBph: bph,
+        idlePct: idlePct,
         boxSkuSizes: sizes.label,
         skus: sizes.skus,
         isMixed: sizes.isMixed,
