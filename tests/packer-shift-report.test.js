@@ -178,5 +178,45 @@ var morningSheet = wbShift.Sheets['Morning shift'];
 var morningText = JSON.stringify(morningSheet);
 check(morningText.indexOf('Shift hours') !== -1, 'Export Morning shift sheet has Shift hours column');
 
+console.log('\nPacker shift report JS — Intra hour vs SKU target');
+var bobHour = report.morning.filter(function (r) { return r.workerDisplay === 'Bob Jones'; })[0];
+// Bob only in boxes fixture Intra? add Intra for Bob
+var bobIntra = [
+  { 'Report Date Hour': '2026-08-13 08:00', 'Pnp Worker Name': 'Bob Jones', 'Boxes Packed': 12 },
+  { 'Report Date Hour': '2026-08-13 09:00', 'Pnp Worker Name': 'Bob Jones', 'Boxes Packed': 16 }
+];
+var bobBoxes = [
+  { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Bob Jones', 'Station Name': 'B2', 'Primary Sku': 250, 'Boxes Packed': 40, 'Packing Time Seconds': 10800 }
+];
+var bobRep = PSR.buildReport(bobBoxes, 0, bobIntra);
+check(bobRep.morning[0].hourLines.length === 2, 'Bob has 2 Intra hour lines');
+check(bobRep.morning[0].hourLines[0].skuLabel && bobRep.morning[0].hourLines[0].skuLabel.indexOf('250') !== -1,
+  'Bob hour SKU from Boxes Primary Sku');
+check(bobRep.morning[0].hourLines[0].targetBoxes === 16, 'Bob hour target = 250g target BPH × 1h');
+check(bobRep.morning[0].hourLines[0].flag === 'Below strike', 'Bob 12 boxes in hour → below strike');
+check(bobRep.morning[0].hourLines[1].flag === 'On/above target', 'Bob 16 boxes in hour → on/above');
+
+var aliceH = morning['Alice Smith'].hourLines;
+check(aliceH.length >= 2, 'Alice morning hours present for SKU score');
+check(aliceH[0].targetBph != null && aliceH[0].targetBph > 16, 'Alice mixed blend target > single 250');
+check(aliceH[0].flag === 'On/above target', 'Alice 30 boxes clears blended hour target');
+check(aliceH[0].skuSource === 'boxes_shift', 'Alice hour SKU source is boxes_shift');
+
+var intraSkuRows = [
+  { 'Report Date Hour': '2026-08-13 08:00', 'Pnp Worker Name': 'Alice Smith', 'Boxes Packed': 10, 'Primary Sku': 250 },
+  { 'Report Date Hour': '2026-08-13 09:00', 'Pnp Worker Name': 'Alice Smith', 'Boxes Packed': 10, 'Primary Sku': 500 }
+];
+var intraSkuRep = PSR.buildReport(boxes, 0, intraSkuRows);
+var aHours = intraSkuRep.morning.filter(function (r) { return r.workerDisplay === 'Alice Smith'; })[0].hourLines;
+check(aHours[0].skuSource === 'intra' && aHours[0].targetBoxes === 16, 'Intra Primary Sku 250 drives hour target');
+check(aHours[1].skuSource === 'intra' && aHours[1].targetBoxes === 23, 'Intra Primary Sku 500 drives hour target');
+check(aHours[0].flag === 'Below strike', '10 boxes on 250g hour → below strike');
+
+var byHourPacker = bobRep.byHour[0].packers.filter(function (p) { return p.workerDisplay === 'Bob Jones'; })[0];
+check(byHourPacker && byHourPacker.flag === 'Below strike', 'By hour view carries hour flag');
+var wbHour = PSR.buildExportWorkbook(bobRep);
+check(JSON.stringify(wbHour.Sheets['By hour']).indexOf('Target boxes (1h)') !== -1,
+  'Export By hour has target columns');
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

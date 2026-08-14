@@ -103,6 +103,10 @@ check(html.indexOf('script src="js/packer-shift-report.js"') === -1, 'No externa
 check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
+check(html.indexOf('Boxes each hour vs target') !== -1 || html.indexOf('Intra hour vs target') !== -1,
+  'Intra hour vs SKU target UI present');
+check(html.indexOf('enrichHourLinesWithSkuTargets') !== -1 || html.indexOf('scoreHourVsSku') !== -1,
+  'Hour-vs-SKU scoring inlined');
 check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.indexOf('Sizes (Boxes)') !== -1,
   'Sizes column / detail present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
