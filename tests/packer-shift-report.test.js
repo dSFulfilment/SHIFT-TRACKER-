@@ -57,7 +57,10 @@ check(morning['Bob Jones'].skuMix && morning['Bob Jones'].skuMix.isMixed === fal
 var wb = PSR.buildExportWorkbook(report);
 check(wb && wb.SheetNames && wb.SheetNames.indexOf('Morning shift') !== -1, 'Export has Morning shift sheet');
 check(wb.SheetNames.indexOf('SKU detail') !== -1, 'Export has SKU detail sheet');
+check(wb.SheetNames.indexOf('Raw data') !== -1, 'Export has Raw data sheet');
+check(wb.SheetNames.indexOf('Mixed SKUs') !== -1, 'Export has Mixed SKUs sheet');
 check(wb.SheetNames.indexOf('By hour') !== -1, 'Export has By hour sheet');
+check(morning['Alice Smith'].rawLines && morning['Alice Smith'].rawLines.length === 2, 'Alice raw lines attached');
 var buf = PSR.workbookToArrayBuffer(wb);
 check(buf && buf.byteLength > 1000, 'Export workbook writes bytes');
 

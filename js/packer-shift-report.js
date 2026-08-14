@@ -329,9 +329,14 @@
         workerDisplay: display,
         workerKey: key,
         station: r['Station Name'],
+        skuRaw: r['Primary Sku'],
         sku: sku,
         boxes: boxes,
+        itemsPacked: num(r['Items Packed']),
+        pouchesPacked: num(r['Pouches Packed']),
         packingSeconds: seconds,
+        secondsPerItem: num(r['Seconds per Item']),
+        pouchesPerHour: num(r['Pouches per Hour']),
         hours: null,
         actualBph: null,
         targetBph: null,
@@ -519,6 +524,7 @@
             boxGap: null,
             skuLines: skuRows,
             skuMix: skuMix,
+            rawLines: wlines,
             hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
             excludedShortLines: shortN
           });
@@ -556,6 +562,7 @@
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
           skuMix: skuMix,
+          rawLines: wlines,
           hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
           excludedShortLines: shortN
         });
@@ -760,6 +767,78 @@
     return aoa;
   }
 
+  function rawDataAoA(rawLines) {
+    var aoa = [[
+      'Report Date', 'Shift', 'Worker Name', 'Station', 'Primary Sku (raw)', 'Primary Sku',
+      'Boxes Packed', 'Items Packed', 'Pouches Packed', 'Packing Time Seconds',
+      'Seconds per Item', 'Pouches per Hour', 'Hours on SKU', 'Actual BPH',
+      'Target BPH', 'Strike BPH', 'Target boxes', 'Included', 'Unknown SKU', 'Note'
+    ]];
+    (rawLines || []).forEach(function (L) {
+      aoa.push([
+        L.reportDate,
+        L.shiftLabel,
+        L.workerDisplay,
+        L.station,
+        L.skuRaw != null ? L.skuRaw : '',
+        L.sku,
+        L.boxes != null ? L.boxes : '',
+        L.itemsPacked != null ? L.itemsPacked : '',
+        L.pouchesPacked != null ? L.pouchesPacked : '',
+        L.packingSeconds != null ? L.packingSeconds : '',
+        L.secondsPerItem != null ? L.secondsPerItem : '',
+        L.pouchesPerHour != null ? L.pouchesPerHour : '',
+        L.hours != null ? Number(L.hours.toFixed(4)) : '',
+        L.actualBph != null ? Number(L.actualBph.toFixed(2)) : '',
+        L.targetBph != null ? L.targetBph : '',
+        L.strikeBph != null ? L.strikeBph : '',
+        L.targetBoxes != null ? Number(L.targetBoxes.toFixed(2)) : '',
+        L.included ? 1 : 0,
+        L.unknownSku ? 1 : 0,
+        L.excludeReason || (L.unknownSku ? ('no target for SKU ' + L.sku) : '')
+      ]);
+    });
+    return aoa;
+  }
+
+  function mixedPackersAoA(morning, afternoon) {
+    var aoa = [[
+      'Shift', 'Packer', 'SKU mix', 'Hours all up', 'Boxes', '% of target', 'Flag',
+      'Station', 'SKU', 'Raw boxes', 'Packing seconds', 'Hours', 'Actual BPH', 'Target', 'Strike', 'Line %'
+    ]];
+    function add(rows) {
+      (rows || []).forEach(function (r) {
+        if (!(r.skuMix && r.skuMix.isMixed)) return;
+        (r.rawLines || []).forEach(function (L) {
+          var linePct = (L.included && L.targetBoxes && L.targetBoxes > 0)
+            ? L.boxes / L.targetBoxes * 100
+            : null;
+          aoa.push([
+            r.shiftLabel,
+            r.workerDisplay,
+            r.skuMix.label,
+            r.hours != null ? Number(r.hours.toFixed(2)) : '',
+            r.boxes != null ? Math.round(r.boxes) : '',
+            r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
+            r.flag || '',
+            L.station,
+            L.sku,
+            L.boxes != null ? L.boxes : '',
+            L.packingSeconds != null ? L.packingSeconds : '',
+            L.hours != null ? Number(L.hours.toFixed(2)) : '',
+            L.actualBph != null ? Number(L.actualBph.toFixed(1)) : '',
+            L.targetBph != null ? L.targetBph : '',
+            L.strikeBph != null ? L.strikeBph : '',
+            linePct != null ? Number(linePct.toFixed(0)) : ''
+          ]);
+        });
+      });
+    }
+    add(morning);
+    add(afternoon);
+    return aoa;
+  }
+
   /** Build a downloadable xlsx workbook object from a built report. */
   function buildExportWorkbook(report) {
     var X = rootXLSX();
@@ -782,12 +861,14 @@
       ['Afternoon % of target', at.pctOfTarget != null ? Number(at.pctOfTarget.toFixed(1)) : ''],
       [],
       ['Notes'],
-      ['Scoring from Boxes Packed by Worker. Intra Hour is for hourly boxes only (no SKU).'],
-      ['Every timed Boxes line is scored. Mixed = more than one SKU on the shift.']
+      ['Scoring from Boxes Packed by Worker (raw lines). Intra Hour is for hourly boxes only (no SKU).'],
+      ['Mixed = more than one Primary Sku on the shift. See Raw data + Mixed SKUs sheets.']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
     appendSheet(wb, 'Afternoon shift', shiftSheetAoA(report.afternoon, report.afternoonTotals));
     appendSheet(wb, 'SKU detail', skuDetailAoA(report.morning, report.afternoon));
+    appendSheet(wb, 'Mixed SKUs', mixedPackersAoA(report.morning, report.afternoon));
+    appendSheet(wb, 'Raw data', rawDataAoA(report.rawLines));
     appendSheet(wb, 'By hour', byHourAoA(report.byHour));
     var ex = report.exclusions || {};
     appendSheet(wb, 'Exclusions', [
