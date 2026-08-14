@@ -102,17 +102,25 @@ check(html.indexOf('script src="js/packer-shift-report.js"') === -1, 'No externa
 check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
-check(html.indexOf('SKU mix') !== -1 && html.indexOf('psr-mixed') !== -1, 'Mixed SKU mix column present');
+check(html.indexOf('SKU mix') !== -1 || html.indexOf('>Sizes<') !== -1 || html.indexOf('Sizes (Boxes)') !== -1,
+  'Sizes column / detail present');
 check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
 check(html.indexOf('id="psrExportBtn"') !== -1, 'Export report button exists');
 check(html.indexOf('buildExportWorkbook') !== -1, 'Export workbook builder inlined');
-check(html.indexOf('data-psr-view="mixed"') !== -1, 'Mixed SKUs Packer view exists');
+check(html.indexOf('data-psr-view="mixed"') === -1, 'Separate Mixed SKUs Packer tab removed');
+check(html.indexOf('class="psr-mixed"') === -1 && html.indexOf("psr-mixed\">Mixed") === -1,
+  'No Mixed badge chips in Packer UI');
 check(html.indexOf('Box Sku Sizes') !== -1, 'Raw Data Box Sku Sizes referenced');
 check(html.indexOf('parseBoxSkuSizes') !== -1, 'parseBoxSkuSizes inlined');
-check(html.indexOf('Raw Boxes lines') !== -1, 'Raw Boxes lines detail present');
+check(html.indexOf('By SKU') !== -1 && html.indexOf('renderCombinedBySku') !== -1,
+  'Combined By SKU (Boxes + Raw Data) detail present');
+check(html.indexOf('Raw idle') !== -1 && html.indexOf('Raw BPH') !== -1,
+  'By SKU shows Raw idle / Raw BPH columns');
 check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile)') !== -1 ||
   html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile)') !== -1,
   'Packer builds from Boxes + Intra + optional Raw Data');
+check(html.indexOf('sizesCell') !== -1 || html.indexOf('function sizesCell') !== -1,
+  'Combined sizes cell (Boxes + Raw Data) present');
 
 console.log('\nOps smoke — day-linked breaks (BPH ignores breaks)');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');

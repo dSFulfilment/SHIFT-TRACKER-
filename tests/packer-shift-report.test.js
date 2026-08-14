@@ -59,7 +59,8 @@ check(wb && wb.SheetNames && wb.SheetNames.indexOf('Morning shift') !== -1, 'Exp
 check(wb.SheetNames.indexOf('SKU detail') !== -1, 'Export has SKU detail sheet');
 check(wb.SheetNames.indexOf('Boxes raw lines') !== -1 || wb.SheetNames.indexOf('Raw data') !== -1,
   'Export has Boxes raw lines sheet');
-check(wb.SheetNames.indexOf('Mixed SKUs') !== -1, 'Export has Mixed SKUs sheet');
+check(wb.SheetNames.indexOf('Mixed SKUs') !== -1 || wb.SheetNames.indexOf('Sizes (Raw Data)') !== -1,
+  'Export has sizes / Mixed sheet');
 check(wb.SheetNames.indexOf('Raw Data export') !== -1 || wb.SheetNames.indexOf('Raw data') !== -1,
   'Export has Raw Data export sheet');
 check(wb.SheetNames.indexOf('By hour') !== -1, 'Export has By hour sheet');
@@ -70,8 +71,8 @@ check(buf && buf.byteLength > 1000, 'Export workbook writes bytes');
 console.log('\nPacker shift report JS — Raw Data Box Sku Sizes');
 var mixParsed = PSR.parseBoxSkuSizes('250g, 600g');
 check(mixParsed.isMixed === true && mixParsed.skus.indexOf(250) !== -1 && mixParsed.skus.indexOf(600) !== -1,
-  'parseBoxSkuSizes detects mixed 250+600');
-check(PSR.parseBoxSkuSizes('700g').isMixed === false, 'single 700g is not mixed');
+  'parseBoxSkuSizes detects multi-size 250+600');
+check(PSR.parseBoxSkuSizes('700g').isMixed === false, 'single 700g is not multi-size');
 var fs = require('fs');
 var path = require('path');
 var rawCsv = fs.readFileSync(path.join(__dirname, '../fixtures/packer-shift/Raw_Data.csv'), 'utf8');
@@ -79,12 +80,13 @@ var sheetRows = PSR.csvTextToSheetRows(rawCsv, 'Raw_Data.csv', PSR.RAW_DATA_COLS
 var loaded = PSR.loadRawDataRows(sheetRows);
 check(loaded.rows.length > 10, 'Raw Data fixture loads rows');
 var mixedSegs = loaded.rows.filter(function (r) { return r.isMixed; });
-check(mixedSegs.length >= 1, 'Raw Data fixture has mixed Box Sku Sizes');
+check(mixedSegs.length >= 1, 'Raw Data fixture has multi-size Box Sku Sizes');
 var reportRaw = PSR.buildReport(boxes, 0, intra, loaded.rows);
 check(reportRaw.rawDataMixed && reportRaw.rawDataMixed.length >= 1, 'buildReport attaches rawDataMixed');
-check((reportRaw.rawDataMixed[0].segments || []).length >= 1, 'mixed worker has segments');
+check((reportRaw.rawDataMixed[0].segments || []).length >= 1, 'multi-size worker has segments');
 var wb2 = PSR.buildExportWorkbook(reportRaw);
-check(wb2.SheetNames.indexOf('Mixed SKUs') !== -1, 'export with Raw Data has Mixed SKUs');
+check(wb2.SheetNames.indexOf('Sizes (Raw Data)') !== -1 || wb2.SheetNames.indexOf('Mixed SKUs') !== -1,
+  'export with Raw Data has sizes sheet');
 check(wb2.SheetNames.indexOf('Raw Data export') !== -1, 'export with Raw Data has Raw Data export sheet');
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

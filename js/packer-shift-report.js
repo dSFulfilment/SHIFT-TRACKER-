@@ -327,6 +327,7 @@
       if (hours == null && seconds != null) hours = seconds / 3600;
       var bph = num(d['Boxes per Hour']);
       if (bph == null && hours && hours > 0 && boxes != null) bph = boxes / hours;
+      var idlePct = num(d['Idle Time %'] != null ? d['Idle Time %'] : d['Idle Time']);
       var first = d['First Scan'];
       var shiftGuess = 'unknown_shift';
       var parsedFirst = parseReportDateHour(first);
@@ -342,6 +343,7 @@
         hours: hours,
         boxes: boxes,
         actualBph: bph,
+        idlePct: idlePct,
         boxSkuSizes: sizes.label,
         skus: sizes.skus,
         isMixed: sizes.isMixed,
@@ -1107,12 +1109,12 @@
       [],
       ['Notes'],
       ['Scoring from Boxes Packed by Worker. Intra Hour = hourly boxes (no SKU).'],
-      ['Mixed SKUs from Raw Data export (Box Sku Sizes).']
+      ['Sizes from Raw Data (Box Sku Sizes) appear on packer detail — not a separate score.']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
     appendSheet(wb, 'Afternoon shift', shiftSheetAoA(report.afternoon, report.afternoonTotals));
     appendSheet(wb, 'SKU detail', skuDetailAoA(report.morning, report.afternoon));
-    appendSheet(wb, 'Mixed SKUs', facilityRawMixedAoA(report.rawDataMixed));
+    appendSheet(wb, 'Sizes (Raw Data)', facilityRawMixedAoA(report.rawDataMixed));
     appendSheet(wb, 'Raw Data export', rawDataAllAoA(report.rawDataRows));
     appendSheet(wb, 'Boxes raw lines', rawDataAoA(report.rawLines));
     appendSheet(wb, 'By hour', byHourAoA(report.byHour));
