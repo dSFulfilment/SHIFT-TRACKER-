@@ -548,27 +548,118 @@
     return by;
   }
 
+  function hmToMinutes(hm) {
+    if (hm == null || hm === '') return null;
+    var m = String(hm).trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    var h = parseInt(m[1], 10);
+    var min = parseInt(m[2], 10);
+    if (!isFinite(h) || !isFinite(min) || h < 0 || h > 23 || min < 0 || min > 59) return null;
+    return h * 60 + min;
+  }
+
+  function minutesBetweenHm(start, end) {
+    var a = hmToMinutes(start);
+    var b = hmToMinutes(end);
+    if (a == null || b == null) return 0;
+    var d = b - a;
+    if (d < 0) d += 24 * 60;
+    return d;
+  }
+
+  /** Tea (often ~15m) + Meal (often ~30m) from a Breaks group time range. */
+  function breakMinutesForGroup(g) {
+    if (!g) return 0;
+    return minutesBetweenHm(g.teaStart, g.teaEnd) + minutesBetweenHm(g.mealStart, g.mealEnd);
+  }
+
+  /**
+   * Map workerKey|shiftKey → break minutes from Breaks planner groups.
+   * idToName: { rosterId: displayName }. Uses actual tea/meal ranges (15m / 30m typical).
+   */
+  function breakMinutesByWorkerShift(groupsByShift, idToNameByShift) {
+    var out = {};
+    ['morning_shift', 'afternoon_shift', 'morning', 'afternoon'].forEach(function (sk) {
+      var groups = groupsByShift && groupsByShift[sk];
+      if (!groups) return;
+      var shiftKey = sk.indexOf('afternoon') !== -1 ? 'afternoon_shift' : 'morning_shift';
+      var idToName = (idToNameByShift && (idToNameByShift[sk] || idToNameByShift[shiftKey])) || {};
+      (groups || []).forEach(function (g) {
+        var mins = breakMinutesForGroup(g);
+        if (!(mins > 0)) return;
+        ['packer', 'runner', 'boxmaker'].forEach(function (role) {
+          (g[role] || []).forEach(function (id) {
+            var name = idToName[id];
+            if (!name) return;
+            var key = workerKey(name) + '|' + shiftKey;
+            // One group per person expected; keep the larger allotment if duplicated.
+            if (out[key] == null || mins > out[key]) out[key] = mins;
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  /**
+   * Build break-minutes lookup from saved Breaks + Floor planner payloads.
+   * Prefer byDate[dateKey]; fall back to template morning/afternoon groups.
+   */
+  function breakMinutesLookupFromStorage(bpData, plannerData, dateKey) {
+    var groupsByShift = {};
+    var idToNameByShift = {};
+    function groupsFor(shift) {
+      var day = bpData && bpData.byDate && dateKey && bpData.byDate[dateKey];
+      if (day && day[shift] && day[shift].groups && day[shift].groups.length) return day[shift].groups;
+      if (bpData && bpData[shift] && bpData[shift].groups) return bpData[shift].groups;
+      return [];
+    }
+    function namesFor(shift) {
+      var map = {};
+      var sd = plannerData && plannerData.shiftData && plannerData.shiftData[shift];
+      ((sd && sd.staffRoster) || []).forEach(function (p) {
+        if (p && p.id && p.name) map[p.id] = p.name;
+      });
+      return map;
+    }
+    groupsByShift.morning = groupsFor('morning');
+    groupsByShift.afternoon = groupsFor('afternoon');
+    idToNameByShift.morning = namesFor('morning');
+    idToNameByShift.afternoon = namesFor('afternoon');
+    return breakMinutesByWorkerShift(groupsByShift, idToNameByShift);
+  }
+
   /**
    * Need boxes for target/strike using Intra shift length when available.
    * Share Intra hours across SKUs by Boxes packing-time weight (fairer strike bar).
-   * Falls back to packing hours when Intra has no rows for that packer+shift.
+   * Subtract scheduled tea/meal break minutes from Intra length when provided.
+   * Falls back to packing hours when Intra has no usable hours for that packer+shift.
    */
-  function needBoxesFromHours(knownLines, packHours, intraHours) {
-    var useIntra = intraHours != null && isFinite(intraHours) && intraHours > 0
-      && packHours != null && isFinite(packHours) && packHours > 0;
+  function needBoxesFromHours(knownLines, packHours, intraHours, breakMinutes) {
+    var breakH = (breakMinutes != null && isFinite(breakMinutes) && breakMinutes > 0)
+      ? (breakMinutes / 60) : 0;
+    var effectiveIntra = null;
+    if (intraHours != null && isFinite(intraHours) && intraHours > 0) {
+      effectiveIntra = Math.max(0, intraHours - breakH);
+      if (effectiveIntra <= 0) effectiveIntra = null;
+    }
+    var useIntra = effectiveIntra != null && packHours != null && isFinite(packHours) && packHours > 0;
     var targetBoxes = 0;
     var strikeBoxes = 0;
     (knownLines || []).forEach(function (L) {
       var skuHours = L.hours || 0;
-      var hoursForNeed = useIntra ? (intraHours * (skuHours / packHours)) : skuHours;
+      var hoursForNeed = useIntra ? (effectiveIntra * (skuHours / packHours)) : skuHours;
       if (L.targetBph != null) targetBoxes += hoursForNeed * L.targetBph;
       if (L.strikeBph != null) strikeBoxes += hoursForNeed * L.strikeBph;
     });
     return {
       targetBoxes: targetBoxes,
       strikeBoxes: strikeBoxes,
-      hoursBasis: useIntra ? 'intra' : 'packing',
-      hoursForNeed: useIntra ? intraHours : packHours
+      hoursBasis: useIntra ? (breakH > 0 ? 'intra_less_breaks' : 'intra') : 'packing',
+      hoursForNeed: useIntra ? effectiveIntra : packHours,
+      intraHours: intraHours != null ? intraHours : null,
+      breakMinutes: breakH > 0 ? breakMinutes : 0,
+      breakHours: breakH
     };
   }
 
@@ -615,7 +706,7 @@
     });
   }
 
-  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows) {
+  function buildReport(boxesRows, boxesDroppedBlank, intraRows, rawDataRows, execSummaryRows, breakMinutesByWorkerShiftMap) {
     var exclusions = {
       blank_worker_or_sku: boxesDroppedBlank || 0,
       missing_boxes: 0,
@@ -633,22 +724,34 @@
     });
     var execAll = execSummaryRows || [];
     var intraHoursMap = intraHoursByWorkerShift(hourLinesAll);
-    // Prefer Intra clock-hour count for shift length; else Raw Data; else Exec Summary.
+    var breakMinutesMap = breakMinutesByWorkerShiftMap || {};
+    // Prefer Intra clock-hour count (minus tea/meal) for shift length; else Raw; else Exec.
     var shiftHoursRaw = shiftHoursByWorker(rawDataAll);
     var shiftHoursExec = execHoursByWorker(execAll);
 
     function resolveShiftHours(workerKey, shiftKey) {
       var ik = workerKey + '|' + shiftKey;
       if (intraHoursMap[ik] != null && intraHoursMap[ik] > 0) {
-        return { shiftHours: intraHoursMap[ik], shiftHoursSource: 'intra' };
+        var brk = breakMinutesMap[ik] != null ? breakMinutesMap[ik] : 0;
+        var eff = Math.max(0, intraHoursMap[ik] - (brk > 0 ? brk / 60 : 0));
+        if (eff <= 0) {
+          // Breaks consumed the Intra span — fall through to Raw/Exec/packing.
+        } else {
+          return {
+            shiftHours: eff,
+            shiftHoursSource: brk > 0 ? 'intra_less_breaks' : 'intra',
+            intraHours: intraHoursMap[ik],
+            breakMinutes: brk > 0 ? brk : 0
+          };
+        }
       }
       if (shiftHoursRaw[workerKey] != null) {
-        return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data' };
+        return { shiftHours: shiftHoursRaw[workerKey], shiftHoursSource: 'raw_data', intraHours: null, breakMinutes: 0 };
       }
       if (shiftHoursExec[workerKey] != null) {
-        return { shiftHours: shiftHoursExec[workerKey], shiftHoursSource: 'executive_summary' };
+        return { shiftHours: shiftHoursExec[workerKey], shiftHoursSource: 'executive_summary', intraHours: null, breakMinutes: 0 };
       }
-      return { shiftHours: null, shiftHoursSource: null };
+      return { shiftHours: null, shiftHoursSource: null, intraHours: null, breakMinutes: 0 };
     }
 
     var raw = [];
@@ -868,6 +971,8 @@
             hours: hours,
             shiftHours: shNone.shiftHours,
             shiftHoursSource: shNone.shiftHoursSource,
+            intraHours: shNone.intraHours,
+            breakMinutes: shNone.breakMinutes || 0,
             boxes: boxes,
             targetBoxes: 0,
             pctOfTarget: null,
@@ -888,7 +993,8 @@
           return;
         }
         var intraH = intraHoursMap[key + '|' + shiftKey] || 0;
-        var need = needBoxesFromHours(known, hours, intraH);
+        var breakMins = breakMinutesMap[key + '|' + shiftKey] || 0;
+        var need = needBoxesFromHours(known, hours, intraH, breakMins);
         var targetBoxes = need.targetBoxes;
         var strikeBoxes = need.strikeBoxes;
         var boxesKnown = known.reduce(function (s, L) { return s + L.boxes; }, 0);
@@ -896,7 +1002,7 @@
         var pctStrike = strikeBoxes > 0 ? (boxesKnown / strikeBoxes * 100) : null;
         // Packer flag uses overall average vs strike/target — a weak SKU line
         // does not force Below strike if hours×strike still clears.
-        // When Intra hours exist, need boxes use Intra shift length (fairer strike).
+        // When Intra hours exist, need boxes use Intra shift length minus tea/meal.
         var flag;
         if (pct == null) flag = 'No target defined';
         else if (strikeBoxes > 0 && boxesKnown < strikeBoxes) flag = 'Below strike';
@@ -917,6 +1023,8 @@
           hours: hours,
           shiftHours: shInfo.shiftHours,
           shiftHoursSource: shInfo.shiftHoursSource,
+          intraHours: need.intraHours != null ? need.intraHours : shInfo.intraHours,
+          breakMinutes: need.breakMinutes || shInfo.breakMinutes || 0,
           boxes: boxes,
           targetBoxes: targetBoxes,
           strikeBoxes: strikeBoxes,
@@ -990,7 +1098,8 @@
       execSummaryRows: execAll,
       warnings: warnings,
       skuTargets: SKU_TARGETS,
-      facilityName: FACILITY_NAME
+      facilityName: FACILITY_NAME,
+      breakMinutesByWorkerShift: breakMinutesMap
     };
   }
 
@@ -1040,7 +1149,7 @@
     return loadExecutiveSummaryRows(sheetRows);
   }
 
-  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile) {
+  async function buildReportFromFiles(boxesFile, intraFile, rawFile, execFile, breakMinutesByWorkerShiftMap) {
     var boxesAoA = await fileToArrayBuffer(boxesFile);
     var boxesSheetRows = readWorkbookArrayBuffer(boxesAoA, boxesFile.name || 'Boxes_Packed_by_Worker.xlsx', BOXES_COLS);
     var boxesParsed = loadBoxesRows(boxesSheetRows);
@@ -1055,7 +1164,8 @@
       boxesParsed.droppedBlank,
       intraRows,
       rawParsed.rows,
-      execParsed.rows
+      execParsed.rows,
+      breakMinutesByWorkerShiftMap || {}
     );
     report.rawDataMeta = {
       droppedFacility: rawParsed.droppedFacility,
@@ -1092,7 +1202,7 @@
       ['% of target', totals && totals.pctOfTarget != null ? Number(totals.pctOfTarget.toFixed(1)) : ''],
       ['Gap (boxes)', totals && totals.boxGap != null ? Math.round(totals.boxGap) : ''],
       [],
-      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
+      ['Packer', 'SKU mix', 'Mixed?', 'Pack hours', 'Shift hours', 'Break mins', 'Boxes', 'Target boxes', '% of target', 'Gap', 'Flag', 'Why']
     ];
     (rows || []).forEach(function (r) {
       aoa.push([
@@ -1101,6 +1211,7 @@
         r.skuMix && r.skuMix.isMixed ? 'Yes' : 'No',
         r.hours != null ? Number(r.hours.toFixed(2)) : '',
         r.shiftHours != null ? Number(r.shiftHours.toFixed(2)) : '',
+        r.breakMinutes != null ? Math.round(r.breakMinutes) : '',
         r.boxes != null ? Math.round(r.boxes) : '',
         r.targetBoxes != null ? Number(r.targetBoxes.toFixed(1)) : '',
         r.pctOfTarget != null ? Number(r.pctOfTarget.toFixed(1)) : '',
@@ -1310,8 +1421,9 @@
       [],
       ['Notes'],
       ['Boxes Packed by Worker supplies SKUs + boxes. Pack h = packing time.'],
-      ['Intra Hour = boxes each clock hour; those hours are summed as shift length for strike/target need when present.'],
-      ['Need boxes = Intra shift hours × SKU targets (shared by packing-time weight). Without Intra, Pack h is used.'],
+      ['Intra Hour clock hours are summed as shift length for strike/target need when present.'],
+      ['Tea (~15m) + Meal (~30m) from Breaks planner are subtracted from that Intra length when the packer is on a break group.'],
+      ['Need boxes = (Intra − breaks) × SKU targets (shared by packing-time weight). Without Intra, Pack h is used.'],
       ['Sizes from Raw Data (Box Sku Sizes) appear on packer detail — not a separate score.']
     ]);
     appendSheet(wb, 'Morning shift', shiftSheetAoA(report.morning, report.morningTotals));
@@ -1356,6 +1468,10 @@
     csvTextToSheetRows: csvTextToSheetRows,
     needBoxesFromHours: needBoxesFromHours,
     intraHoursByWorkerShift: intraHoursByWorkerShift,
+    breakMinutesForGroup: breakMinutesForGroup,
+    minutesBetweenHm: minutesBetweenHm,
+    breakMinutesByWorkerShift: breakMinutesByWorkerShift,
+    breakMinutesLookupFromStorage: breakMinutesLookupFromStorage,
     buildReport: buildReport,
     buildReportFromFiles: buildReportFromFiles,
     buildExportWorkbook: buildExportWorkbook,

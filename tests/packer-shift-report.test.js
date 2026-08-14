@@ -244,5 +244,59 @@ check(withIntra.morning[0].flag === 'Below strike',
   'With Intra, same boxes judged on 4h strike need → below strike');
 check(Math.abs(withIntra.morning[0].strikeBoxes - 4 * 14.6) < 0.01, 'Strike need = 4 × 14.6');
 
+console.log('\nPacker shift report JS — tea/meal breaks reduce Intra shift length');
+check(PSR.minutesBetweenHm('09:45', '10:00') === 15, '15m tea range = 15 minutes');
+check(PSR.minutesBetweenHm('12:00', '12:30') === 30, '30m meal range = 30 minutes');
+check(PSR.breakMinutesForGroup({
+  teaStart: '09:45', teaEnd: '10:00', mealStart: '12:00', mealEnd: '12:30'
+}) === 45, 'tea+meal group = 45 minutes');
+check(PSR.breakMinutesForGroup({
+  teaStart: '09:45', teaEnd: '10:00', mealStart: '', mealEnd: ''
+}) === 15, 'tea-only group = 15 minutes');
+
+var breakMap = PSR.breakMinutesByWorkerShift({
+  morning: [{
+    teaStart: '09:45', teaEnd: '10:00', mealStart: '12:00', mealEnd: '12:30',
+    packer: ['p1'], runner: [], boxmaker: []
+  }]
+}, { morning: { p1: 'Fair Strike' } });
+check(breakMap['Fair Strike|morning_shift'] === 45, 'break map keys worker|shift');
+
+var needBreak = PSR.needBoxesFromHours(
+  [{ hours: 1, targetBph: 16, strikeBph: 14.6 }],
+  1,
+  4,
+  45
+);
+check(needBreak.hoursBasis === 'intra_less_breaks', 'hoursBasis notes breaks subtracted');
+check(Math.abs(needBreak.hoursForNeed - 3.25) < 0.01, '4h Intra − 45m = 3.25h');
+check(Math.abs(needBreak.strikeBoxes - 3.25 * 14.6) < 0.01, 'strike need uses net hours');
+
+var withBreaks = PSR.buildReport(shortPack, 0, longIntra, [], [], {
+  'Fair Strike|morning_shift': 45
+});
+check(withBreaks.morning[0].breakMinutes === 45, 'packer row stores break minutes');
+check(withBreaks.morning[0].hoursBasis === 'intra_less_breaks', 'report uses intra_less_breaks');
+check(Math.abs(withBreaks.morning[0].shiftHours - 3.25) < 0.01, 'Shift h is Intra minus breaks');
+check(withBreaks.morning[0].flag === 'Below strike', 'net 3.25h still below strike for 40 boxes');
+
+var lookup = PSR.breakMinutesLookupFromStorage({
+  byDate: {
+    '2026-08-13': {
+      morning: {
+        groups: [{
+          teaStart: '09:45', teaEnd: '10:00', mealStart: '12:00', mealEnd: '12:30',
+          packer: ['r1'], runner: [], boxmaker: []
+        }]
+      }
+    }
+  }
+}, {
+  shiftData: {
+    morning: { staffRoster: [{ id: 'r1', name: 'Fair Strike', role: 'packer' }] }
+  }
+}, '2026-08-13');
+check(lookup['Fair Strike|morning_shift'] === 45, 'storage lookup resolves roster name + day groups');
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

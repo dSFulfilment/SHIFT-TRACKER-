@@ -125,17 +125,20 @@ check(html.indexOf('Raw idle') !== -1 && html.indexOf('Raw BPH') !== -1,
 check(html.indexOf('loadExecutiveSummaryRows') !== -1, 'Executive Summary loader inlined');
 check(html.indexOf('Shift h') !== -1 && html.indexOf('Shift (Hours)') !== -1,
   'Shift h column / Raw Shift (Hours) documented');
-check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile, execFile)') !== -1 ||
-  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile, execFile)') !== -1,
-  'Packer builds from Boxes + Intra + optional Raw + Exec');
+check(html.indexOf('buildReportFromFiles(boxesFile, intraFile, rawFile, execFile') !== -1 ||
+  html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile, execFile') !== -1,
+  'Packer builds from Boxes + Intra + optional Raw + Exec (+ breaks)');
 check(html.indexOf('sizesCell') !== -1 || html.indexOf('function sizesCell') !== -1,
   'Combined sizes cell (Boxes + Raw Data) present');
 
-console.log('\nOps smoke — day-linked breaks (BPH ignores breaks)');
+console.log('\nOps smoke — day-linked breaks (Intra shift length uses tea/meal)');
 check(html.indexOf('window.__opsDayLink') !== -1, 'Shared ops day link exists');
 check(html.indexOf('id="bpDays"') !== -1 && html.indexOf('function renderDayChrome') !== -1, 'Breaks day chips exist');
-check(html.indexOf('getGroupsFor') !== -1, 'Breaks exposes day-keyed groups');
-check(html.indexOf('function buildBreakLookup') === -1, 'Packer BPH does not use break lookup');
+check(html.indexOf('getGroupsFor') !== -1 || html.indexOf('ensureShiftData') !== -1, 'Breaks exposes day-keyed groups');
+check(html.indexOf('function buildBreakLookup') === -1, 'No legacy break lookup for BPH');
+check(html.indexOf('breakMinutesLookupFromStorage') !== -1 || html.indexOf('breakMinutesForGroup') !== -1,
+  'Packer subtracts Breaks tea/meal from Intra shift length');
+check(html.indexOf('loadBreakMinutesForReport') !== -1, 'Packer UI loads Breaks minutes on Build report');
 
 console.log('\nOps smoke — Breaks simplified (time + people, free popup)');
 check(html.indexOf('id="bpFreeNav"') !== -1 && html.indexOf('id="bpFreeOpen"') !== -1, 'Not-on-break free nav exists');
