@@ -126,6 +126,13 @@
         '<td>' + (p.boxesShare != null ? p.boxesShare.toFixed(0) + '%' : '—') + '</td>' +
         '</tr>';
     });
+    html += '<tr class="psr-total-row">' +
+      '<td><b>Total</b></td>' +
+      '<td><b>' + mix.totalHours.toFixed(2) + '</b></td>' +
+      '<td><b>100%</b></td>' +
+      '<td><b>' + Math.round(mix.totalBoxes).toLocaleString() + '</b></td>' +
+      '<td><b>100%</b></td>' +
+      '</tr>';
     html += '</tbody></table>';
     return html;
   }
@@ -142,7 +149,7 @@
     hours.forEach(function (h) {
       html += '<tr><td>' + escapeHtml(h.hourLabel) + '</td><td>' + Math.round(h.boxes).toLocaleString() + '</td></tr>';
     });
-    html += '<tr><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
+    html += '<tr class="psr-total-row"><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
     html += '</tbody></table>';
     return html;
   }
@@ -153,6 +160,33 @@
     if (!r.skuLines || !r.skuLines.length) {
       return html + '<p class="psr-prose">No SKU lines.</p>';
     }
+
+    var totHours = 0;
+    var totBoxes = 0;
+    var knownHours = 0;
+    var knownTargetBoxes = 0;
+    var knownStrikeHours = 0;
+    var knownStrikeWeight = 0;
+    r.skuLines.forEach(function (L) {
+      if (L.verdict && String(L.verdict).indexOf('excluded') === 0) return;
+      totHours += L.hours || 0;
+      totBoxes += L.boxes || 0;
+      if (L.targetBph != null && L.hours != null) {
+        knownHours += L.hours;
+        knownTargetBoxes += L.hours * L.targetBph;
+      }
+      if (L.strikeBph != null && L.hours != null) {
+        knownStrikeHours += L.hours;
+        knownStrikeWeight += L.hours * L.strikeBph;
+      }
+    });
+    var avgBph = totHours > 0 ? totBoxes / totHours : null;
+    var avgTarget = knownHours > 0 ? knownTargetBoxes / knownHours : null;
+    var avgStrike = knownStrikeHours > 0 ? knownStrikeWeight / knownStrikeHours : null;
+    var overallPct = r.pctOfTarget != null
+      ? r.pctOfTarget
+      : (knownTargetBoxes > 0 ? (totBoxes / knownTargetBoxes * 100) : null);
+
     html += '<table class="psr-table"><thead><tr>' +
       '<th>SKU</th><th>Hours</th><th>Boxes</th><th>Actual BPH</th><th>Target</th><th>Strike</th><th>Line %</th><th>Verdict</th>' +
       '</tr></thead><tbody>';
@@ -168,8 +202,18 @@
         '<td>' + escapeHtml(L.verdict) + '</td>' +
         '</tr>';
     });
+    html += '<tr class="psr-total-row">' +
+      '<td><b>Total / avg</b></td>' +
+      '<td><b>' + totHours.toFixed(2) + '</b></td>' +
+      '<td><b>' + Math.round(totBoxes).toLocaleString() + '</b></td>' +
+      '<td><b>' + (avgBph != null ? avgBph.toFixed(1) : '—') + '</b></td>' +
+      '<td><b>' + (avgTarget != null ? avgTarget.toFixed(1) : '—') + '</b></td>' +
+      '<td><b>' + (avgStrike != null ? avgStrike.toFixed(1) : '—') + '</b></td>' +
+      '<td><b>' + (overallPct != null ? overallPct.toFixed(0) + '%' : '—') + '</b></td>' +
+      '<td><b>' + escapeHtml(r.flag || '—') + '</b></td>' +
+      '</tr>';
     html += '</tbody></table>';
-    html += '<p class="psr-prose psr-note">Intra Hour has boxes per hour but no SKU — mix and performance are from Boxes Packed for the whole shift.</p>';
+    html += '<p class="psr-prose psr-note">Total hours = all SKU hours this shift. Avg BPH = total boxes ÷ total hours. Avg target/strike are hours-weighted. Line % on the total row is overall % of target.</p>';
     return html;
   }
 

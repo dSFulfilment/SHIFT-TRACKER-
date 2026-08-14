@@ -102,6 +102,7 @@ check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI'
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
 check(html.indexOf('SKU mix') !== -1 && html.indexOf('psr-mixed') !== -1, 'Mixed SKU mix column present');
+check(html.indexOf('Total / avg') !== -1, 'SKU performance total/avg row present');
 check(html.indexOf('buildReportFromFiles(boxesFile, intraFile)') !== -1 ||
   html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0])') !== -1,
   'Packer builds from Boxes + Intra only');
