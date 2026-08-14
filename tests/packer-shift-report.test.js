@@ -23,7 +23,13 @@ var boxes = [
   { 'Report Date': '2026-08-13', Shift: 'afternoon_shift', 'Pnp Worker Name': 'Alice Smith', 'Station Name': 'A1', 'Primary Sku': 250, 'Boxes Packed': 60, 'Packing Time Seconds': 10800 },
   { 'Report Date': '2026-08-13', Shift: 'morning_shift', 'Pnp Worker Name': 'Eve Short', 'Station Name': 'E5', 'Primary Sku': 250, 'Boxes Packed': 2, 'Packing Time Seconds': 600 }
 ];
-var report = PSR.buildReport(boxes, 0, []);
+var intra = [
+  { 'Report Date Hour': '2026-08-13 08:00', 'Pnp Worker Name': 'Alice Smith', 'Boxes Packed': 30 },
+  { 'Report Date Hour': '2026-08-13 09:00', 'Pnp Worker Name': 'Alice Smith', 'Boxes Packed': 40 },
+  { 'Report Date Hour': '2026-08-13 14:00', 'Pnp Worker Name': 'Alice Smith', 'Boxes Packed': 20 },
+  { 'Report Date Hour': '2026-08-13 15:00', 'Pnp Worker Name': 'Alice Smith', 'Boxes Packed': 25 }
+];
+var report = PSR.buildReport(boxes, 0, intra);
 var morning = {};
 report.morning.forEach(function (r) { morning[r.workerDisplay] = r; });
 check(morning['Alice Smith'] && morning['Alice Smith'].flag === 'On/above target', 'Alice morning on/above');
@@ -35,6 +41,15 @@ check(report.morningTotals && report.morningTotals.packers === 3, 'Morning shift
 check(morning['Eve Short'] && morning['Eve Short'].flag === 'Below target', 'Eve short line still scored');
 check(report.afternoon.length === 1 && report.afternoon[0].workerDisplay === 'Alice Smith', 'Alice afternoon separate row');
 check(report.exclusions.under_15_min == null, 'no under-15-min exclusion');
+
+var aliceHours = morning['Alice Smith'].hourLines || [];
+check(aliceHours.length >= 2, 'Alice morning has Intra hour lines');
+check(aliceHours.every(function (h) { return h.hour < 14; }), 'Alice morning hours are before 14:00');
+check(report.byHour && report.byHour.length >= 1, 'byHour rollup present');
+var afternoon = {};
+report.afternoon.forEach(function (r) { afternoon[r.workerDisplay] = r; });
+check((afternoon['Alice Smith'].hourLines || []).some(function (h) { return h.hour >= 14; }),
+  'Alice afternoon has Intra hours from 14:00+');
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

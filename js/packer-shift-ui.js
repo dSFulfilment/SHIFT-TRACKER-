@@ -102,9 +102,29 @@
       '</div>';
   }
 
+  function renderHourDetail(r) {
+    var hours = r.hourLines || [];
+    if (!hours.length) {
+      return '<h3 class="psr-detail-h">Boxes each hour</h3>' +
+        '<p class="psr-prose">No Intra Hour rows for this packer on this shift (hours before 14:00 = Morning, 14:00+ = Afternoon).</p>';
+    }
+    var total = hours.reduce(function (s, h) { return s + h.boxes; }, 0);
+    var html = '<h3 class="psr-detail-h">Boxes each hour</h3>' +
+      '<table class="psr-table"><thead><tr><th>Hour</th><th>Boxes</th></tr></thead><tbody>';
+    hours.forEach(function (h) {
+      html += '<tr><td>' + escapeHtml(h.hourLabel) + '</td><td>' + Math.round(h.boxes).toLocaleString() + '</td></tr>';
+    });
+    html += '<tr><td><b>Total</b></td><td><b>' + Math.round(total).toLocaleString() + '</b></td></tr>';
+    html += '</tbody></table>';
+    return html;
+  }
+
   function renderSkuDetail(r) {
-    if (!r.skuLines || !r.skuLines.length) return '<p class="psr-prose">No SKU lines.</p>';
-    var html = '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
+    var html = '<h3 class="psr-detail-h">SKUs on this shift</h3>';
+    if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
+    if (!r.skuLines || !r.skuLines.length) {
+      return html + '<p class="psr-prose">No SKU lines.</p>';
+    }
     html += '<table class="psr-table"><thead><tr>' +
       '<th>SKU</th><th>Hours</th><th>Boxes</th><th>Actual BPH</th><th>Target</th><th>Strike</th><th>Line %</th><th>Verdict</th>' +
       '</tr></thead><tbody>';
@@ -121,7 +141,12 @@
         '</tr>';
     });
     html += '</tbody></table>';
+    html += '<p class="psr-prose psr-note">Intra Hour has boxes per hour but no SKU — SKUs above are from Boxes Packed for the whole shift, not split by hour.</p>';
     return html;
+  }
+
+  function renderPackerDetail(r) {
+    return '<div class="psr-packer-detail">' + renderHourDetail(r) + renderSkuDetail(r) + '</div>';
   }
 
   function renderShiftTable(rows, totals) {
@@ -129,7 +154,7 @@
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer to see which SKUs made the shift work — or didn’t.</p>';
+    html += '<p class="psr-prose">Click a packer for boxes each hour and which SKUs they were on.</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Packer</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
@@ -145,10 +170,39 @@
         '<td>' + escapeHtml(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="7">' + renderSkuDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="7">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
+    return html;
+  }
+
+  function renderByHour() {
+    var rows = report.byHour || [];
+    if (!rows.length) {
+      return '<p class="psr-prose">No Intra Hour rows loaded.</p>';
+    }
+    var html = '<p class="psr-prose">Boxes packed each clock hour. Expand a packer to see which SKUs they worked on that shift (SKU is not in the Intra export).</p>';
+    rows.forEach(function (H) {
+      html += '<div class="psr-hour-block">' +
+        '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +
+        escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' boxes · ' +
+        H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') + '</div>';
+      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>SKUs on shift</th></tr></thead><tbody>';
+      H.packers.forEach(function (p) {
+        var skuTxt = (p.skus && p.skus.length)
+          ? p.skus.map(function (s) {
+            return 'SKU ' + s.sku + ' (' + Math.round(s.boxes || 0) + ' boxes)';
+          }).join(', ')
+          : '—';
+        html += '<tr>' +
+          '<td><b>' + escapeHtml(p.workerDisplay) + '</b></td>' +
+          '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
+          '<td>' + escapeHtml(skuTxt) + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table></div>';
+    });
     return html;
   }
 
@@ -181,9 +235,9 @@
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>. Every Boxes line with packing time is scored — nothing is dropped for being short. Intra is kept for the hour reference view.</p>' +
-      '<h2>Shift amount / why</h2>' +
-      '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
+      '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>.</p>' +
+      '<h2>Hour + SKU</h2>' +
+      '<p>Click a packer (or open <b>By hour</b>) to see boxes each hour from Intra, and which SKUs they were on from Boxes. The Intra export does not include SKU, so hour and SKU cannot be joined into one cell.</p>' +
       '</div>';
   }
 
@@ -196,6 +250,7 @@
     }
     if (view === 'morning') panelEl.innerHTML = renderShiftTable(report.morning, report.morningTotals);
     else if (view === 'afternoon') panelEl.innerHTML = renderShiftTable(report.afternoon, report.afternoonTotals);
+    else if (view === 'byhour') panelEl.innerHTML = renderByHour();
     else if (view === 'exclusions') panelEl.innerHTML = renderExclusions();
     else if (view === 'targets') panelEl.innerHTML = renderTargets();
     else panelEl.innerHTML = renderHow();

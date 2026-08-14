@@ -100,6 +100,7 @@ check(html.indexOf('script src="js/xlsx.mini.min.js"') === -1, 'No external xlsx
 check(html.indexOf('script src="js/packer-shift-report.js"') === -1, 'No external packer-shift-report script src');
 check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
+check(html.indexOf('data-psr-view="byhour"') !== -1, 'By hour Packer view exists');
 check(html.indexOf('buildReportFromFiles(boxesFile, intraFile)') !== -1 ||
   html.indexOf('buildReportFromFiles(boxesIn.files[0], intraIn.files[0])') !== -1,
   'Packer builds from Boxes + Intra only');
