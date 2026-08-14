@@ -1,17 +1,16 @@
 # Packer shift report (Dandenong South)
 
-Builds a Morning / Afternoon performance-vs-target workbook from the three
-shift xlsx exports. Source files are never modified.
+Builds a Morning / Afternoon performance-vs-target workbook from two shift
+xlsx exports. Source files are never modified.
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
 
-# Put the three exports in a folder (usual names work):
+# Put the two exports in a folder (usual names work):
 #   Boxes_Packed_by_Worker.xlsx
 #   Intra_Hour_Floor_Performance.xlsx
-#   Overall_Summary_by_Packer_and_Date.xlsx
 
 python -m packer_shift_report --dir ./exports --out packer_shift_report.xlsx
 ```
@@ -22,7 +21,6 @@ Or pass paths explicitly:
 python -m packer_shift_report \
   --boxes Boxes_Packed_by_Worker.xlsx \
   --intra Intra_Hour_Floor_Performance.xlsx \
-  --summary Overall_Summary_by_Packer_and_Date.xlsx \
   --out report.xlsx
 ```
 
@@ -42,8 +40,7 @@ Morning / Afternoon metrics use `SUMIFS` into Raw data. Target BPH uses `INDEX`/
 
 ## Rules (summary)
 
-- Facility filter: summary rows with Facility Name = **Dandenong South** only
-- Do **not** use summary blended Boxes per Hour for scoring
+- Inputs: **Boxes Packed by Worker** (scoring) + **Intra Hour** (reference only)
 - Hours on SKU = Packing Time Seconds / 3600; drop lines &lt; 0.25 h
 - % of target = boxes ÷ Σ(hours × SKU target) on included known-SKU lines
 - Flags: Below target / Dipped below strike / On/above target
@@ -51,7 +48,7 @@ Morning / Afternoon metrics use `SUMIFS` into Raw data. Target BPH uses `INDEX`/
 
 ## Packer tab
 
-In the app, Packer accepts the same three xlsx files and shows Morning /
+In the app, Packer accepts the same two xlsx files and shows Morning /
 Afternoon tables. For the formula workbook, use this CLI.
 
 ## Tests

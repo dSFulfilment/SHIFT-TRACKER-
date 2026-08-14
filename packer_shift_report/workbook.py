@@ -10,7 +10,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .compute import PackerShiftResult, ReportData
-from .constants import FACILITY_NAME, MIN_HOURS_ON_SKU, SKU_TARGETS
+from .constants import MIN_HOURS_ON_SKU, SKU_TARGETS
 
 # Sheet titles (used in formulas — keep stable)
 SHEET_HOW = "How this works"
@@ -62,15 +62,14 @@ def _write_how(ws, data: ReportData):
         "What this workbook tells you",
         "Each shift, packers work one or more SKUs. Every SKU has its own target boxes-per-hour (BPH)",
         "and a lower “strike” line. This report scores each packer for Morning and Afternoon separately,",
-        "using only Dandenong South workers, so you can see who hit target, who dipped under the strike",
-        "line on at least one SKU, and who finished the shift under target overall.",
+        "so you can see who hit target, who dipped under the strike line on at least one SKU, and who",
+        "finished the shift under target overall.",
         "",
         "Where the numbers come from",
         "1. Boxes Packed by Worker — one row per packer + SKU + shift (this is the performance source).",
-        "2. Overall Summary by Packer and Date — used ONLY to keep Facility Name = Dandenong South.",
-        "   Its blended Boxes per Hour is NOT used for scoring (it mixes SKUs with different targets).",
-        "3. Intra Hour Floor Performance — stored on “Intra hour (reference)” for a later hour-by-hour",
+        "2. Intra Hour Floor Performance — stored on “Intra hour (reference)” for a later hour-by-hour",
         "   slowdown view. It does not affect the target comparison.",
+        "Exports are assumed to be the Dandenong South shift files you selected.",
         "",
         "How each packer+SKU line is measured",
         f"• Hours on SKU = Packing Time Seconds ÷ 3600",
@@ -134,8 +133,7 @@ def _write_exclusions(ws, data: ReportData):
     for reason, count in data.exclusions.as_rows():
         ws.append([reason, count])
     ws.append([])
-    ws.append(["Facility filter", FACILITY_NAME])
-    ws.append(["Workers in facility summary", len(data.facility_workers)])
+    ws.append(["Workers in Boxes export", len(data.facility_workers)])
     _style_header(ws, 2)
     _autosize(ws)
 
@@ -150,7 +148,7 @@ def _write_intra(ws, data: ReportData):
         ]
     )
     if not data.intra_rows:
-        ws.append(["", "", "", "No intra-hour file loaded — optional for core scoring."])
+        ws.append(["", "", "", "No intra-hour rows loaded."])
     else:
         for r in data.intra_rows:
             ws.append(

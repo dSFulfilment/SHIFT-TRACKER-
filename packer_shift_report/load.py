@@ -1,4 +1,4 @@
-"""Load the three shift exports. Never modifies source files."""
+"""Load Boxes Packed + Intra Hour exports. Never modifies source files."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from openpyxl import load_workbook
 from .constants import (
     BOXES_REQUIRED_COLUMNS,
     INTRA_REQUIRED_COLUMNS,
-    SUMMARY_REQUIRED_COLUMNS,
 )
 from .validate import canonicalize_header, find_header_row_index, validate_headers
 
@@ -107,20 +106,3 @@ def load_intra_hour(path: Path, file_label: str = "Intra_Hour_Floor_Performance.
             continue
         kept.append(d)
     return kept, dropped
-
-
-def load_facility_summary(path: Path, file_label: str = "Overall_Summary_by_Packer_and_Date.xlsx"):
-    """
-    ONLY used to filter Facility Name == Dandenong South.
-
-    Do NOT use its blended Boxes per Hour for target comparisons — it mixes every
-    SKU a packer touched into one number, and targets vary a lot by SKU.
-    """
-    headers, raw_rows = _sheet_rows(path, SUMMARY_REQUIRED_COLUMNS)
-    kept = []
-    for row in raw_rows:
-        d = _row_dict(headers, row)
-        if _is_blank(d.get("Pnp Worker Name")):
-            continue
-        kept.append(d)
-    return kept
