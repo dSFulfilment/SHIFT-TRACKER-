@@ -2,10 +2,11 @@
 """
 strike_check.py — fair strike-candidate report from Boxes Packed + Raw Data.
 
-Single-SKU and mixed-SKU data are calculated and shown separately — never blended.
+Single-SKU and mixed-size data are calculated and shown separately — never blended.
 Strike pass/fail comes only from Boxes_Packed_by_Worker (one SKU per row).
-Raw_Data provides supporting context: single-SKU sessions attach to a SKU;
-mixed-SKU sessions are listed separately and never used to judge any one SKU.
+Raw_Data single-SKU sessions attach as condensed context; mixed (2+ sizes) is
+rolled up one row per worker and never used to judge any one SKU.
+Default screen view: strike candidates only (pass --all-rows / --mixed-all to expand).
 """
 
 from __future__ import annotations
@@ -385,6 +386,7 @@ class StrikeRow:
     status: str
     reason: str = ""
     single_sku_context: str = ""
+    mixed_note: str = ""  # condensed: "yes · 250·600 (3 seg)" or ""
 
 
 def evaluate_boxes(
@@ -542,68 +544,131 @@ def evaluate_boxes(
 # Steps 3–4 — attach Raw_Data context (never blend into strike number)
 # ---------------------------------------------------------------------------
 
-def attach_single_sku_context(
+def _idle_pct_display(idle: Optional[float]) -> Optional[float]:
+    """Return idle as 0–100 percent, or None."""
+    if idle is None:
+        return None
+    return idle * 100.0 if idle <= 1.5 else idle
+
+
+def attach_raw_context(
     strike_rows: List[StrikeRow],
     sessions: List[RawSession],
 ) -> None:
-    """For below_strike_line candidates, attach matching single-SKU sessions."""
+    """
+    Attach condensed Raw_Data context to strike rows.
+    Single-SKU → trustworthy SKU context for below_strike candidates.
+    Mixed (2+ sizes) → short note only — never used to judge a SKU.
+    """
     single = [s for s in sessions if s.kind == "single_sku"]
+    mixed = [s for s in sessions if s.kind == "mixed_sku"]
+
     by_worker_sku: Dict[Tuple[str, int], List[RawSession]] = {}
     for s in single:
         if not s.skus:
             continue
-        key = (s.worker_key, s.skus[0])
-        by_worker_sku.setdefault(key, []).append(s)
+        by_worker_sku.setdefault((s.worker_key, s.skus[0]), []).append(s)
+
+    mixed_by_worker: Dict[str, List[RawSession]] = {}
+    for s in mixed:
+        mixed_by_worker.setdefault(s.worker_key, []).append(s)
 
     for row in strike_rows:
+        msegs = mixed_by_worker.get(row.worker_key, [])
+        if msegs:
+            sku_set = set()
+            for s in msegs:
+                sku_set.update(s.skus)
+            sku_txt = "·".join(str(x) for x in sorted(sku_set))
+            row.mixed_note = f"yes · {sku_txt} ({len(msegs)} seg)"
+        else:
+            row.mixed_note = ""
+
         if row.status != "below_strike_line" or row.sku is None:
             continue
+
         matches = by_worker_sku.get((row.worker_key, row.sku), [])
         if not matches:
-            row.single_sku_context = "(no matching single-SKU Raw_Data session)"
+            row.single_sku_context = "—"
             continue
-        bits = []
-        for s in matches:
-            if s.idle_pct is not None:
-                # Export is often a 0–1 fraction; accept already-% values too
-                idle_val = s.idle_pct * 100 if s.idle_pct <= 1.5 else s.idle_pct
-                idle = f"{idle_val:.1f}%"
-            else:
-                idle = "?"
-            bph = f"{s.boxes_per_hour:.1f}" if s.boxes_per_hour is not None else "?"
-            bits.append(f"idle {idle}, session BPH {bph}")
-        row.single_sku_context = " | ".join(bits)
+        idles = [x for x in (_idle_pct_display(s.idle_pct) for s in matches) if x is not None]
+        bphs = [s.boxes_per_hour for s in matches if s.boxes_per_hour is not None]
+        idle_s = f"idle {sum(idles)/len(idles):.0f}%" if idles else "idle ?"
+        bph_s = f"BPH {sum(bphs)/len(bphs):.1f}" if bphs else "BPH ?"
+        row.single_sku_context = f"{len(matches)}× single · {idle_s} · {bph_s}"
 
 
-def mixed_sessions_table(sessions: List[RawSession]) -> List[Dict[str, Any]]:
-    """Mixed sessions — context only, not used to judge any single SKU."""
-    rows = []
+# Back-compat alias used by older tests
+def attach_single_sku_context(strike_rows: List[StrikeRow], sessions: List[RawSession]) -> None:
+    attach_raw_context(strike_rows, sessions)
+
+
+def mixed_rollup_by_worker(
+    sessions: List[RawSession],
+    only_worker_keys: Optional[set] = None,
+) -> List[Dict[str, Any]]:
+    """
+    One row per worker who had mixed-size sessions (2+ SKUs in Box Sku Sizes).
+    Condensed — not one row per Raw_Data segment.
+    """
+    by: Dict[str, Dict[str, Any]] = {}
     for s in sessions:
         if s.kind != "mixed_sku":
             continue
-        if s.idle_pct is not None:
-            idle_val = s.idle_pct * 100 if s.idle_pct <= 1.5 else s.idle_pct
-            idle_s = f"{idle_val:.1f}"
-        else:
-            idle_s = ""
+        if only_worker_keys is not None and s.worker_key not in only_worker_keys:
+            continue
+        if s.worker_key not in by:
+            by[s.worker_key] = {
+                "worker": s.worker_display,
+                "worker_key": s.worker_key,
+                "sku_set": set(),
+                "segments": 0,
+                "boxes": 0.0,
+                "idle_vals": [],
+                "max_seconds": 0.0,
+            }
+        w = by[s.worker_key]
+        w["segments"] += 1
+        w["sku_set"].update(s.skus)
+        if s.total_boxes is not None:
+            w["boxes"] += s.total_boxes
+        idle = _idle_pct_display(s.idle_pct)
+        if idle is not None:
+            w["idle_vals"].append(idle)
         if s.session_seconds is not None:
-            mins = s.session_seconds / 60.0
-            length = f"{mins:.0f} min" if mins < 180 else f"{mins / 60.0:.1f} h"
+            w["max_seconds"] = max(w["max_seconds"], s.session_seconds)
+
+    rows = []
+    for w in by.values():
+        skus = sorted(w["sku_set"])
+        if w["max_seconds"] > 0:
+            mins = w["max_seconds"] / 60.0
+            length = f"{mins:.0f}m" if mins < 180 else f"{mins/60:.1f}h"
         else:
             length = "?"
+        avg_idle = (
+            f"{sum(w['idle_vals'])/len(w['idle_vals']):.0f}%"
+            if w["idle_vals"]
+            else "?"
+        )
         rows.append(
             {
-                "worker": s.worker_display,
-                "skus": ", ".join(str(x) for x in s.skus) + "g" if s.skus else s.box_sku_sizes_raw,
-                "skus_list": s.skus,
-                "session_length": length,
-                "idle_pct": idle_s,
-                "boxes": s.total_boxes,
-                "raw_sizes": s.box_sku_sizes_raw,
+                "worker": w["worker"],
+                "skus": " · ".join(f"{s}g" for s in skus),
+                "sku_count": len(skus),
+                "segments": w["segments"],
+                "boxes": w["boxes"],
+                "idle_pct": avg_idle,
+                "span": length,
             }
         )
-    rows.sort(key=lambda r: (_norm_name(r["worker"]), r["skus"]))
+    rows.sort(key=lambda r: (-r["sku_count"], _norm_name(r["worker"])))
     return rows
+
+
+def mixed_sessions_table(sessions: List[RawSession]) -> List[Dict[str, Any]]:
+    """Alias — condensed rollup (one row per mixed worker)."""
+    return mixed_rollup_by_worker(sessions)
 
 
 # ---------------------------------------------------------------------------
@@ -651,6 +716,7 @@ def write_csv_out(path: Path, strike_rows: List[StrikeRow]) -> None:
                 "Gap",
                 "Status",
                 "Single-SKU context",
+                "Mixed sizes (context)",
                 "Reason",
             ]
         )
@@ -665,6 +731,7 @@ def write_csv_out(path: Path, strike_rows: List[StrikeRow]) -> None:
                     "" if r.gap is None else round(r.gap, 2),
                     r.status,
                     r.single_sku_context,
+                    r.mixed_note,
                     r.reason,
                 ]
             )
@@ -674,6 +741,7 @@ def summarize(
     strike_rows: List[StrikeRow],
     raw_counts: Optional[Dict[str, int]],
     raw_available: bool,
+    mixed_workers: int = 0,
 ) -> None:
     counts = {
         "ok": 0,
@@ -698,7 +766,8 @@ def summarize(
     if raw_available and raw_counts is not None:
         print(f"  Raw_Data sessions:")
         print(f"    single_sku:             {raw_counts.get('single_sku', 0)}")
-        print(f"    mixed_sku:              {raw_counts.get('mixed_sku', 0)}")
+        print(f"    mixed_sku (multi-size): {raw_counts.get('mixed_sku', 0)}")
+        print(f"    mixed workers (rolled): {mixed_workers}")
         print(f"    empty Box Sku Sizes:    {raw_counts.get('empty', 0)}")
     else:
         print("  Raw_Data: unavailable this run — mixed/single-SKU context not attached.")
@@ -709,7 +778,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="strike_check",
         description=(
             "Fair strike-candidate report. Boxes Packed = pass/fail. "
-            "Raw_Data single-SKU = supporting context; mixed-SKU listed separately, never blended."
+            "Raw_Data single-SKU = supporting context; mixed multi-size sessions "
+            "rolled up per worker — never blended into a SKU score."
         ),
     )
     p.add_argument(
@@ -730,12 +800,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--csv-out",
         default=None,
-        help="Write strike-check table (table 1) to this CSV path",
+        help="Write full strike-check table to this CSV path",
     )
     p.add_argument(
-        "--below-only",
+        "--all-rows",
         action="store_true",
-        help="Print only below_strike_line (+ their context) in table 1",
+        help="Print every Boxes row (default: below_strike + insufficient only)",
+    )
+    p.add_argument(
+        "--mixed-all",
+        action="store_true",
+        help="Show mixed rollup for all workers (default: only workers on the strike list)",
     )
     return p
 
@@ -752,7 +827,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     strike_table = load_strike_table(strike_path)
 
-    # --- Boxes (authoritative strike) — always run ---
     try:
         boxes_rows = load_boxes_rows(boxes_path)
     except SystemExit:
@@ -763,7 +837,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     strike_rows = evaluate_boxes(boxes_rows, strike_table)
 
-    # --- Raw_Data (context only) — failure must not kill strike check ---
     sessions: List[RawSession] = []
     raw_counts: Optional[Dict[str, int]] = None
     raw_available = False
@@ -779,85 +852,102 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             raw_error = f"Raw_Data failed to load ({e})"
 
     if raw_available:
-        attach_single_sku_context(strike_rows, sessions)
-        mixed_rows = mixed_sessions_table(sessions)
+        attach_raw_context(strike_rows, sessions)
     else:
-        mixed_rows = []
         print(
             f"NOTE: {raw_error}. Printing Boxes strike check only; "
             f"mixed/single-SKU context is unavailable this run.",
             file=sys.stderr,
         )
 
-    # --- Table 1: Strike check ---
-    table1 = strike_rows
-    if args.below_only:
-        table1 = [r for r in strike_rows if r.status == "below_strike_line"]
+    focus_statuses = {"below_strike_line", "insufficient_data"}
+    if args.all_rows:
+        table1 = strike_rows
+        title1 = "STRIKE CHECK — all Boxes rows (single SKU per row)"
+    else:
+        table1 = [r for r in strike_rows if r.status in focus_statuses]
+        title1 = "STRIKE CANDIDATES — below strike / insufficient data (Boxes only)"
 
     print_table(
         [
             "Shift",
             "Worker",
             "SKU",
-            "Actual BPH",
+            "BPH",
             "Strike",
             "Gap",
             "Status",
-            "Single-SKU context",
+            "Single context",
+            "Mixed sizes?",
         ],
         [
             [
-                r.shift,
+                r.shift.replace("_shift", ""),
                 r.worker_display,
                 r.sku if r.sku is not None else "",
                 round(r.actual_bph, 1) if r.actual_bph is not None else "",
                 r.strike_line if r.strike_line is not None else "",
                 round(r.gap, 1) if r.gap is not None else "",
-                r.status + (f" ({r.reason})" if r.reason and r.status in ("bad_row", "insufficient_data", "unknown_sku") else ""),
-                r.single_sku_context,
+                r.status.replace("below_strike_line", "BELOW").replace(
+                    "insufficient_data", "short"
+                ),
+                r.single_sku_context or "—",
+                r.mixed_note or "no",
             ]
             for r in table1
         ],
-        "STRIKE CHECK (from Boxes_Packed_by_Worker — single SKU per row)",
+        title1,
     )
 
-    # --- Table 2: Mixed sessions ---
     print()
     print("=" * 78)
-    print("MIXED-SKU SESSIONS — context only, not used to judge any single SKU")
+    print("MIXED SIZES — one row per worker (2+ sizes in Box Sku Sizes)")
+    print("Context only — not used to judge any single SKU")
     print("=" * 78)
     if not raw_available:
         print(f"(unavailable — {raw_error})")
-    elif not mixed_rows:
-        print("(none)")
+        mixed_workers_n = 0
     else:
-        headers = ["Worker", "SKUs in session", "Session length", "Idle Time %", "Boxes"]
-        str_rows = [
-            [
-                m["worker"],
-                m["raw_sizes"] or m["skus"],
-                m["session_length"],
-                m["idle_pct"],
-                _fmt(m["boxes"], 0) if m["boxes"] is not None else "",
-            ]
-            for m in mixed_rows
-        ]
-        widths = [len(h) for h in headers]
-        for r in str_rows:
-            for i, c in enumerate(r):
-                widths[i] = max(widths[i], len(str(c)))
-        fmt = "  ".join(f"{{:<{w}}}" for w in widths)
-        print(fmt.format(*headers))
-        print(fmt.format(*("-" * w for w in widths)))
-        for r in str_rows:
-            print(fmt.format(*[str(c) for c in r]))
+        if args.mixed_all:
+            only_keys = None
+            print("(all workers with mixed-size sessions)")
+        else:
+            only_keys = {r.worker_key for r in table1 if r.worker_key}
+            print("(workers on the strike list above only — pass --mixed-all for everyone)")
+        mixed_rows = mixed_rollup_by_worker(sessions, only_worker_keys=only_keys)
+        mixed_workers_n = len(mixed_rollup_by_worker(sessions))
 
-    summarize(strike_rows, raw_counts, raw_available)
+        if not mixed_rows:
+            print("(none for this view)")
+        else:
+            headers = ["Worker", "Sizes touched", "Segs", "Boxes", "Avg idle", "Span"]
+            str_rows = [
+                [
+                    m["worker"],
+                    m["skus"],
+                    str(m["segments"]),
+                    _fmt(m["boxes"], 0),
+                    m["idle_pct"],
+                    m["span"],
+                ]
+                for m in mixed_rows
+            ]
+            widths = [len(h) for h in headers]
+            for r in str_rows:
+                for i, c in enumerate(r):
+                    widths[i] = max(widths[i], len(str(c)))
+            fmt = "  ".join(f"{{:<{w}}}" for w in widths)
+            print(fmt.format(*headers))
+            print(fmt.format(*("-" * w for w in widths)))
+            for r in str_rows:
+                print(fmt.format(*[str(c) for c in r]))
+
+    summarize(strike_rows, raw_counts, raw_available, mixed_workers=mixed_workers_n)
 
     if args.csv_out:
         out = Path(args.csv_out).expanduser().resolve()
-        write_csv_out(out, strike_rows if not args.below_only else table1)
-        print(f"\nWrote strike-check CSV → {out}")
+        write_csv_out(out, strike_rows)
+        print(f"\nWrote full strike-check CSV → {out}")
 
     return 0
 

@@ -102,11 +102,44 @@ class FixtureIntegrationTests(unittest.TestCase):
         strike = sc.evaluate_boxes(boxes, sc.DEFAULT_STRIKE_TABLE)
         sc.attach_single_sku_context(strike, sessions)
         mixed = sc.mixed_sessions_table(sessions)
-        self.assertEqual(len(mixed), counts["mixed_sku"])
+        # Condensed: one row per mixed worker, not per Raw_Data segment
+        self.assertEqual(len(mixed), len({s.worker_key for s in sessions if s.kind == "mixed_sku"}))
+        self.assertLess(len(mixed), counts["mixed_sku"])
 
         # Mixed never mutates strike status
         statuses = {r.status for r in strike}
         self.assertTrue(statuses)
+
+    def test_mixed_rollup_fields(self):
+        sessions, counts = sc.load_raw_data(FIXTURES / "Raw_Data.csv")
+        rolled = sc.mixed_rollup_by_worker(sessions)
+        self.assertGreater(len(rolled), 0)
+        self.assertIn("skus", rolled[0])
+        self.assertIn(" · ", rolled[0]["skus"])  # e.g. 250g · 600g
+        # Filter to empty set → no rows
+        self.assertEqual(sc.mixed_rollup_by_worker(sessions, only_worker_keys=set()), [])
+
+    def test_default_cli_is_candidates_only(self):
+        import io
+        from contextlib import redirect_stdout, redirect_stderr
+        buf = io.StringIO()
+        err = io.StringIO()
+        with redirect_stdout(buf), redirect_stderr(err):
+            rc = sc.main(
+                [
+                    "--boxes",
+                    str(FIXTURES / "Boxes_Packed_by_Worker.xlsx"),
+                    "--raw",
+                    str(FIXTURES / "Raw_Data.csv"),
+                ]
+            )
+        self.assertEqual(rc, 0)
+        out = buf.getvalue()
+        self.assertIn("STRIKE CANDIDATES", out)
+        self.assertIn("MIXED SIZES", out)
+        self.assertIn("one row per worker", out)
+        # Should not dump dozens of mixed segment lines
+        self.assertNotIn("SKUs in session", out)
 
     def test_raw_failure_still_prints_strike(self):
         boxes = sc.load_boxes_rows(FIXTURES / "Boxes_Packed_by_Worker.xlsx")
@@ -116,7 +149,7 @@ class FixtureIntegrationTests(unittest.TestCase):
         sc.attach_single_sku_context(strike, [])
         for r in strike:
             if r.status == "below_strike_line":
-                self.assertIn("no matching", r.single_sku_context)
+                self.assertTrue(r.single_sku_context)  # "—" or condensed line
 
     def test_strike_table_override(self):
         with tempfile.TemporaryDirectory() as td:
