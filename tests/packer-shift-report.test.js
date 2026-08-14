@@ -50,6 +50,9 @@ var afternoon = {};
 report.afternoon.forEach(function (r) { afternoon[r.workerDisplay] = r; });
 check((afternoon['Alice Smith'].hourLines || []).some(function (h) { return h.hour >= 14; }),
   'Alice afternoon has Intra hours from 14:00+');
+check(morning['Alice Smith'].skuMix && morning['Alice Smith'].skuMix.isMixed === true, 'Alice morning is mixed SKUs');
+check(morning['Alice Smith'].skuMix.parts.length === 2, 'Alice morning mix has 2 SKUs');
+check(morning['Bob Jones'].skuMix && morning['Bob Jones'].skuMix.isMixed === false, 'Bob morning is single SKU');
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

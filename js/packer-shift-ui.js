@@ -102,6 +102,34 @@
       '</div>';
   }
 
+  function renderSkuMixDetail(r) {
+    var mix = r.skuMix;
+    if (!mix || !mix.parts || !mix.parts.length) {
+      return '<h3 class="psr-detail-h">SKU mix</h3><p class="psr-prose">No SKUs.</p>';
+    }
+    var html = '<h3 class="psr-detail-h">SKU mix</h3>';
+    if (mix.isMixed) {
+      html += '<p class="psr-why"><b>Mixed SKUs</b> — ' + escapeHtml(mix.label) +
+        ' (' + mix.count + ' SKUs this shift).</p>';
+    } else {
+      html += '<p class="psr-why">Single SKU — ' + escapeHtml(mix.label) + '.</p>';
+    }
+    html += '<table class="psr-table"><thead><tr>' +
+      '<th>SKU</th><th>Hours</th><th>% of hours</th><th>Boxes</th><th>% of boxes</th>' +
+      '</tr></thead><tbody>';
+    mix.parts.forEach(function (p) {
+      html += '<tr' + (mix.isMixed ? ' class="psr-mix-row"' : '') + '>' +
+        '<td>' + escapeHtml(p.sku) + (p.unknownSku ? ' <em>(no target)</em>' : '') + '</td>' +
+        '<td>' + p.hours.toFixed(2) + '</td>' +
+        '<td>' + (p.hoursShare != null ? p.hoursShare.toFixed(0) + '%' : '—') + '</td>' +
+        '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
+        '<td>' + (p.boxesShare != null ? p.boxesShare.toFixed(0) + '%' : '—') + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
   function renderHourDetail(r) {
     var hours = r.hourLines || [];
     if (!hours.length) {
@@ -120,7 +148,7 @@
   }
 
   function renderSkuDetail(r) {
-    var html = '<h3 class="psr-detail-h">SKUs on this shift</h3>';
+    var html = '<h3 class="psr-detail-h">SKU performance</h3>';
     if (r.why) html += '<p class="psr-why">' + escapeHtml(r.why || '') + '</p>';
     if (!r.skuLines || !r.skuLines.length) {
       return html + '<p class="psr-prose">No SKU lines.</p>';
@@ -141,27 +169,43 @@
         '</tr>';
     });
     html += '</tbody></table>';
-    html += '<p class="psr-prose psr-note">Intra Hour has boxes per hour but no SKU — SKUs above are from Boxes Packed for the whole shift, not split by hour.</p>';
+    html += '<p class="psr-prose psr-note">Intra Hour has boxes per hour but no SKU — mix and performance are from Boxes Packed for the whole shift.</p>';
     return html;
   }
 
   function renderPackerDetail(r) {
-    return '<div class="psr-packer-detail">' + renderHourDetail(r) + renderSkuDetail(r) + '</div>';
+    return '<div class="psr-packer-detail">' +
+      renderSkuMixDetail(r) +
+      renderHourDetail(r) +
+      renderSkuDetail(r) +
+      '</div>';
+  }
+
+  function mixCell(r) {
+    var mix = r.skuMix;
+    if (!mix) return '—';
+    if (mix.isMixed) {
+      return '<span class="psr-mixed">Mixed</span> ' + escapeHtml(mix.label);
+    }
+    return escapeHtml(mix.label);
   }
 
   function renderShiftTable(rows, totals) {
     if (!rows.length) {
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
+    var mixedN = rows.filter(function (r) { return r.skuMix && r.skuMix.isMixed; }).length;
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer for boxes each hour and which SKUs they were on.</p>';
+    html += '<p class="psr-prose">Click a packer for SKU mix, boxes each hour, and SKU performance. ' +
+      '<b>' + mixedN + '</b> packer' + (mixedN === 1 ? '' : 's') + ' on mixed SKUs this shift.</p>';
     html += '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Packer</th><th>SKU mix</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
       html += '<tr class="' + flagClass(r.flag) + ' psr-row" data-packer="' + escapeHtml(r.workerDisplay) + '" data-idx="' + idx + '" style="cursor:pointer">' +
         '<td><b>' + escapeHtml(r.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
+        '<td>' + mixCell(r) + '</td>' +
         '<td>' + (r.hours != null ? r.hours.toFixed(2) : '—') + '</td>' +
         '<td>' + (r.boxes != null ? Math.round(r.boxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
@@ -170,7 +214,7 @@
         '<td>' + escapeHtml(r.flag) + '</td>' +
         '</tr>';
       if (open) {
-        html += '<tr class="psr-detail"><td colspan="7">' + renderPackerDetail(r) + '</td></tr>';
+        html += '<tr class="psr-detail"><td colspan="8">' + renderPackerDetail(r) + '</td></tr>';
       }
     });
     html += '</tbody></table>';
@@ -182,23 +226,26 @@
     if (!rows.length) {
       return '<p class="psr-prose">No Intra Hour rows loaded.</p>';
     }
-    var html = '<p class="psr-prose">Boxes packed each clock hour. Expand a packer to see which SKUs they worked on that shift (SKU is not in the Intra export).</p>';
+    var html = '<p class="psr-prose">Boxes packed each clock hour. SKU mix is for the whole shift (Intra has no SKU column).</p>';
     rows.forEach(function (H) {
       html += '<div class="psr-hour-block">' +
         '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +
         escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' boxes · ' +
         H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') + '</div>';
-      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>SKUs on shift</th></tr></thead><tbody>';
+      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>SKU mix (shift)</th></tr></thead><tbody>';
       H.packers.forEach(function (p) {
-        var skuTxt = (p.skus && p.skus.length)
-          ? p.skus.map(function (s) {
-            return 'SKU ' + s.sku + ' (' + Math.round(s.boxes || 0) + ' boxes)';
-          }).join(', ')
-          : '—';
+        var info = p.skuInfo || {};
+        var mix = info.mix;
+        var mixTxt = '—';
+        if (mix) {
+          mixTxt = mix.isMixed
+            ? ('Mixed: ' + mix.label)
+            : ('SKU ' + mix.label);
+        }
         html += '<tr>' +
           '<td><b>' + escapeHtml(p.workerDisplay) + '</b></td>' +
           '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
-          '<td>' + escapeHtml(skuTxt) + '</td>' +
+          '<td>' + escapeHtml(mixTxt) + '</td>' +
           '</tr>';
       });
       html += '</tbody></table></div>';
@@ -237,7 +284,7 @@
       '<h2>Files</h2>' +
       '<p>Pick <b>Boxes Packed by Worker</b> and <b>Intra Hour Floor Performance</b>, then <b>Build report</b>.</p>' +
       '<h2>Hour + SKU</h2>' +
-      '<p>Click a packer (or open <b>By hour</b>) to see boxes each hour from Intra, and which SKUs they were on from Boxes. The Intra export does not include SKU, so hour and SKU cannot be joined into one cell.</p>' +
+      '<p>Click a packer (or open <b>By hour</b>) to see boxes each hour from Intra, SKU mix and performance from Boxes. The Intra export does not include SKU, so hour and SKU cannot be joined into one cell. Packers on more than one SKU are marked <b>Mixed</b>.</p>' +
       '</div>';
   }
 

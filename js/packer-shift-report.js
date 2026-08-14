@@ -258,9 +258,12 @@
     var skuByWorkerShift = {};
     function index(rows) {
       (rows || []).forEach(function (r) {
-        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = (r.skuLines || []).map(function (L) {
-          return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
-        });
+        skuByWorkerShift[r.workerKey + '|' + r.shiftKey] = {
+          mix: r.skuMix || null,
+          skus: (r.skuLines || []).map(function (L) {
+            return { sku: L.sku, boxes: L.boxes, hours: L.hours, verdict: L.verdict };
+          })
+        };
       });
     }
     index(morning);
@@ -284,7 +287,7 @@
         workerDisplay: h.workerDisplay,
         workerKey: h.workerKey,
         boxes: h.boxes,
-        skus: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || []
+        skuInfo: skuByWorkerShift[h.workerKey + '|' + h.shiftKey] || { mix: null, skus: [] }
       });
     });
     return Object.keys(byHour).map(function (k) { return byHour[k]; }).sort(function (a, b) {
@@ -429,6 +432,46 @@
       return bits.join(' ');
     }
 
+    function buildSkuMix(includedLines) {
+      var bySku = {};
+      (includedLines || []).forEach(function (L) {
+        var skuKey = String(L.sku);
+        if (!bySku[skuKey]) {
+          bySku[skuKey] = { sku: L.sku, hours: 0, boxes: 0, unknownSku: !!L.unknownSku };
+        }
+        bySku[skuKey].hours += L.hours || 0;
+        bySku[skuKey].boxes += L.boxes || 0;
+        if (L.unknownSku) bySku[skuKey].unknownSku = true;
+      });
+      var totalHours = 0;
+      var totalBoxes = 0;
+      Object.keys(bySku).forEach(function (k) {
+        totalHours += bySku[k].hours;
+        totalBoxes += bySku[k].boxes;
+      });
+      var parts = Object.keys(bySku).map(function (k) { return bySku[k]; });
+      parts.sort(function (a, b) {
+        if (b.hours !== a.hours) return b.hours - a.hours;
+        return String(a.sku).localeCompare(String(b.sku));
+      });
+      parts.forEach(function (p) {
+        p.hoursShare = totalHours > 0 ? p.hours / totalHours * 100 : null;
+        p.boxesShare = totalBoxes > 0 ? p.boxes / totalBoxes * 100 : null;
+      });
+      var labels = parts.map(function (p) { return String(p.sku); });
+      return {
+        count: parts.length,
+        isMixed: parts.length > 1,
+        label: labels.join(' · ') || '—',
+        summary: parts.length > 1
+          ? ('Mixed (' + parts.length + '): ' + labels.join(' · '))
+          : (labels[0] ? ('SKU ' + labels[0]) : '—'),
+        parts: parts,
+        totalHours: totalHours,
+        totalBoxes: totalBoxes
+      };
+    }
+
     function aggregate(shiftKey) {
       var by = {};
       raw.forEach(function (L) {
@@ -447,6 +490,7 @@
         var hasUnknown = included.some(function (L) { return L.unknownSku; });
         var display = included[0].workerDisplay;
         var skuRows = skuWhyRows(wlines);
+        var skuMix = buildSkuMix(included);
         var shortN = wlines.filter(function (L) { return !L.included; }).length;
         if (!known.length) {
           var skus = [];
@@ -467,6 +511,7 @@
             why: explainWhy('No target defined', null, 0, 0, skuRows),
             boxGap: null,
             skuLines: skuRows,
+            skuMix: skuMix,
             hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
             excludedShortLines: shortN
           });
@@ -503,6 +548,7 @@
           why: explainWhy(flag, pct, boxesKnown, targetBoxes, skuRows),
           boxGap: targetBoxes ? boxesKnown - targetBoxes : null,
           skuLines: skuRows,
+          skuMix: skuMix,
           hourLines: hourLinesFor(key, shiftKey, hourLinesAll),
           excludedShortLines: shortN
         });
