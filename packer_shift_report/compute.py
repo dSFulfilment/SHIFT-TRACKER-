@@ -137,7 +137,7 @@ def dandenong_worker_keys(summary_rows: List[Dict[str, Any]]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for r in summary_rows:
         fac = r.get("Facility Name")
-        if fac is None or str(fac).strip() != FACILITY_NAME:
+        if fac is None or str(fac).strip().lower() != FACILITY_NAME.lower():
             continue
         display = str(r.get("Pnp Worker Name")).strip()
         key = normalize_worker_key(display)

@@ -1,5 +1,5 @@
 /**
- * Packer tab UI — upload 3× xlsx shift exports and show Morning / Afternoon scores + why.
+ * Packer tab UI — three separate xlsx pickers + Morning / Afternoon scores + why.
  */
 (function () {
   'use strict';
@@ -26,7 +26,7 @@
     if (!toastEl) return;
     toastEl.textContent = msg;
     toastEl.classList.add('show');
-    setTimeout(function () { toastEl.classList.remove('show'); }, 2400);
+    setTimeout(function () { toastEl.classList.remove('show'); }, 2800);
   }
 
   function escapeHtml(s) {
@@ -37,8 +37,40 @@
       .replace(/"/g, '&quot;');
   }
 
-  function syncRunEnabled() {
-    runBtn.disabled = !(boxesIn.files && boxesIn.files[0] && summaryIn.files && summaryIn.files[0]);
+  function scriptsOk() {
+    return !!(PSR && typeof PSR.buildReportFromFiles === 'function' && typeof XLSX !== 'undefined');
+  }
+
+  function fileLabel(inp) {
+    return inp && inp.files && inp.files[0] ? inp.files[0].name : '';
+  }
+
+  function refreshReadyState() {
+    var hasBoxes = !!(boxesIn && boxesIn.files && boxesIn.files[0]);
+    var hasSummary = !!(summaryIn && summaryIn.files && summaryIn.files[0]);
+    var hasIntra = !!(intraIn && intraIn.files && intraIn.files[0]);
+    var ok = scriptsOk();
+
+    runBtn.disabled = !ok;
+
+    if (!ok) {
+      statusEl.className = 'psr-status err';
+      statusEl.textContent =
+        'Report scripts did not load. If you still see this, refresh — Packer code is inlined in this HTML file.';
+      return;
+    }
+
+    if (!report) {
+      var parts = [];
+      parts.push(hasBoxes ? ('Boxes: ' + fileLabel(boxesIn)) : 'Boxes: not selected');
+      parts.push(hasIntra ? ('Intra: ' + fileLabel(intraIn)) : 'Intra: optional');
+      parts.push(hasSummary ? ('Summary: ' + fileLabel(summaryIn)) : 'Summary: not selected');
+      statusEl.className = 'psr-status';
+      statusEl.textContent = parts.join(' · ') +
+        (hasBoxes && hasSummary
+          ? ' → click Build report'
+          : ' → select Boxes + Summary (Intra optional), then Build report');
+    }
   }
 
   function flagClass(flag) {
@@ -153,17 +185,10 @@
 
   function renderHow() {
     return '<div class="psr-prose">' +
-      '<h2>Shift amount</h2>' +
-      '<p>At the top of Morning / Afternoon you get total hours, boxes packed, target boxes, and % of target for the whole shift — plus how many packers were below / dipped / on target.</p>' +
-      '<h2>Why it worked / didn’t</h2>' +
-      '<p>Click a packer. You’ll see each SKU they ran: actual BPH vs target and strike, and a short verdict (under strike, under target, on/above). The “why” sentence names which SKUs dragged the score and which held it up.</p>' +
-      '<h2>Math</h2>' +
-      '<ul>' +
-      '<li>Hours on SKU = Packing Time Seconds ÷ 3600</li>' +
-      '<li>Lines under 15 minutes excluded (changeover noise)</li>' +
-      '<li>% of target = boxes ÷ Σ(hours × SKU target) on included known-SKU lines</li>' +
-      '</ul>' +
-      '<p>For the Excel with formulas: <code>python -m packer_shift_report --dir ./exports --out report.xlsx</code></p>' +
+      '<h2>Files</h2>' +
+      '<p>Pick each export in its slot (Boxes + Summary required; Intra optional), then <b>Build report</b>.</p>' +
+      '<h2>Shift amount / why</h2>' +
+      '<p>Morning and Afternoon show total boxes vs target. Click a packer to see which SKUs dragged or held the score.</p>' +
       '</div>';
   }
 
@@ -182,21 +207,34 @@
   }
 
   async function run() {
+    openPacker = null;
+    if (!scriptsOk()) {
+      refreshReadyState();
+      toast('Scripts not loaded');
+      return;
+    }
+    if (!(boxesIn.files && boxesIn.files[0])) {
+      statusEl.className = 'psr-status err';
+      statusEl.textContent = 'Select file 1: Boxes_Packed_by_Worker.xlsx';
+      toast('Need Boxes file');
+      return;
+    }
+    if (!(summaryIn.files && summaryIn.files[0])) {
+      statusEl.className = 'psr-status err';
+      statusEl.textContent = 'Select file 3: Overall_Summary_by_Packer_and_Date.xlsx';
+      toast('Need Summary file');
+      return;
+    }
+
     statusEl.className = 'psr-status';
     statusEl.textContent = 'Reading exports…';
-    openPacker = null;
-    if (!PSR || typeof PSR.buildReportFromFiles !== 'function') {
-      statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Packer shift report module failed to load (js/packer-shift-report.js).';
-      return;
-    }
-    if (typeof XLSX === 'undefined') {
-      statusEl.className = 'psr-status err';
-      statusEl.textContent = 'Spreadsheet reader failed to load (js/xlsx.mini.min.js). Open the app from the project folder so those scripts can load.';
-      return;
-    }
+    runBtn.disabled = true;
     try {
-      report = await PSR.buildReportFromFiles(boxesIn.files[0], summaryIn.files[0], intraIn.files[0] || null);
+      report = await PSR.buildReportFromFiles(
+        boxesIn.files[0],
+        summaryIn.files[0],
+        (intraIn.files && intraIn.files[0]) || null
+      );
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
@@ -206,6 +244,7 @@
         bits.push('Morning shift ' + report.morningTotals.pctOfTarget.toFixed(0) + '% of target');
       }
       if (report.warnings && report.warnings.length) bits.push(report.warnings.join(' '));
+      statusEl.className = 'psr-status';
       statusEl.textContent = bits.join(' · ');
       view = 'morning';
       render();
@@ -217,24 +256,31 @@
       statusEl.className = 'psr-status err';
       statusEl.textContent = (e && e.message) ? e.message : String(e);
       toast('Could not build report');
+      console.error(e);
+    } finally {
+      runBtn.disabled = !scriptsOk();
     }
   }
 
   function clearAll() {
-    boxesIn.value = '';
-    intraIn.value = '';
-    summaryIn.value = '';
+    if (boxesIn) boxesIn.value = '';
+    if (intraIn) intraIn.value = '';
+    if (summaryIn) summaryIn.value = '';
     report = null;
     openPacker = null;
     viewsEl.hidden = true;
     panelEl.innerHTML = '';
-    statusEl.className = 'psr-status';
-    statusEl.textContent = 'Upload the three shift exports, then Build report.';
-    syncRunEnabled();
+    refreshReadyState();
   }
 
   [boxesIn, intraIn, summaryIn].forEach(function (inp) {
-    inp.addEventListener('change', syncRunEnabled);
+    if (!inp) return;
+    inp.addEventListener('change', function () {
+      report = null;
+      viewsEl.hidden = true;
+      panelEl.innerHTML = '';
+      refreshReadyState();
+    });
   });
   runBtn.addEventListener('click', function () { run(); });
   clearBtn.addEventListener('click', clearAll);
@@ -244,7 +290,6 @@
       view = tab.getAttribute('data-psr-view');
       openPacker = null;
       render();
-      return;
     }
   });
   panelEl.addEventListener('click', function (e) {
@@ -259,5 +304,5 @@
     refresh: function () {},
     getReport: function () { return report; }
   };
-  syncRunEnabled();
+  refreshReadyState();
 })();

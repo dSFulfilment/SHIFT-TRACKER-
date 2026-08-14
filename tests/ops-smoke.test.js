@@ -87,13 +87,18 @@ check(html.indexOf('remaining finish reworked from now') !== -1,
 check(html.indexOf("__shiftTrackerRefresh()") !== -1,
   'Floor clear / remove paths ping Tracker');
 
-console.log('\nOps smoke — Packer shift report (3× xlsx)');
+console.log('\nOps smoke — Packer shift report (3× xlsx, inlined)');
 check(html.indexOf('id="psrRoot"') !== -1, 'Packer shift report root exists');
 check(html.indexOf('id="psrBoxes"') !== -1 && html.indexOf('id="psrIntra"') !== -1 && html.indexOf('id="psrSummary"') !== -1,
-  'Three export file inputs exist');
-check(html.indexOf('js/packer-shift-report.js') !== -1 && html.indexOf('js/xlsx.mini.min.js') !== -1,
-  'SheetJS + packer-shift-report scripts linked');
-check(html.indexOf('js/packer-shift-ui.js') !== -1, 'Packer shift UI script linked');
+  'Packer has three separate file inputs');
+check(html.indexOf('id="psrUploadBtn"') === -1 && html.indexOf('id="psrMulti"') === -1,
+  'Single multi-file Upload control removed');
+check(html.indexOf('window.PackerShiftReport') !== -1 || html.indexOf('root.PackerShiftReport') !== -1,
+  'PackerShiftReport inlined into index.html');
+check(html.indexOf('typeof XLSX') !== -1 || html.indexOf('XLSX.read') !== -1,
+  'SheetJS XLSX inlined into index.html');
+check(html.indexOf('script src="js/xlsx.mini.min.js"') === -1, 'No external xlsx script src');
+check(html.indexOf('script src="js/packer-shift-report.js"') === -1, 'No external packer-shift-report script src');
 check(html.indexOf('Dandenong South') !== -1, 'Facility name shown in Packer UI');
 check(html.indexOf('function overallStrikeFromBlend') !== -1, 'Legacy blended strike helper still present in analytics');
 

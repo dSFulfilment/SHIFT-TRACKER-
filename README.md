@@ -2,7 +2,7 @@
 
 **Single-file offline app.** Download `index.html` and open it in your browser (double-click / File → Open). No server.
 
-For the Packer shift report (three xlsx exports → Morning / Afternoon vs SKU target), open the app from this project folder so `js/xlsx.mini.min.js` and `js/packer-shift-report.js` load, **or** run the Python CLI (recommended for the auditable Excel workbook).
+Packer shift report (three xlsx → Morning / Afternoon vs SKU target) is **inlined in `index.html`** — no extra `js/` files needed to use it. For an auditable Excel workbook with formulas, also use the Python CLI.
 
 ## Download
 
