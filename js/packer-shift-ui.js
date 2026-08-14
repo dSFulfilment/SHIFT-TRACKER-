@@ -70,8 +70,8 @@
       statusEl.className = 'psr-status';
       statusEl.textContent = parts.join(' · ') +
         (hasBoxes && hasIntra
-          ? ' → click Build report' + (hasRaw ? '' : ' (Raw Data optional for Mixed SKUs)')
-          : ' → select Boxes + Intra Hour (+ Raw Data for Mixed), then Build report');
+          ? ' → click Build report' + (hasRaw ? '' : ' (Raw Data optional — adds sizes on packer open)')
+          : ' → select Boxes + Intra Hour (+ Raw Data optional), then Build report');
     }
   }
 
@@ -110,20 +110,16 @@
   function renderSkuMixDetail(r) {
     var mix = r.skuMix;
     if (!mix || !mix.parts || !mix.parts.length) {
-      return '<h3 class="psr-detail-h">SKU mix</h3><p class="psr-prose">No SKUs.</p>';
+      return '<h3 class="psr-detail-h">Sizes (Boxes)</h3><p class="psr-prose">No SKUs.</p>';
     }
-    var html = '<h3 class="psr-detail-h">SKU mix</h3>';
-    if (mix.isMixed) {
-      html += '<p class="psr-why"><b>Mixed SKUs</b> — ' + escapeHtml(mix.label) +
-        ' (' + mix.count + ' SKUs this shift).</p>';
-    } else {
-      html += '<p class="psr-why">Single SKU — ' + escapeHtml(mix.label) + '.</p>';
-    }
+    var html = '<h3 class="psr-detail-h">Sizes (Boxes)</h3>';
+    html += '<p class="psr-why">' + escapeHtml(mix.label) +
+      (mix.parts.length > 1 ? ' · ' + mix.parts.length + ' sizes this shift' : '') + '.</p>';
     html += '<table class="psr-table"><thead><tr>' +
       '<th>SKU</th><th>Hours</th><th>% of hours</th><th>Boxes</th><th>% of boxes</th>' +
       '</tr></thead><tbody>';
     mix.parts.forEach(function (p) {
-      html += '<tr' + (mix.isMixed ? ' class="psr-mix-row"' : '') + '>' +
+      html += '<tr>' +
         '<td>' + escapeHtml(p.sku) + (p.unknownSku ? ' <em>(no target)</em>' : '') + '</td>' +
         '<td>' + p.hours.toFixed(2) + '</td>' +
         '<td>' + (p.hoursShare != null ? p.hoursShare.toFixed(0) + '%' : '—') + '</td>' +
@@ -224,14 +220,9 @@
 
   function renderRawLines(r) {
     var lines = r.rawLines || [];
-    var mixed = r.skuMix && r.skuMix.isMixed;
-    var html = '<h3 class="psr-detail-h">Raw Boxes lines' +
-      (mixed ? ' <span class="psr-mixed">Mixed</span>' : '') + '</h3>';
+    var html = '<h3 class="psr-detail-h">Boxes Packed lines</h3>';
     if (!lines.length) {
-      return html + '<p class="psr-prose">No raw lines.</p>';
-    }
-    if (mixed) {
-      html += '<p class="psr-why">Full Boxes Packed rows for this packer/shift — use this to see each SKU, station, and packing seconds behind the mix.</p>';
+      return html + '<p class="psr-prose">No Boxes lines.</p>';
     }
     html += '<table class="psr-table"><thead><tr>' +
       '<th>Station</th><th>SKU</th><th>Boxes</th><th>Packing sec</th><th>Hours</th>' +
@@ -277,16 +268,14 @@
   function renderRawDataSegments(r) {
     var segs = r.rawDataSegments || [];
     if (!segs.length) return '';
-    var mixedSegs = segs.filter(function (s) { return s.isMixed; });
-    var html = '<h3 class="psr-detail-h">Raw Data <span class="psr-mixed">Box Sku Sizes</span></h3>';
-    html += '<p class="psr-why">From the Raw Data export. Mixed when <b>Box Sku Sizes</b> lists more than one SKU (e.g. 250g, 600g).</p>';
+    var html = '<h3 class="psr-detail-h">Raw Data sizes</h3>';
+    html += '<p class="psr-why">Box Sku Sizes from Raw Data (same packer) — shown with Boxes lines, not as a separate report.</p>';
     html += '<table class="psr-table"><thead><tr>' +
-      '<th>Box Sku Sizes</th><th>Mixed?</th><th>Boxes</th><th>Packing sec</th><th>Hours</th><th>BPH</th><th>First Scan</th><th>Last Scan</th>' +
+      '<th>Box Sku Sizes</th><th>Boxes</th><th>Packing sec</th><th>Hours</th><th>BPH</th><th>First Scan</th><th>Last Scan</th>' +
       '</tr></thead><tbody>';
     segs.forEach(function (s) {
-      html += '<tr' + (s.isMixed ? ' class="psr-mix-row"' : '') + '>' +
+      html += '<tr>' +
         '<td>' + escapeHtml(s.boxSkuSizes || '') + '</td>' +
-        '<td>' + (s.isMixed ? '<span class="psr-mixed">Yes</span>' : 'No') + '</td>' +
         '<td>' + (s.boxes != null ? Math.round(s.boxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (s.packingSeconds != null ? Math.round(s.packingSeconds).toLocaleString() : '—') + '</td>' +
         '<td>' + (s.hours != null ? s.hours.toFixed(3) : '—') + '</td>' +
@@ -296,10 +285,6 @@
         '</tr>';
     });
     html += '</tbody></table>';
-    if (mixedSegs.length) {
-      html += '<p class="psr-prose psr-note">' + mixedSegs.length + ' mixed segment' +
-        (mixedSegs.length === 1 ? '' : 's') + ' for this packer in Raw Data.</p>';
-    }
     return html;
   }
 
@@ -313,12 +298,22 @@
       '</div>';
   }
 
-  function mixCell(r) {
-    var mix = r.skuMix;
-    if (!mix) return '—';
-    if (mix.isMixed) {
-      return '<span class="psr-mixed">Mixed</span> ' + escapeHtml(mix.label);
+  /** Prefer Raw Data size list when present; else Boxes Primary Sku sizes. No Mixed badge. */
+  function sizesCell(r) {
+    var segs = r.rawDataSegments || [];
+    if (segs.length) {
+      var set = {};
+      segs.forEach(function (s) {
+        (s.skus || []).forEach(function (sku) { set[sku] = true; });
+      });
+      var skus = Object.keys(set).map(Number).filter(function (n) { return isFinite(n); })
+        .sort(function (a, b) { return a - b; });
+      if (skus.length) {
+        return escapeHtml(skus.map(function (s) { return s + 'g'; }).join(' · '));
+      }
     }
+    var mix = r.skuMix;
+    if (!mix || !mix.label) return '—';
     return escapeHtml(mix.label);
   }
 
@@ -326,18 +321,16 @@
     if (!rows.length) {
       return '<p class="psr-prose">No packers for this shift in the Boxes export.</p>';
     }
-    var mixedN = rows.filter(function (r) { return r.skuMix && r.skuMix.isMixed; }).length;
     var html = renderTotals(totals);
-    html += '<p class="psr-prose">Click a packer for SKU mix, Raw Data sizes, boxes each hour, and SKU performance. ' +
-      '<b>' + mixedN + '</b> packer' + (mixedN === 1 ? '' : 's') + ' with multiple Primary Sku lines this shift.</p>';
+    html += '<p class="psr-prose">Click a packer for sizes, Boxes lines, Raw Data sizes, hours, and performance.</p>';
     html += '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>SKU mix</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
+      '<th>Packer</th><th>Sizes</th><th>Hours</th><th>Boxes</th><th>Target</th><th>%</th><th>Gap</th><th>Flag</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (r, idx) {
       var open = openPacker === r.workerDisplay;
       html += '<tr class="' + flagClass(r.flag) + ' psr-row" data-packer="' + escapeHtml(r.workerDisplay) + '" data-idx="' + idx + '" style="cursor:pointer">' +
         '<td><b>' + escapeHtml(r.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
-        '<td>' + mixCell(r) + '</td>' +
+        '<td>' + sizesCell(r) + '</td>' +
         '<td>' + (r.hours != null ? r.hours.toFixed(2) : '—') + '</td>' +
         '<td>' + (r.boxes != null ? Math.round(r.boxes).toLocaleString() : '—') + '</td>' +
         '<td>' + (r.targetBoxes != null ? r.targetBoxes.toFixed(1) : '—') + '</td>' +
@@ -358,22 +351,17 @@
     if (!rows.length) {
       return '<p class="psr-prose">No Intra Hour rows loaded.</p>';
     }
-    var html = '<p class="psr-prose">Boxes packed each clock hour. SKU mix is for the whole shift (Intra has no SKU column).</p>';
+    var html = '<p class="psr-prose">Boxes packed each clock hour. Sizes are for the whole shift (Intra has no SKU column).</p>';
     rows.forEach(function (H) {
       html += '<div class="psr-hour-block">' +
         '<div class="psr-hour-head"><b>' + escapeHtml(H.hourLabel) + '</b> · ' +
         escapeHtml(H.shiftLabel) + ' · ' + Math.round(H.boxes).toLocaleString() + ' boxes · ' +
         H.packers.length + ' packer' + (H.packers.length === 1 ? '' : 's') + '</div>';
-      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>SKU mix (shift)</th></tr></thead><tbody>';
+      html += '<table class="psr-table"><thead><tr><th>Packer</th><th>Boxes this hour</th><th>Sizes (shift)</th></tr></thead><tbody>';
       H.packers.forEach(function (p) {
         var info = p.skuInfo || {};
         var mix = info.mix;
-        var mixTxt = '—';
-        if (mix) {
-          mixTxt = mix.isMixed
-            ? ('Mixed: ' + mix.label)
-            : ('SKU ' + mix.label);
-        }
+        var mixTxt = mix && mix.label ? mix.label : '—';
         html += '<tr>' +
           '<td><b>' + escapeHtml(p.workerDisplay) + '</b></td>' +
           '<td>' + Math.round(p.boxes).toLocaleString() + '</td>' +
@@ -411,69 +399,14 @@
     return html;
   }
 
-  function renderMixedWorkerBlock(w) {
-    var html = '<p class="psr-why">Mixed segments for this packer (context only — not used to score a single SKU).</p>';
-    html += '<table class="psr-table"><thead><tr>' +
-      '<th>Box Sku Sizes</th><th>Boxes</th><th>Packing sec</th><th>Hours</th><th>BPH</th>' +
-      '<th>First Scan</th><th>Last Scan</th>' +
-      '</tr></thead><tbody>';
-    (w.segments || []).forEach(function (seg) {
-      html += '<tr class="psr-mix-row">' +
-        '<td>' + escapeHtml(seg.boxSkuSizes || '') + '</td>' +
-        '<td>' + (seg.boxes != null ? Math.round(seg.boxes).toLocaleString() : '—') + '</td>' +
-        '<td>' + (seg.packingSeconds != null ? Math.round(seg.packingSeconds).toLocaleString() : '—') + '</td>' +
-        '<td>' + (seg.hours != null ? seg.hours.toFixed(3) : '—') + '</td>' +
-        '<td>' + (seg.actualBph != null ? seg.actualBph.toFixed(1) : '—') + '</td>' +
-        '<td>' + escapeHtml(seg.firstScan == null ? '' : seg.firstScan) + '</td>' +
-        '<td>' + escapeHtml(seg.lastScan == null ? '' : seg.lastScan) + '</td>' +
-        '</tr>';
-    });
-    html += '</tbody></table>';
-    return html;
-  }
-
-  function renderMixed() {
-    var mixed = report.rawDataMixed || [];
-    var rawRows = report.rawDataRows || [];
-    if (!rawRows.length) {
-      return '<p class="psr-prose">Select the <b>Raw Data</b> export (CSV/xlsx with <b>Box Sku Sizes</b>) and Build report to see mixed sizes here.</p>';
-    }
-    if (!mixed.length) {
-      return '<p class="psr-prose">Raw Data loaded (' + rawRows.length + ' rows) — no mixed sizes (2+ in Box Sku Sizes).</p>';
-    }
-    var totBoxes = mixed.reduce(function (s, w) { return s + (w.boxes || 0); }, 0);
-    var html = '<p class="psr-prose"><b>Mixed = 2+ sizes</b> in one Raw Data segment (e.g. 250g, 600g). ' +
-      '<b>' + mixed.length + '</b> packers · ' + Math.round(totBoxes).toLocaleString() +
-      ' boxes across mixed segments. One row per packer — click to expand segments.</p>';
-    html += '<table class="psr-table"><thead><tr>' +
-      '<th>Packer</th><th>Sizes touched</th><th>Segs</th><th>Hours</th><th>Boxes</th>' +
-      '</tr></thead><tbody>';
-    mixed.forEach(function (w) {
-      var open = openPacker === ('mixed:' + w.workerDisplay);
-      var sizes = (w.skus || []).map(function (s) { return s + 'g'; }).join(' · ') || (w.mixLabel || '');
-      html += '<tr class="psr-row psr-mix-row" data-packer="mixed:' + escapeHtml(w.workerDisplay) + '" style="cursor:pointer">' +
-        '<td><b>' + escapeHtml(w.workerDisplay) + '</b>' + (open ? ' ▾' : ' ▸') + '</td>' +
-        '<td><span class="psr-mixed">Mixed</span> ' + escapeHtml(sizes) + '</td>' +
-        '<td>' + (w.segmentCount || (w.segments || []).length) + '</td>' +
-        '<td>' + (w.hours != null ? w.hours.toFixed(2) : '—') + '</td>' +
-        '<td>' + Math.round(w.boxes || 0).toLocaleString() + '</td>' +
-        '</tr>';
-      if (open) {
-        html += '<tr class="psr-detail"><td colspan="5">' + renderMixedWorkerBlock(w) + '</td></tr>';
-      }
-    });
-    html += '</tbody></table>';
-    return html;
-  }
-
   function renderHow() {
     return '<div class="psr-prose">' +
       '<h2>Files</h2>' +
-      '<p>Pick <b>Boxes Packed by Worker</b>, <b>Intra Hour Floor Performance</b>, and optionally <b>Raw Data</b> (for Mixed SKUs via Box Sku Sizes), then <b>Build report</b>.</p>' +
-      '<h2>Mixed SKUs</h2>' +
-      '<p>The <b>Mixed SKUs</b> tab uses the Raw Data export column <b>Box Sku Sizes</b> (e.g. "250g, 600g"). Scoring still comes from Boxes Packed. Intra Hour is boxes per clock hour only (no SKU).</p>' +
+      '<p>Pick <b>Boxes Packed by Worker</b>, <b>Intra Hour</b>, and optionally <b>Raw Data</b>, then <b>Build report</b>.</p>' +
+      '<h2>One packer view</h2>' +
+      '<p>Morning / Afternoon use Boxes for scoring. Open a packer to see sizes, Boxes lines, and Raw Data Box Sku Sizes together — no separate Mixed tab.</p>' +
       '<h2>Export</h2>' +
-      '<p>After Build report, click <b>Export report</b> for Excel: Summary, shifts, SKU detail, Mixed SKUs, Raw Data export, Boxes raw lines, By hour, Exclusions, SKU targets.</p>' +
+      '<p>After Build report, click <b>Export report</b> for Excel (shifts, SKU detail, Raw Data, By hour, etc.).</p>' +
       '</div>';
   }
 
@@ -486,7 +419,6 @@
     }
     if (view === 'morning') panelEl.innerHTML = renderShiftTable(report.morning, report.morningTotals);
     else if (view === 'afternoon') panelEl.innerHTML = renderShiftTable(report.afternoon, report.afternoonTotals);
-    else if (view === 'mixed') panelEl.innerHTML = renderMixed();
     else if (view === 'byhour') panelEl.innerHTML = renderByHour();
     else if (view === 'exclusions') panelEl.innerHTML = renderExclusions();
     else if (view === 'targets') panelEl.innerHTML = renderTargets();
@@ -519,16 +451,13 @@
     try {
       var rawFile = (rawIn && rawIn.files && rawIn.files[0]) ? rawIn.files[0] : null;
       report = await PSR.buildReportFromFiles(boxesIn.files[0], intraIn.files[0], rawFile);
-      var mixedN = (report.rawDataMixed || []).length;
       var bits = [
         'Morning: ' + report.morning.length + ' packers',
         'Afternoon: ' + report.afternoon.length + ' packers',
-        'Raw lines: ' + report.rawLines.length
+        'Boxes lines: ' + report.rawLines.length
       ];
       if (report.rawDataRows && report.rawDataRows.length) {
-        bits.push('Raw Data: ' + report.rawDataRows.length + ' rows · mixed ' + mixedN);
-      } else {
-        bits.push('Raw Data: not loaded');
+        bits.push('Raw Data: ' + report.rawDataRows.length + ' rows');
       }
       if (report.morningTotals && report.morningTotals.pctOfTarget != null) {
         bits.push('Morning shift ' + report.morningTotals.pctOfTarget.toFixed(0) + '% of target');
