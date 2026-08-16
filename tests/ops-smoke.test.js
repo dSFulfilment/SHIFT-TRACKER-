@@ -63,6 +63,13 @@ check(html.indexOf("data-tab=\"settings\"") !== -1, 'Settings tab button');
 check(html.indexOf('function showTab') !== -1, 'showTab switcher exists');
 check(html.indexOf("__floorAttGlance") !== -1, 'Attendance glance refresh hook');
 
+console.log('\nOps smoke — Packer tab hidden for now');
+check(/data-tab="packer"[^>]*\bhidden\b/.test(html) || html.indexOf('data-tab="packer" title="Packer" role="menuitem" hidden') !== -1,
+  'Packer nav button is hidden');
+check(html.indexOf("if (name === 'packer') name = 'floor'") !== -1,
+  'showTab redirects packer → floor');
+check(html.indexOf('id="tabPacker"') !== -1, 'Packer panel kept in DOM for restore later');
+
 console.log('\nOps smoke — only SKUs at multiple locations');
 check(html.indexOf('clearSkuFromOtherPlates') === -1,
   'SKU assign no longer clears other plates');

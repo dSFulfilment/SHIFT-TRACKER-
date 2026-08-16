@@ -576,6 +576,8 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--p
 .bp-fab-btn[data-tab="breaks"].active{ background:var(--tab-breaks); }
 .bp-fab-btn[data-tab="tracker"].active{ background:var(--tab-tracker); }
 .bp-fab-btn[data-tab="packer"].active{ background:var(--tab-packer); }
+/* Temporarily hide Packer from the menu while data/CSV model is fixed */
+.bp-fab-btn[data-tab="packer"]{ display:none !important; }
 .bp-fab-btn[data-tab="roster"].active{ background:var(--tab-roster); }
 .bp-fab-btn[data-tab="settings"].active{ background:var(--tab-settings); }
 .bp-fab-btn.active:hover{ color:#fff; }
@@ -1695,7 +1697,8 @@ html[data-active-tab="settings"] .bp-nav-launch{ background:var(--tab-settings);
     <button class="bp-fab-btn active" data-tab="floor" title="Floor Plan" role="menuitem"><span class="fab-short">Floor</span><span class="fab-full">Floor Plan</span></button>
     <button class="bp-fab-btn" data-tab="breaks" title="Breaks" role="menuitem"><span class="fab-short">Breaks</span><span class="fab-full">Breaks</span></button>
     <button class="bp-fab-btn" data-tab="tracker" title="Shift Tracker" role="menuitem"><span class="fab-short">Tracker</span><span class="fab-full">Shift Tracker</span></button>
-    <button class="bp-fab-btn" data-tab="packer" title="Packer" role="menuitem"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
+    <!-- Packer tab hidden for now while CSV/data model is fixed; code kept under #tabPacker -->
+    <button class="bp-fab-btn" data-tab="packer" title="Packer" role="menuitem" hidden aria-hidden="true" style="display:none"><span class="fab-short">Packer</span><span class="fab-full">Packer</span></button>
     <button class="bp-fab-btn" data-tab="roster" title="Roster" role="menuitem"><span class="fab-short">Roster</span><span class="fab-full">Roster</span></button>
     <button class="bp-fab-btn" data-tab="settings" title="Settings" role="menuitem"><span class="fab-short">Settings</span><span class="fab-full">Settings</span></button>
   </div>
@@ -12307,6 +12310,8 @@ function toast(msg, err) {
     if (navScrim) navScrim.hidden = !open;
   }
   function showTab(name){
+    // Packer UI is temporarily removed from nav — keep redirect so bookmarks / old state land on Floor.
+    if (name === 'packer') name = 'floor';
     var showDisplay = {
       floor: '',
       breaks: 'flex',
